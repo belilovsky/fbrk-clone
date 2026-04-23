@@ -1,26 +1,19 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 900" preserveAspectRatio="xMidYMid slice">
   <defs>
     <linearGradient id="g_001-grecia" x1="0" y1="0" x2="1" y2="1">
-      <stop offset="0" stop-color="#0f1e3d"/>
-      <stop offset="1" stop-color="#8a1d1d" stop-opacity="0.55"/>
+      <stop offset="0" stop-color="#2d3142"/>
+      <stop offset="1" stop-color="#6b7b8c" stop-opacity="0.85"/>
     </linearGradient>
-    <pattern id="grid_001-grecia" width="40" height="40" patternUnits="userSpaceOnUse">
-      <path d="M 40 0 L 0 0 0 40" fill="none" stroke="#fff" stroke-width="0.5" opacity="0.08"/>
+    <pattern id="p_001-grecia" width="48" height="48" patternUnits="userSpaceOnUse">
+      <path d="M 48 0 L 0 0 0 48" fill="none" stroke="#fff" stroke-width="0.5" opacity="0.06"/>
     </pattern>
   </defs>
-  <rect width="1600" height="900" fill="#0f1e3d"/>
+  <rect width="1600" height="900" fill="#2d3142"/>
   <rect width="1600" height="900" fill="url(#g_001-grecia)"/>
-  <rect width="1600" height="900" fill="url(#grid_001-grecia)"/>
-  
-        <g transform="translate(800,410)" opacity="0.20">
-          <circle r="240" fill="none" stroke="#fff" stroke-width="3" stroke-dasharray="8 14"/>
-          <circle r="170" fill="none" stroke="#fff" stroke-width="2"/>
-          <text x="0" y="-40" text-anchor="middle" font-family="Playfair Display, serif" font-weight="900" font-size="100" fill="#fff">INT</text>
-          <text x="0" y="80" text-anchor="middle" font-family="Playfair Display, serif" font-weight="900" font-size="100" fill="#fff">POL</text>
-        </g>
-  <g>
-    <rect x="80" y="740" width="6" height="64" fill="#fff"/>
-    <text x="105" y="788" font-family="Inter, sans-serif" font-size="18" font-weight="600" fill="#fff" opacity="0.85" letter-spacing="3">ФБРК</text>
-    <text x="105" y="830" font-family="Playfair Display, Georgia, serif" font-weight="900" font-size="54" fill="#fff">Экстрадиция</text>
+  <rect width="1600" height="900" fill="url(#p_001-grecia)"/>
+  <rect x="700" y="340" width="200" height="260" rx="8" fill="none" stroke="#fff" stroke-width="3" opacity="0.55"/><circle cx="800" cy="460" r="38" fill="none" stroke="#fff" stroke-width="2.5" opacity="0.6"/><line x1="740" y1="530" x2="860" y2="530" stroke="#fff" stroke-width="2" opacity="0.5"/><line x1="740" y1="548" x2="860" y2="548" stroke="#fff" stroke-width="2" opacity="0.5"/>
+  <g opacity="0.6">
+    <rect x="80" y="800" width="4" height="40" fill="#fff"/>
+    <text x="100" y="828" font-family="system-ui, sans-serif" font-size="18" font-weight="600" fill="#fff" letter-spacing="3">ФБРК</text>
   </g>
 </svg>

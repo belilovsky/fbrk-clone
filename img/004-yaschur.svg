@@ -1,20 +1,19 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 900" preserveAspectRatio="xMidYMid slice">
   <defs>
     <linearGradient id="g_004-yaschur" x1="0" y1="0" x2="1" y2="1">
-      <stop offset="0" stop-color="#2d3a24"/>
-      <stop offset="1" stop-color="#8a1d1d" stop-opacity="0.55"/>
+      <stop offset="0" stop-color="#2a2418"/>
+      <stop offset="1" stop-color="#8a6a3d" stop-opacity="0.85"/>
     </linearGradient>
-    <pattern id="grid_004-yaschur" width="40" height="40" patternUnits="userSpaceOnUse">
-      <path d="M 40 0 L 0 0 0 40" fill="none" stroke="#fff" stroke-width="0.5" opacity="0.08"/>
+    <pattern id="p_004-yaschur" width="48" height="48" patternUnits="userSpaceOnUse">
+      <path d="M 48 0 L 0 0 0 48" fill="none" stroke="#fff" stroke-width="0.5" opacity="0.06"/>
     </pattern>
   </defs>
-  <rect width="1600" height="900" fill="#2d3a24"/>
+  <rect width="1600" height="900" fill="#2a2418"/>
   <rect width="1600" height="900" fill="url(#g_004-yaschur)"/>
-  <rect width="1600" height="900" fill="url(#grid_004-yaschur)"/>
-  <g transform="translate(800,450)"><path d="M -800 -80 Q -400 -120 0 -80 T 800 -80" fill="none" stroke="#fff" stroke-width="3" opacity="0.15"/><path d="M -800 -20 Q -400 -60 0 -20 T 800 -20" fill="none" stroke="#fff" stroke-width="3" opacity="0.2"/><path d="M -800 40 Q -400 0 0 40 T 800 40" fill="none" stroke="#fff" stroke-width="3" opacity="0.25"/><path d="M -800 100 Q -400 60 0 100 T 800 100" fill="none" stroke="#fff" stroke-width="3" opacity="0.30000000000000004"/><path d="M -800 160 Q -400 120 0 160 T 800 160" fill="none" stroke="#fff" stroke-width="3" opacity="0.35"/></g>
-  <g>
-    <rect x="80" y="740" width="6" height="64" fill="#fff"/>
-    <text x="105" y="788" font-family="Inter, sans-serif" font-size="18" font-weight="600" fill="#fff" opacity="0.85" letter-spacing="3">ФБРК</text>
-    <text x="105" y="830" font-family="Playfair Display, Georgia, serif" font-weight="900" font-size="54" fill="#fff">ЗКО · эпизоотия</text>
+  <rect width="1600" height="900" fill="url(#p_004-yaschur)"/>
+  <g stroke="#fff" stroke-width="2.5" fill="none" opacity="0.5"><path d="M 200 450 Q 400 410 600 450 T 1000 450 T 1400 450"/><path d="M 200 490 Q 400 450 600 490 T 1000 490 T 1400 490"/><path d="M 200 530 Q 400 490 600 530 T 1000 530 T 1400 530"/></g>
+  <g opacity="0.6">
+    <rect x="80" y="800" width="4" height="40" fill="#fff"/>
+    <text x="100" y="828" font-family="system-ui, sans-serif" font-size="18" font-weight="600" fill="#fff" letter-spacing="3">ФБРК</text>
   </g>
 </svg>

@@ -12,7 +12,7 @@
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link
-      href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400;0,700;0,900;1,400&family=Inter:wght@400;500;600;700&display=swap"
+      href="https://api.fontshare.com/v2/css?f[]=satoshi@400,500,700&f[]=general-sans@500,600,700&display=swap"
       rel="stylesheet"
     />
     <link rel="stylesheet" href="css/style.css" />
@@ -43,8 +43,7 @@
             </a>
           </div>
           <a class="masthead__logo" href="index.html" aria-label="ФБРК — на главную">
-            <div class="masthead__logo-mark">ФБРК</div>
-            <div class="masthead__logo-tagline">Фонд-бюро расследования коррупции</div>
+            <span class="masthead__logo-text">Фонд-бюро расследования коррупции</span>
           </a>
           <div class="masthead__right">
             <button class="icon-btn" data-theme-toggle type="button" aria-label="Переключить тему"></button>
@@ -80,66 +79,46 @@
     </nav>
 
     <main>
-      <section class="about-hero">
-        <div class="container container--narrow">
-          <div class="kicker kicker--investigation" style="justify-content:center; display:flex;">Редакция</div>
-          <h1 class="about-hero__mark" style="margin-top: var(--space-5)">ФБРК</h1>
-          <p class="about-hero__sub">
-            Независимое казахстанское издание о&nbsp;коррупции, госзакупках и&nbsp;бизнесе чиновников.
-          </p>
-        </div>
-      </section>
-
-      <section class="article-body about-body">
+      <section class="about">
         <div class="container">
-          <div class="article-prose">
-            <p>
-              Фонд-бюро расследования коррупции&nbsp;— сетевое издание. Свидетельство о&nbsp;регистрации СМИ
-              №&nbsp;KZ83VPY00075165 от&nbsp;21.08.2023.
-            </p>
-            <p>
-              Мы&nbsp;делаем журналистские расследования, публикуем новости и&nbsp;документируем информацию
-              о&nbsp;борьбе с&nbsp;коррупцией в&nbsp;Казахстане. Наши материалы содержат досье
-              на&nbsp;олигархов, списки земель латифундистов, информацию о&nbsp;бизнесе семей чиновников
-              и&nbsp;о&nbsp;практиках государственных закупок.
-            </p>
-
-            <h2>Как с нами связаться</h2>
-            <p>
-              Если у&nbsp;вас есть информация о&nbsp;коррупции, нарушениях при госзакупках, конфликте интересов
-              или&nbsp;ином злоупотреблении&nbsp;— напишите в&nbsp;наш анонимный Telegram-бот:
-              <a href="https://t.me/fund_kz_bot" target="_blank" rel="noopener" style="color: var(--color-accent); text-decoration: underline;">@fund_kz_bot</a>.
-              Мы&nbsp;защищаем источники и&nbsp;проверяем каждое сообщение.
-            </p>
-
-            <h2>Видеорасследования</h2>
-            <p>
-              Видеоматериалы, интервью с&nbsp;экспертами и&nbsp;разборы документов мы&nbsp;публикуем
-              на&nbsp;<a href="https://www.youtube.com/@fbrk_news" target="_blank" rel="noopener" style="color: var(--color-accent); text-decoration: underline;">YouTube-канале редакции</a>.
-            </p>
-
-            <h2>Правовая информация</h2>
-            <p>
-              Издание действует в&nbsp;соответствии с&nbsp;законодательством Республики Казахстан о&nbsp;СМИ.
-              Все материалы&nbsp;— авторские. Перепечатка допускается с&nbsp;обязательной ссылкой
-              на&nbsp;источник.
+          <div class="about__intro">
+            <div class="kicker" style="margin-bottom: var(--space-4)">Редакция</div>
+            <h1 class="about__title">Фонд-бюро расследования коррупции</h1>
+            <p class="about__lede">
+              Независимое казахстанское издание о&nbsp;коррупции, госзакупках и&nbsp;бизнесе чиновников. Свидетельство о&nbsp;регистрации СМИ №&nbsp;KZ83VPY00075165 от&nbsp;21.08.2023.
             </p>
           </div>
 
-          <div class="container container--narrow" style="padding-inline:0;">
-            <div class="about-stats">
-              <div class="about-stat">
-                <div class="about-stat__value">2023</div>
-                <div class="about-stat__label">Год основания</div>
-              </div>
-              <div class="about-stat">
-                <div class="about-stat__value">487+</div>
-                <div class="about-stat__label">Опубликовано материалов</div>
-              </div>
-              <div class="about-stat">
-                <div class="about-stat__value">100%</div>
-                <div class="about-stat__label">Независимая редакция</div>
-              </div>
+          <div class="about__stats">
+            <div class="stat">
+              <div class="stat__value">2023</div>
+              <div class="stat__label">Год основания</div>
+            </div>
+            <div class="stat">
+              <div class="stat__value">487+</div>
+              <div class="stat__label">Опубликовано материалов</div>
+            </div>
+            <div class="stat">
+              <div class="stat__value">100%</div>
+              <div class="stat__label">Независимая редакция</div>
+            </div>
+          </div>
+
+          <div class="about__body">
+            <div class="about__block">
+              <h3>О издании</h3>
+              <p>Мы&nbsp;делаем журналистские расследования, публикуем новости и&nbsp;документируем информацию о&nbsp;борьбе с&nbsp;коррупцией в&nbsp;Казахстане.</p>
+              <p>Материалы содержат досье на&nbsp;олигархов, списки земель латифундистов, информацию о&nbsp;бизнесе семей чиновников и&nbsp;о&nbsp;практиках государственных закупок.</p>
+            </div>
+            <div class="about__block">
+              <h3>Как с нами связаться</h3>
+              <p>Если у&nbsp;вас есть информация о&nbsp;коррупции, нарушениях при госзакупках или конфликте интересов&nbsp;— напишите в&nbsp;анонимный Telegram-бот <a href="https://t.me/fund_kz_bot" target="_blank" rel="noopener" style="color:var(--color-primary); border-bottom:1px solid currentColor;">@fund_kz_bot</a>. Мы защищаем источники и проверяем каждое сообщение.</p>
+              <p>Видеоматериалы, интервью и разборы документов — на <a href="https://www.youtube.com/@fbrk_news" target="_blank" rel="noopener" style="color:var(--color-primary); border-bottom:1px solid currentColor;">YouTube-канале редакции</a>.</p>
+            </div>
+            <div class="about__block">
+              <h3>Правовая информация</h3>
+              <p>Издание действует в&nbsp;соответствии с&nbsp;законодательством Республики Казахстан о&nbsp;СМИ. Все материалы&nbsp;— авторские. Перепечатка допускается с&nbsp;обязательной ссылкой на&nbsp;источник.</p>
+              <p>Редакция находится в Астане.</p>
             </div>
           </div>
         </div>
