@@ -1,0 +1,26 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 900" preserveAspectRatio="xMidYMid slice">
+  <defs>
+    <linearGradient id="g_001-grecia" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#0f1e3d"/>
+      <stop offset="1" stop-color="#8a1d1d" stop-opacity="0.55"/>
+    </linearGradient>
+    <pattern id="grid_001-grecia" width="40" height="40" patternUnits="userSpaceOnUse">
+      <path d="M 40 0 L 0 0 0 40" fill="none" stroke="#fff" stroke-width="0.5" opacity="0.08"/>
+    </pattern>
+  </defs>
+  <rect width="1600" height="900" fill="#0f1e3d"/>
+  <rect width="1600" height="900" fill="url(#g_001-grecia)"/>
+  <rect width="1600" height="900" fill="url(#grid_001-grecia)"/>
+  
+        <g transform="translate(800,410)" opacity="0.20">
+          <circle r="240" fill="none" stroke="#fff" stroke-width="3" stroke-dasharray="8 14"/>
+          <circle r="170" fill="none" stroke="#fff" stroke-width="2"/>
+          <text x="0" y="-40" text-anchor="middle" font-family="Playfair Display, serif" font-weight="900" font-size="100" fill="#fff">INT</text>
+          <text x="0" y="80" text-anchor="middle" font-family="Playfair Display, serif" font-weight="900" font-size="100" fill="#fff">POL</text>
+        </g>
+  <g>
+    <rect x="80" y="740" width="6" height="64" fill="#fff"/>
+    <text x="105" y="788" font-family="Inter, sans-serif" font-size="18" font-weight="600" fill="#fff" opacity="0.85" letter-spacing="3">ФБРК</text>
+    <text x="105" y="830" font-family="Playfair Display, Georgia, serif" font-weight="900" font-size="54" fill="#fff">Экстрадиция</text>
+  </g>
+</svg>

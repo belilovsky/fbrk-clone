@@ -1,0 +1,44 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 900" preserveAspectRatio="xMidYMid slice">
+  <defs>
+    <linearGradient id="g_011-abenov" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#2d2519"/>
+      <stop offset="1" stop-color="#c9a35f" stop-opacity="0.55"/>
+    </linearGradient>
+    <pattern id="grid_011-abenov" width="40" height="40" patternUnits="userSpaceOnUse">
+      <path d="M 40 0 L 0 0 0 40" fill="none" stroke="#fff" stroke-width="0.5" opacity="0.08"/>
+    </pattern>
+  </defs>
+  <rect width="1600" height="900" fill="#2d2519"/>
+  <rect width="1600" height="900" fill="url(#g_011-abenov)"/>
+  <rect width="1600" height="900" fill="url(#grid_011-abenov)"/>
+  <g transform="translate(800,420)"><g transform="translate(-120,-60) rotate(-4)" opacity="0.30">
+              <rect x="-170" y="-220" width="340" height="440" fill="#fff"/>
+              <line x1="-130" y1="-160" x2="130" y2="-160" stroke="#0f1e3d" stroke-width="3"/>
+              <line x1="-130" y1="-120" x2="130" y2="-120" stroke="#0f1e3d" stroke-width="2"/>
+              <line x1="-130" y1="-60" x2="90" y2="-60" stroke="#0f1e3d" stroke-width="2"/>
+              <line x1="-130" y1="-20" x2="130" y2="-20" stroke="#0f1e3d" stroke-width="2"/>
+              <line x1="-130" y1="20" x2="60" y2="20" stroke="#0f1e3d" stroke-width="2"/>
+              <rect x="70" y="130" width="80" height="80" fill="none" stroke="#8a1d1d" stroke-width="4"/>
+            </g><g transform="translate(0,0) rotate(0)" opacity="0.30">
+              <rect x="-170" y="-220" width="340" height="440" fill="#fff"/>
+              <line x1="-130" y1="-160" x2="130" y2="-160" stroke="#0f1e3d" stroke-width="3"/>
+              <line x1="-130" y1="-120" x2="130" y2="-120" stroke="#0f1e3d" stroke-width="2"/>
+              <line x1="-130" y1="-60" x2="90" y2="-60" stroke="#0f1e3d" stroke-width="2"/>
+              <line x1="-130" y1="-20" x2="130" y2="-20" stroke="#0f1e3d" stroke-width="2"/>
+              <line x1="-130" y1="20" x2="60" y2="20" stroke="#0f1e3d" stroke-width="2"/>
+              <rect x="70" y="130" width="80" height="80" fill="none" stroke="#8a1d1d" stroke-width="4"/>
+            </g><g transform="translate(120,60) rotate(6)" opacity="0.30">
+              <rect x="-170" y="-220" width="340" height="440" fill="#fff"/>
+              <line x1="-130" y1="-160" x2="130" y2="-160" stroke="#0f1e3d" stroke-width="3"/>
+              <line x1="-130" y1="-120" x2="130" y2="-120" stroke="#0f1e3d" stroke-width="2"/>
+              <line x1="-130" y1="-60" x2="90" y2="-60" stroke="#0f1e3d" stroke-width="2"/>
+              <line x1="-130" y1="-20" x2="130" y2="-20" stroke="#0f1e3d" stroke-width="2"/>
+              <line x1="-130" y1="20" x2="60" y2="20" stroke="#0f1e3d" stroke-width="2"/>
+              <rect x="70" y="130" width="80" height="80" fill="none" stroke="#8a1d1d" stroke-width="4"/>
+            </g></g>
+  <g>
+    <rect x="80" y="740" width="6" height="64" fill="#fff"/>
+    <text x="105" y="788" font-family="Inter, sans-serif" font-size="18" font-weight="600" fill="#fff" opacity="0.85" letter-spacing="3">ФБРК</text>
+    <text x="105" y="830" font-family="Playfair Display, Georgia, serif" font-weight="900" font-size="54" fill="#fff">Антиквариат</text>
+  </g>
+</svg>
