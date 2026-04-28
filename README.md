@@ -52,7 +52,7 @@ systemctl restart fbrk-admin
 ## ENV (через `/etc/fbrk-admin/fbrk-admin.env`)
 
 - `FBRK_API_KEY` — admin API-ключ (заголовок `X-API-Key`)
-- `FBRK_DB` — путь к SQLite (по умолчанию `/opt/fbrk-admin/fbrk.db`)
+- `FBRK_DB_PATH` / `FBRK_DB` — путь к SQLite (по умолчанию `/opt/fbrk-admin/fbrk.db`)
 - LLM-ключи для AI-обогащения
 
 ## Cron
