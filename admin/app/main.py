@@ -18,7 +18,6 @@ from __future__ import annotations
 
 import io
 import json
-import os
 import uuid
 from datetime import datetime
 from pathlib import Path
@@ -27,7 +26,7 @@ from typing import Optional
 from fastapi import (
     Depends, FastAPI, File, Form, HTTPException, Request, Response, UploadFile,
 )
-from fastapi.responses import HTMLResponse, JSONResponse, RedirectResponse
+from fastapi.responses import HTMLResponse, RedirectResponse
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
 from PIL import Image
@@ -39,7 +38,7 @@ from .editorjs import editorjs_to_sections, sections_to_editorjs
 from .publish import regenerate_data_js
 from .security import (
     COOKIE_NAME, current_user, hash_password, issue_token, require_auth,
-    require_session, verify_password,
+    verify_password,
 )
 from .seo import router as seo_router
 
@@ -129,7 +128,7 @@ def login_submit(
         max_age=settings.session_days * 86400,
         httponly=True,
         samesite="lax",
-        secure=False,  # nginx terminates TLS; fine for dev. Flip to True in prod if desired.
+        secure=settings.cookie_secure,
         path="/",
     )
     return resp

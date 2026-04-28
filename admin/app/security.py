@@ -8,7 +8,7 @@ import time
 from typing import Optional
 
 import jwt
-from fastapi import Cookie, Depends, Header, HTTPException, Request, status
+from fastapi import Header, HTTPException, Request, status
 
 from .config import settings
 
@@ -76,7 +76,11 @@ def require_auth(
     x_api_key: Optional[str] = Header(default=None, alias="X-API-Key"),
 ) -> str:
     """For API routes: accept either session cookie OR X-API-Key."""
-    if x_api_key and x_api_key == settings.api_key:
+    if (
+        x_api_key
+        and settings.api_key
+        and hmac.compare_digest(x_api_key, settings.api_key)
+    ):
         return "api-key"
     user = current_user(request)
     if user:
