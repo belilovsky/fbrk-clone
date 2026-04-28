@@ -44,10 +44,11 @@ Gitleaks 8.30.1 просканировал 3 git-коммита, утечек н
 
 ## Status
 
-- Fixed locally, PR pending/push required:
-  - `audit/security/auth-hardening` — auth defaults.
-  - `audit/frontend/badges-layout-a11y` — LiveBadge/layout/a11y/image dimensions.
-  - `audit/backend/env-compat` — `FBRK_DB` compatibility.
+- Draft PRs opened:
+  - [#1](https://github.com/belilovsky/fbrk-clone/pull/1) `audit/security/auth-hardening` — auth defaults.
+  - [#2](https://github.com/belilovsky/fbrk-clone/pull/2) `audit/frontend/badges-layout-a11y` — LiveBadge/layout/a11y/image dimensions.
+  - [#3](https://github.com/belilovsky/fbrk-clone/pull/3) `audit/backend/env-compat` — `FBRK_DB` compatibility.
+  - [#4](https://github.com/belilovsky/fbrk-clone/pull/4) `audit/report/full-audit` — audit report.
 - Deferred:
   - DB integrity SQL, `sections_json` regeneration diff, cron logs, backup/restore dry-run, live nginx/systemd diff: blocked by SSH.
   - Category normalization and source normalization: requires DB evidence and owner approval before mass writes.
