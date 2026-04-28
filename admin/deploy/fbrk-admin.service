@@ -1,0 +1,21 @@
+[Unit]
+Description=FBRK admin (FastAPI + Editor.js)
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=www-data
+Group=www-data
+WorkingDirectory=/opt/fbrk-admin
+EnvironmentFile=/etc/fbrk-admin/fbrk-admin.env
+ExecStart=/opt/fbrk-admin/.venv/bin/uvicorn app.main:app --host 127.0.0.1 --port 8787 --workers 2 --proxy-headers
+Restart=on-failure
+RestartSec=3
+# Let the service write to the public site's files
+ReadWritePaths=/var/www/fbrk.qdev.run
+ProtectSystem=full
+NoNewPrivileges=true
+
+[Install]
+WantedBy=multi-user.target

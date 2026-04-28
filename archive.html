@@ -3,64 +3,17 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>ФБРК — Фонд-бюро расследования коррупции</title>
-    <meta name="description" content="Независимое казахстанское издание: журналистские расследования, новости, досье олигархов, госзакупки и борьба с коррупцией в Казахстане." />
+    <title>Архив материалов — ФБРК</title>
+    <meta name="description" content="Полный архив публикаций ФБРК: расследования, новости, досье. Поиск и фильтры по году, месяцу и рубрике." />
     <meta name="theme-color" content="#0C115F" />
-    <link rel="canonical" href="https://fbrk.qdev.run/" />
-    <link rel="alternate" hreflang="ru" href="https://fbrk.qdev.run/" />
-    <link rel="alternate" hreflang="ru-KZ" href="https://fbrk.qdev.run/" />
-    <link rel="alternate" hreflang="x-default" href="https://fbrk.qdev.run/" />
-    <meta name="robots" content="index, follow, max-image-preview:large, max-snippet:-1" />
-    <meta name="geo.region" content="KZ" />
-    <meta name="geo.placename" content="Kazakhstan" />
+    <link rel="canonical" href="https://fbrk.qdev.run/archive.html" />
 
-    <!-- Open Graph -->
     <meta property="og:site_name" content="ФБРК" />
     <meta property="og:locale" content="ru_RU" />
     <meta property="og:type" content="website" />
-    <meta property="og:title" content="ФБРК — Фонд-бюро расследования коррупции" />
-    <meta property="og:description" content="Журналистские расследования о коррупции, госзакупках и бизнесе чиновников в Казахстане." />
-    <meta property="og:url" content="https://fbrk.qdev.run/" />
-    <meta property="og:image" content="https://fbrk.qdev.run/img/brand/logo-on-brand-640.png" />
-    <meta name="twitter:card" content="summary_large_image" />
-    <meta name="twitter:title" content="ФБРК — Фонд-бюро расследования коррупции" />
-    <meta name="twitter:description" content="Журналистские расследования о коррупции в Казахстане." />
-    <meta name="twitter:image" content="https://fbrk.qdev.run/img/brand/logo-on-brand-640.png" />
-
-    <!-- Structured data -->
-    <script type="application/ld+json">
-    {
-      "@context": "https://schema.org",
-      "@type": "NewsMediaOrganization",
-      "name": "ФБРК",
-      "alternateName": "Фонд-бюро расследования коррупции",
-      "legalName": "Фонд-бюро расследования коррупции",
-      "url": "https://fbrk.qdev.run/",
-      "logo": {
-        "@type": "ImageObject",
-        "url": "https://fbrk.qdev.run/img/brand/logo-brand-256.png",
-        "width": 256,
-        "height": 256
-      },
-      "sameAs": [
-        "https://t.me/fund_kz_bot",
-        "https://www.youtube.com/@fbrk_news"
-      ],
-      "inLanguage": "ru",
-      "areaServed": "KZ",
-      "foundingLocation": {"@type": "Place", "name": "Казахстан"}
-    }
-    </script>
-    <script type="application/ld+json">
-    {
-      "@context": "https://schema.org",
-      "@type": "WebSite",
-      "name": "ФБРК",
-      "url": "https://fbrk.qdev.run/",
-      "inLanguage": "ru",
-      "publisher": {"@type": "NewsMediaOrganization", "name": "ФБРК"}
-    }
-    </script>
+    <meta property="og:title" content="Архив материалов — ФБРК" />
+    <meta property="og:description" content="Полный архив публикаций ФБРК." />
+    <meta property="og:url" content="https://fbrk.qdev.run/archive.html" />
 
     <link rel="icon" type="image/png" sizes="32x32" href="/img/brand/favicon-32.png" />
     <link rel="icon" type="image/png" sizes="192x192" href="/img/brand/favicon-192.png" />
@@ -116,64 +69,64 @@
     </header>
 
 <main id="main">
-      <!-- Lead / hero story -->
-      <section class="lead" aria-label="Главный материал">
+      <section class="archive">
         <div class="container">
-          <div class="lead__grid" data-lead></div>
-        </div>
-      </section>
-
-      <!-- Investigations -->
-      <section class="section" id="investigations" aria-labelledby="sec-inv">
-        <div class="container">
-          <header class="section__header">
-            <h2 class="section__title" id="sec-inv">Расследования</h2>
-            <a class="section__link" href="archive.html?cat=investigation">Все расследования →</a>
+          <header class="archive__head">
+            <div class="kicker kicker--muted" data-archive-kicker>Архив</div>
+            <h1 class="archive__title" data-archive-title>Архив материалов</h1>
+            <p class="archive__count" data-archive-count></p>
           </header>
-          <div class="card-grid" data-investigations></div>
-        </div>
-      </section>
 
-      <!-- Video showcase -->
-      <section class="section section--videos" id="videos" aria-labelledby="sec-videos">
-        <div class="container">
-          <header class="section__header">
-            <div>
-              <div class="section__eyebrow">Видео</div>
-              <h2 class="section__title" id="sec-videos">Смотрите на YouTube</h2>
+          <div class="archive__toolbar">
+            <div class="archive__filters">
+              <label class="archive__select">
+                <span>Рубрика</span>
+                <select data-archive-cat>
+                  <option value="">Все</option>
+                  <option value="investigation">Расследования</option>
+                  <option value="news">Новости</option>
+                </select>
+              </label>
+              <label class="archive__select">
+                <span>Год</span>
+                <select data-archive-year>
+                  <option value="">Все</option>
+                </select>
+              </label>
+              <label class="archive__select">
+                <span>Месяц</span>
+                <select data-archive-month>
+                  <option value="">Все</option>
+                  <option value="01">Январь</option>
+                  <option value="02">Февраль</option>
+                  <option value="03">Март</option>
+                  <option value="04">Апрель</option>
+                  <option value="05">Май</option>
+                  <option value="06">Июнь</option>
+                  <option value="07">Июль</option>
+                  <option value="08">Август</option>
+                  <option value="09">Сентябрь</option>
+                  <option value="10">Октябрь</option>
+                  <option value="11">Ноябрь</option>
+                  <option value="12">Декабрь</option>
+                </select>
+              </label>
             </div>
-            <a class="section__link" href="https://www.youtube.com/@fbrk_news" target="_blank" rel="noopener">На канал →</a>
-          </header>
-          <div class="video-grid" data-videos></div>
-        </div>
-      </section>
+            <label class="archive__search">
+              <span>Поиск</span>
+              <input type="search" placeholder="Название или тема…" data-archive-q autocomplete="off" />
+            </label>
+          </div>
 
-      <!-- Latest + sidebar -->
-      <section class="section" id="latest" aria-labelledby="sec-latest">
-        <div class="container">
-          <header class="section__header">
-            <h2 class="section__title" id="sec-latest">Последнее</h2>
-            <a class="section__link" href="archive.html">Весь архив →</a>
-          </header>
-          <div class="latest">
-            <ul class="latest__list" role="list" data-latest></ul>
-            <aside class="sidebar" aria-label="Дополнительно">
-              <div class="widget widget--brand">
-                <div class="widget__label">Анонимно</div>
-                <h3 class="widget__title">Знаете о коррупции? Напишите нам.</h3>
-                <p class="widget__text">
-                  Анонимный Telegram-бот редакции ФБРК. Мы защищаем источники и проверяем каждый сигнал.
-                </p>
-                <a class="widget__btn" href="https://t.me/fund_kz_bot" target="_blank" rel="noopener">
-                  Открыть @fund_kz_bot →
-                </a>
-              </div>
-              <div class="widget">
-                <div class="widget__label">Темы</div>
-                <h3 class="widget__title">О чём мы пишем</h3>
-                <div class="tag-cloud" data-tags></div>
-              </div>
-            </aside>
+          <div class="archive__grid" data-archive-grid></div>
+
+          <div class="archive__pager">
+            <button class="latest__more" type="button" data-archive-more>Показать ещё</button>
+          </div>
+
+          <div class="archive__empty" data-archive-empty hidden>
+            <p>Ничего не найдено. Попробуйте изменить фильтры или сбросьте их.</p>
+            <button class="archive__reset" type="button" data-archive-reset>Сбросить фильтры</button>
           </div>
         </div>
       </section>
@@ -234,8 +187,7 @@
         </div>
       </div>
     </footer>
-<!-- Search overlay -->
-    <div class="search-overlay" role="dialog" aria-modal="true" aria-label="Поиск по сайту">
+<div class="search-overlay" role="dialog" aria-modal="true" aria-label="Поиск по сайту">
       <button class="search-close" aria-label="Закрыть поиск" type="button">
         <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
           <path d="M18 6 6 18M6 6l12 12" />
@@ -243,14 +195,7 @@
       </button>
       <div class="search-box">
         <label class="search-box__label" for="search-input">Поиск</label>
-        <input
-          id="search-input"
-          class="search-box__input"
-          type="search"
-          placeholder="Название, тема или имя…"
-          autocomplete="off"
-          spellcheck="false"
-        />
+        <input id="search-input" class="search-box__input" type="search" placeholder="Название, тема или имя…" autocomplete="off" spellcheck="false" />
         <div class="search-box__hint">Esc — закрыть · ⌘K / Ctrl + K — открыть</div>
         <div class="search-box__count" data-search-count></div>
         <div class="search-box__results" data-search-results></div>
@@ -258,6 +203,7 @@
     </div>
 
     <script src="js/data.js?v=1777400467"></script>
+    <script src="js/data-archive.js?v=1777400467"></script>
     <script src="js/app.js?v=1777400467"></script>
   </body>
 </html>

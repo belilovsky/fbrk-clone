@@ -1,0 +1,223 @@
+"""Publish articles from SQLite -> public js/data.js + sitemap.xml + feed.xml."""
+from __future__ import annotations
+
+import html
+import json
+from datetime import datetime, timezone
+from pathlib import Path
+
+from .config import settings
+from .db import db, row_to_article
+
+
+SITE_URL = "https://fbrk.qdev.run"
+
+HEADER = """// ============================================================
+// ФБРК — данные статей
+// Автоматически сгенерировано админкой. Не редактировать руками.
+// ============================================================
+
+const FBRK_DATA =
+"""
+
+SITE_META = {
+    "site": {
+        "name": "ФБРК",
+        "fullName": "Фонд-бюро расследования коррупции",
+        "tagline": "Независимые расследования · Казахстан",
+        "about": "Фонд-бюро расследования коррупции (ФБРК) — сетевое издание, "
+                 "свидетельство о регистрации СМИ № KZ83VPY00075165 от 21.08.2023. "
+                 "Мы делаем журналистские расследования, новости, публикуем информацию "
+                 "о борьбе с коррупцией в Казахстане.",
+        "mission": "Наши материалы содержат досье на олигархов, списки земель латифундистов, "
+                   "информацию о бизнесе семей чиновников и многое другое.",
+        "telegram": "https://t.me/fund_kz_bot",
+        "telegramName": "@fund_kz_bot",
+        "youtube": "https://www.youtube.com/@fbrk_news",
+        "registration": "KZ83VPY00075165 от 21.08.2023",
+    },
+    "tags": [
+        "Коррупция", "Госзакупки", "Недвижимость чиновников", "Олигархи",
+        "Силовые структуры", "Нефтегаз", "ЕНПФ", "Назарбаев", "КНБ",
+        "Уголовные дела", "Экология", "Агробизнес", "КТЖ", "Мусин",
+    ],
+}
+
+
+def _load_articles() -> list[dict]:
+    with db() as conn:
+        rows = conn.execute(
+            "SELECT a.*, m.importance AS _meta_importance, m.sentiment AS _meta_sentiment, m.region AS _meta_region "
+            "FROM articles a LEFT JOIN article_meta m ON m.article_id=a.id "
+            "WHERE a.published=1 ORDER BY a.date_iso DESC, a.created_at DESC"
+        ).fetchall()
+    out = []
+    for r in rows:
+        art = row_to_article(r)
+        # stash meta fields for _public_shape
+        try:
+            art["_meta_importance"] = r["_meta_importance"]
+            art["_meta_sentiment"] = r["_meta_sentiment"]
+            art["_meta_region"] = r["_meta_region"]
+        except Exception:
+            pass
+        out.append(art)
+    return out
+
+
+def _public_shape(a: dict) -> dict:
+    """Strip admin-only fields; keep exactly what js/app.js expects."""
+    shape = {
+        "id": a["id"],
+        "slug": a["slug"],
+        "title": a["title"],
+        "dek": a["dek"],
+        "author": a["author"],
+        "date": a["date"],
+        "dateIso": a["dateIso"],
+        "category": a["category"],
+        "categoryLabel": a["categoryLabel"],
+        "image": a["image"],
+        "tags": a["tags"],
+        "source": a["source"],
+        "sections": a["sections"],
+        **({"featured": True} if a.get("featured") else {}),
+    }
+    imp = a.get("_meta_importance")
+    if imp is not None and imp != 0:
+        shape["importance"] = int(imp)
+    sent = a.get("_meta_sentiment")
+    if sent:
+        shape["sentiment"] = sent
+    reg = a.get("_meta_region")
+    if reg:
+        shape["region"] = reg
+    return shape
+
+
+def _write_sitemap(articles: list[dict], web_root: Path) -> None:
+    """Generate sitemap.xml with static pages + every article."""
+    now = datetime.now(timezone.utc).strftime("%Y-%m-%d")
+    urls: list[tuple[str, str, str, str]] = [
+        # (loc, lastmod, changefreq, priority)
+        (f"{SITE_URL}/", now, "hourly", "1.0"),
+        (f"{SITE_URL}/archive.html", now, "daily", "0.9"),
+        (f"{SITE_URL}/archive.html?cat=investigation", now, "daily", "0.8"),
+        (f"{SITE_URL}/archive.html?cat=news", now, "daily", "0.8"),
+        (f"{SITE_URL}/about.html", now, "monthly", "0.5"),
+    ]
+    for a in articles:
+        iso = (a.get("dateIso") or now)
+        urls.append((
+            f"{SITE_URL}/article.html?id={a['id']}",
+            iso,
+            "monthly",
+            "0.7",
+        ))
+    body = ['<?xml version="1.0" encoding="UTF-8"?>',
+            '<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">']
+    for loc, lastmod, cf, pr in urls:
+        body.append("  <url>")
+        body.append(f"    <loc>{html.escape(loc)}</loc>")
+        body.append(f"    <lastmod>{lastmod}</lastmod>")
+        body.append(f"    <changefreq>{cf}</changefreq>")
+        body.append(f"    <priority>{pr}</priority>")
+        body.append("  </url>")
+    body.append("</urlset>")
+    (web_root / "sitemap.xml").write_text("\n".join(body), encoding="utf-8")
+
+
+def _rfc822(iso: str) -> str:
+    """'2026-04-23' → 'Thu, 23 Apr 2026 00:00:00 +0000'."""
+    try:
+        d = datetime.strptime(iso[:10], "%Y-%m-%d").replace(tzinfo=timezone.utc)
+        return d.strftime("%a, %d %b %Y %H:%M:%S +0000")
+    except Exception:
+        return datetime.now(timezone.utc).strftime("%a, %d %b %Y %H:%M:%S +0000")
+
+
+def _write_feed(articles: list[dict], web_root: Path) -> None:
+    """Generate RSS 2.0 feed with the 50 most recent articles."""
+    items = articles[:50]
+    now_rfc = datetime.now(timezone.utc).strftime("%a, %d %b %Y %H:%M:%S +0000")
+    lines = [
+        '<?xml version="1.0" encoding="UTF-8"?>',
+        '<rss version="2.0" xmlns:atom="http://www.w3.org/2005/Atom" xmlns:content="http://purl.org/rss/1.0/modules/content/">',
+        '  <channel>',
+        '    <title>ФБРК — Независимые расследования</title>',
+        f'    <link>{SITE_URL}/</link>',
+        '    <description>Фонд-бюро расследования коррупции. Журналистские расследования и новости Казахстана.</description>',
+        '    <language>ru</language>',
+        f'    <lastBuildDate>{now_rfc}</lastBuildDate>',
+        f'    <atom:link href="{SITE_URL}/feed.xml" rel="self" type="application/rss+xml" />',
+    ]
+    for a in items:
+        url = f"{SITE_URL}/article.html?id={a['id']}"
+        img = a.get("image") or ""
+        if img and not img.startswith("http"):
+            img = f"{SITE_URL}{img}"
+        dek = (a.get("dek") or "")[:500]
+        lines.append("    <item>")
+        lines.append(f"      <title>{html.escape(a.get('title') or '')}</title>")
+        lines.append(f"      <link>{html.escape(url)}</link>")
+        lines.append(f"      <guid isPermaLink=\"true\">{html.escape(url)}</guid>")
+        lines.append(f"      <pubDate>{_rfc822(a.get('dateIso') or '')}</pubDate>")
+        lines.append(f"      <description>{html.escape(dek)}</description>")
+        lines.append(f"      <category>{html.escape(a.get('categoryLabel') or '')}</category>")
+        if img:
+            lines.append(f'      <enclosure url="{html.escape(img)}" type="image/jpeg" />')
+        lines.append("    </item>")
+    lines.append("  </channel>")
+    lines.append("</rss>")
+    (web_root / "feed.xml").write_text("\n".join(lines), encoding="utf-8")
+
+
+import os
+import fcntl
+import tempfile
+import threading
+from contextlib import contextmanager
+
+_PUBLISH_LOCK = threading.Lock()
+
+
+def _atomic_write(path: Path, body: str) -> None:
+    path.parent.mkdir(parents=True, exist_ok=True)
+    fd, tmp = tempfile.mkstemp(prefix=".tmp_", dir=str(path.parent))
+    try:
+        with os.fdopen(fd, "w", encoding="utf-8") as f:
+            f.write(body)
+        os.chmod(tmp, 0o644)
+        os.replace(tmp, path)
+    finally:
+        if os.path.exists(tmp):
+            try: os.unlink(tmp)
+            except OSError: pass
+
+
+@contextmanager
+def _file_lock(lock_path: str):
+    Path(lock_path).parent.mkdir(parents=True, exist_ok=True)
+    fd = os.open(lock_path, os.O_RDWR | os.O_CREAT, 0o644)
+    try:
+        fcntl.flock(fd, fcntl.LOCK_EX)
+        yield
+    finally:
+        try: fcntl.flock(fd, fcntl.LOCK_UN)
+        except OSError: pass
+        os.close(fd)
+
+
+def regenerate_data_js() -> dict:
+    out = Path(settings.data_js_path)
+    lock_file = str(out.with_suffix(out.suffix + ".lock"))
+    with _PUBLISH_LOCK, _file_lock(lock_file):
+        articles = [_public_shape(a) for a in _load_articles()]
+        data = {**SITE_META, "articles": articles}
+        body = HEADER + json.dumps(data, ensure_ascii=False, indent=2) + ";\n"
+        _atomic_write(out, body)
+
+        # Note: sitemap.xml, feed.xml, feed/ia.xml and robots.txt are now served
+        # dynamically by FastAPI (app.seo). Legacy static writers removed so stale
+        # files don't override live routes.
+        return {"articles": len(articles), "path": str(out)}

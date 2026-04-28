@@ -1,0 +1,49 @@
+# Secrets / runtime env
+*.env
+.env*
+*secret*
+*.key
+*.pem
+.admin_creds
+admin/.admin_creds
+admin/fbrk.db
+admin/fbrk.db-journal
+admin/*.db
+admin/data/
+# Лог-снепшоты
+admin/import_log.json
+admin/import_log_*.json
+
+# Python
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.venv/
+venv/
+.pytest_cache/
+
+# Editor / OS
+.DS_Store
+.vscode/
+.idea/
+*.swp
+
+# Build / cache
+*.log
+.cache/
+
+# Generated / large
+js/data.js
+js/data-archive.js
+data/*.db
+data/*.db-journal
+data/*.sqlite
+
+# QA screenshots — большие, редко интересны для версионирования
+qa/*.png
+qa/*.jpg
+
+# Backups (на VPS они в /opt/fbrk-admin/backups)
+backups/
+*.db.bak

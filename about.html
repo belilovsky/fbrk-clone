@@ -4,81 +4,65 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>О нас — ФБРК</title>
-    <meta
-      name="description"
-      content="О Фонде-бюро расследования коррупции. Независимое казахстанское СМИ, свидетельство о регистрации № KZ83VPY00075165."
-    />
-    <link rel="icon" type="image/svg+xml" href="img/favicon.svg" />
+    <meta name="description" content="О Фонде-бюро расследования коррупции. Независимое казахстанское СМИ, свидетельство о регистрации № KZ83VPY00075165." />
+    <meta name="theme-color" content="#0C115F" />
+    <link rel="canonical" href="https://fbrk.qdev.run/about.html" />
+    <meta property="og:site_name" content="ФБРК" />
+    <meta property="og:type" content="website" />
+    <meta property="og:title" content="О нас — ФБРК" />
+    <meta property="og:url" content="https://fbrk.qdev.run/about.html" />
+    <link rel="icon" type="image/png" sizes="32x32" href="/img/brand/favicon-32.png" />
+    <link rel="icon" type="image/png" sizes="192x192" href="/img/brand/favicon-192.png" />
+    <link rel="apple-touch-icon" href="/img/brand/apple-touch-icon.png" />
+    <link rel="icon" type="image/svg+xml" href="/img/brand/logo.svg" />
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link
-      href="https://api.fontshare.com/v2/css?f[]=satoshi@400,500,700&f[]=general-sans@500,600,700&display=swap"
+      href="https://fonts.googleapis.com/css2?family=Onest:wght@400;500;600;700;800&display=swap"
       rel="stylesheet"
     />
-    <link rel="stylesheet" href="css/style.css" />
+    <link rel="stylesheet" href="css/style.css?v=1777400467" />
   </head>
   <body>
-    <div class="topstrip">
-      <div class="container">
-        <div class="topstrip__inner">
-          <div class="topstrip__date" data-today>Астана</div>
-          <div class="topstrip__links">
-            <a href="https://t.me/fund_kz_bot" target="_blank" rel="noopener">Telegram-бот</a>
-            <a href="https://www.youtube.com/@fbrk_news" target="_blank" rel="noopener">YouTube</a>
-            <a href="about.html">Связаться с редакцией</a>
+    <a class="skip-link" href="#main">Перейти к содержимому</a>
+        <header class="site-header" role="banner">
+      <div class="container site-header__inner">
+        <a class="site-header__logo" href="/" aria-label="ФБРК — на главную">
+          <span class="site-header__logo-mark">ФБРК</span>
+          <span class="site-header__logo-text">Фонд-бюро расследования коррупции</span>
+        </a>
+        <nav class="site-header__nav" aria-label="Основная навигация" data-site-nav>
+          <ul role="list">
+            <li><a href="/" data-nav-link="home">Главная</a></li>
+            <li><a href="/archive.html?cat=investigation" data-nav-link="investigation">Расследования</a></li>
+            <li><a href="/archive.html?cat=news" data-nav-link="news">Новости</a></li>
+            <li><a href="/archive.html" data-nav-link="archive">Архив</a></li>
+            <li><a href="/about.html" data-nav-link="about">О нас</a></li>
+          </ul>
+        </nav>
+        <div class="site-header__actions">
+          <div class="lang-switch" role="group" aria-label="Язык сайта">
+            <button type="button" data-lang="ru" aria-pressed="true">RU</button>
+            <button type="button" data-lang="kk" aria-pressed="false">ҚАЗ</button>
           </div>
-        </div>
-      </div>
-    </div>
-
-    <header class="masthead">
-      <div class="container">
-        <div class="masthead__inner">
-          <div class="masthead__left">
-            <a class="telegram-cta" href="https://t.me/fund_kz_bot" target="_blank" rel="noopener">
-              <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
-                <path d="M9.78 18.65l.28-4.23 7.68-6.92c.34-.31-.07-.46-.52-.19L7.74 13.3 3.64 12c-.88-.25-.89-.86.2-1.3L19.83 4.6c.73-.33 1.43.18 1.15 1.3l-3.44 16.22c-.19.89-.72 1.11-1.45.69L12.9 18.5l-1.81 1.77c-.21.21-.39.39-.81.39z" />
-              </svg>
-              <span>Написать в бот</span>
-            </a>
-          </div>
-          <a class="masthead__logo" href="index.html" aria-label="ФБРК — на главную">
-            <span class="masthead__logo-text">Фонд-бюро расследования коррупции</span>
+          <span class="site-header__divider" aria-hidden="true"></span>
+          <button class="site-header__btn" type="button" data-theme-toggle aria-label="Переключить тему">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></svg>
+          </button>
+          <a class="site-header__btn site-header__btn--social" href="https://t.me/fund_kz_bot" target="_blank" rel="noopener" aria-label="Telegram-бот">
+            <svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M9.78 18.65l.28-4.23 7.68-6.92c.34-.31-.07-.46-.52-.19L7.74 13.3 3.64 12c-.88-.25-.89-.86.2-1.3l15.97-6.16c.73-.33 1.43.18 1.15 1.3l-2.72 12.81c-.19.91-.74 1.13-1.5.71L12.6 16.3l-1.99 1.93c-.23.23-.42.42-.83.42z"/></svg>
           </a>
-          <div class="masthead__right">
-            <button class="icon-btn" data-theme-toggle type="button" aria-label="Переключить тему"></button>
-            <button class="icon-btn" data-search-open type="button" aria-label="Открыть поиск">
-              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                <circle cx="11" cy="11" r="7" />
-                <path d="m21 21-4.3-4.3" />
-              </svg>
-            </button>
-          </div>
+          <a class="site-header__btn site-header__btn--social" href="https://www.youtube.com/@fbrk_news" target="_blank" rel="noopener" aria-label="YouTube">
+            <svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M23.5 6.2a3 3 0 0 0-2.1-2.1C19.4 3.5 12 3.5 12 3.5s-7.4 0-9.4.6A3 3 0 0 0 .5 6.2C0 8.2 0 12 0 12s0 3.8.5 5.8a3 3 0 0 0 2.1 2.1c2 .6 9.4.6 9.4.6s7.4 0 9.4-.6a3 3 0 0 0 2.1-2.1c.5-2 .5-5.8.5-5.8s0-3.8-.5-5.8zM9.6 15.6V8.4l6.4 3.6-6.4 3.6z"/></svg>
+          </a>
+          <button class="site-header__btn site-header__menu-btn" type="button" data-menu-toggle aria-label="Меню" aria-expanded="false">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="18" x2="21" y2="18"/></svg>
+          </button>
         </div>
       </div>
     </header>
 
-    <nav class="nav" aria-label="Основная навигация">
-      <div class="container">
-        <div class="nav__inner">
-          <a class="nav__sticky-logo" href="index.html">ФБРК</a>
-          <ul class="nav__links" role="list">
-            <li><a href="index.html">Главная</a></li>
-            <li><a href="index.html#investigations">Расследования</a></li>
-            <li><a href="index.html#latest">Новости</a></li>
-            <li><a href="about.html" aria-current="page">О нас</a></li>
-          </ul>
-          <button class="icon-btn" data-search-open type="button" aria-label="Поиск">
-            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-              <circle cx="11" cy="11" r="7" />
-              <path d="m21 21-4.3-4.3" />
-            </svg>
-          </button>
-        </div>
-      </div>
-    </nav>
-
-    <main>
+<main id="main">
       <section class="about">
         <div class="container">
           <div class="about__intro">
@@ -95,7 +79,7 @@
               <div class="stat__label">Год основания</div>
             </div>
             <div class="stat">
-              <div class="stat__value">487+</div>
+              <div class="stat__value" data-stat-articles>—</div>
               <div class="stat__label">Опубликовано материалов</div>
             </div>
             <div class="stat">
@@ -125,59 +109,77 @@
       </section>
     </main>
 
-    <footer class="footer">
+        <footer class="site-footer" role="contentinfo">
       <div class="container">
-        <div class="footer__grid">
-          <div>
-            <div class="footer__brand">ФБРК</div>
-            <p class="footer__tagline">
-              Фонд-бюро расследования коррупции. Сетевое издание, свидетельство о регистрации СМИ №&nbsp;KZ83VPY00075165 от&nbsp;21.08.2023.
-            </p>
+        <div class="site-footer__top">
+          <div class="site-footer__brand-block">
+            <div class="site-footer__brand">
+              <span class="site-footer__brand-name">ФБРК</span>
+            </div>
+            <p class="site-footer__about">Фонд-бюро расследования коррупции — независимое сетевое издание. Свидетельство СМИ № KZ83VPY00075165 от 21.08.2023.</p>
           </div>
           <div>
-            <div class="footer__heading">Разделы</div>
-            <ul class="footer__list" role="list">
-              <li><a href="index.html">Главная</a></li>
-              <li><a href="index.html#investigations">Расследования</a></li>
-              <li><a href="index.html#latest">Новости</a></li>
-              <li><a href="about.html">О нас</a></li>
+            <div class="site-footer__heading">Разделы</div>
+            <ul class="site-footer__list" role="list">
+              <li><a href="/">Главная</a></li>
+              <li><a href="/archive.html?cat=investigation">Расследования</a></li>
+              <li><a href="/archive.html?cat=news">Новости</a></li>
+              <li><a href="/archive.html">Архив</a></li>
             </ul>
           </div>
           <div>
-            <div class="footer__heading">Редакция</div>
-            <ul class="footer__list" role="list">
+            <div class="site-footer__heading">Редакция</div>
+            <ul class="site-footer__list" role="list">
+              <li><a href="/about.html">О нас</a></li>
+              <li><a href="/about.html">Контакты</a></li>
+              <li><a href="/feed.xml">RSS-лента</a></li>
+              <li><a href="/sitemap.xml">Карта сайта</a></li>
+            </ul>
+          </div>
+          <div>
+            <div class="site-footer__heading">Анонимно</div>
+            <ul class="site-footer__list" role="list">
               <li><a href="https://t.me/fund_kz_bot" target="_blank" rel="noopener">Telegram-бот</a></li>
               <li><a href="https://www.youtube.com/@fbrk_news" target="_blank" rel="noopener">YouTube-канал</a></li>
             </ul>
           </div>
-          <div>
-            <div class="footer__heading">Анонимно</div>
-            <ul class="footer__list" role="list">
-              <li><a href="https://t.me/fund_kz_bot" target="_blank" rel="noopener">@fund_kz_bot</a></li>
-            </ul>
-          </div>
         </div>
-        <div class="footer__bottom">
-          <div>© 2023–2026 ФБРК · Все права защищены</div>
-          <div>Астана, Казахстан</div>
+        <div class="site-footer__bottom">
+          <div class="site-footer__legal">
+            <span>© 2023–2026 ФБРК</span>
+            <span aria-hidden="true">·</span>
+            <span>Астана, Казахстан</span>
+          </div>
+          <div class="site-footer__socials" aria-label="Социальные сети">
+            <a href="https://t.me/fund_kz_bot" target="_blank" rel="noopener" aria-label="Telegram">
+              <svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M9.78 18.65l.28-4.23 7.68-6.92c.34-.31-.07-.46-.52-.19L7.74 13.3 3.64 12c-.88-.25-.89-.86.2-1.3l15.97-6.16c.73-.33 1.43.18 1.15 1.3l-2.72 12.81c-.19.91-.74 1.13-1.5.71L12.6 16.3l-1.99 1.93c-.23.23-.42.42-.83.42z"/></svg>
+            </a>
+            <a href="https://www.youtube.com/@fbrk_news" target="_blank" rel="noopener" aria-label="YouTube">
+              <svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M23.5 6.2a3 3 0 0 0-2.1-2.1C19.4 3.5 12 3.5 12 3.5s-7.4 0-9.4.6A3 3 0 0 0 .5 6.2C0 8.2 0 12 0 12s0 3.8.5 5.8a3 3 0 0 0 2.1 2.1c2 .6 9.4.6 9.4.6s7.4 0 9.4-.6a3 3 0 0 0 2.1-2.1c.5-2 .5-5.8.5-5.8s0-3.8-.5-5.8zM9.6 15.6V8.4l6.4 3.6-6.4 3.6z"/></svg>
+            </a>
+            <a href="/feed.xml" aria-label="RSS">
+              <svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M5 4v3a13 13 0 0 1 13 13h3A16 16 0 0 0 5 4zm0 6v3a7 7 0 0 1 7 7h3a10 10 0 0 0-10-10zm1 8a2 2 0 1 0 .001 4.001A2 2 0 0 0 6 18z"/></svg>
+            </a>
+          </div>
         </div>
       </div>
     </footer>
-
-    <div class="search-overlay" role="dialog" aria-label="Поиск">
+<div class="search-overlay" role="dialog" aria-modal="true" aria-label="Поиск по сайту">
       <button class="search-close" aria-label="Закрыть поиск" type="button">
         <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
           <path d="M18 6 6 18M6 6l12 12" />
         </svg>
       </button>
       <div class="search-box">
-        <input class="search-box__input" type="search" placeholder="Искать расследования, темы, персон…" autocomplete="off" />
-        <div class="search-box__hint">Нажмите Esc, чтобы закрыть · ⌘K / Ctrl+K — открыть</div>
-        <div class="search-box__results"></div>
+        <label class="search-box__label" for="search-input">Поиск</label>
+        <input id="search-input" class="search-box__input" type="search" placeholder="Название, тема или имя…" autocomplete="off" spellcheck="false" />
+        <div class="search-box__hint">Esc — закрыть · ⌘K / Ctrl + K — открыть</div>
+        <div class="search-box__count" data-search-count></div>
+        <div class="search-box__results" data-search-results></div>
       </div>
     </div>
 
-    <script src="js/data.js"></script>
-    <script src="js/app.js"></script>
+    <script src="js/data.js?v=1777400467"></script>
+    <script src="js/app.js?v=1777400467"></script>
   </body>
 </html>

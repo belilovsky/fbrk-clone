@@ -1,0 +1,43 @@
+<!doctype html>
+<html lang="ru">
+<head>
+  <meta charset="utf-8"/>
+  <meta name="viewport" content="width=device-width,initial-scale=1"/>
+  <meta name="robots" content="noindex, nofollow"/>
+  <title>{% block title %}Админка ФБРК{% endblock %}</title>
+  <link rel="icon" href="/admin/static/favicon.svg" type="image/svg+xml"/>
+  <link rel="stylesheet" href="https://api.fontshare.com/v2/css?f[]=satoshi@400,500,700&f[]=general-sans@500,600,700&display=swap"/>
+  <link rel="stylesheet" href="/admin/static/admin.css"/>
+  {% block head %}{% endblock %}
+</head>
+<body>
+  <header class="a-header">
+    <div class="a-header__inner">
+      <a class="a-brand" href="/admin/">
+        <span class="a-brand__dot"></span>
+        <span>ФБРК · админка</span>
+      </a>
+      <nav class="a-nav">
+        <a href="/admin/">Материалы</a>
+        <a href="/admin/new">Новый</a>
+        <a href="/" target="_blank" rel="noopener">Публичный сайт ↗</a>
+      </nav>
+      <div class="a-header__user">
+        {% if user %}
+          <span class="a-user">{{ user }}</span>
+          <a class="a-logout" href="/admin/logout">Выйти</a>
+        {% endif %}
+      </div>
+    </div>
+  </header>
+
+  <main class="a-main">
+    {% block content %}{% endblock %}
+  </main>
+
+  <footer class="a-footer">
+    <span>ФБРК админка · AV DS 2026</span>
+  </footer>
+  {% block scripts %}{% endblock %}
+</body>
+</html>

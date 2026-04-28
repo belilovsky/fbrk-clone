@@ -1,0 +1,83 @@
+{% extends "base.html" %}
+{% block title %}Материалы — Админка ФБРК{% endblock %}
+{% block content %}
+<section class="a-section">
+  <div class="a-section__head">
+    <h1>Материалы</h1>
+    <div class="a-actions">
+      <button class="a-btn" onclick="publishAll()">Перегенерировать сайт</button>
+      <a class="a-btn a-btn--primary" href="/admin/new">+ Новый материал</a>
+    </div>
+  </div>
+
+  {% if articles %}
+  <table class="a-table">
+    <thead>
+      <tr>
+        <th class="a-col-cover"></th>
+        <th>Заголовок</th>
+        <th>Раздел</th>
+        <th>Дата</th>
+        <th>Статус</th>
+        <th class="a-col-actions"></th>
+      </tr>
+    </thead>
+    <tbody>
+    {% for a in articles %}
+      <tr>
+        <td class="a-col-cover">
+          {% if a.image %}<img src="/{{ a.image.lstrip('/') }}" alt=""/>{% else %}<div class="a-cover-ph"></div>{% endif %}
+        </td>
+        <td>
+          <a class="a-link" href="/admin/edit/{{ a.id }}">{{ a.title }}</a>
+          {% if a.featured %}<span class="a-pill a-pill--featured">главная</span>{% endif %}
+          <div class="a-muted">{{ a.dek[:140] }}{% if a.dek|length > 140 %}…{% endif %}</div>
+        </td>
+        <td><span class="a-pill">{{ a.categoryLabel }}</span></td>
+        <td class="a-nowrap">{{ a.date }}</td>
+        <td>
+          {% if a.published %}
+            <span class="a-pill a-pill--ok">опубликовано</span>
+          {% else %}
+            <span class="a-pill a-pill--mute">скрыто</span>
+          {% endif %}
+        </td>
+        <td class="a-col-actions">
+          <a class="a-iconbtn" href="/admin/edit/{{ a.id }}" title="Редактировать">✎</a>
+          <button class="a-iconbtn" onclick="togglePublish('{{ a.id }}', this)" title="Опубликовать/скрыть">●</button>
+          <button class="a-iconbtn a-iconbtn--danger" onclick="deleteArt('{{ a.id }}')" title="Удалить">✕</button>
+        </td>
+      </tr>
+    {% endfor %}
+    </tbody>
+  </table>
+  {% else %}
+    <div class="a-empty">
+      <p>Нет материалов. <a class="a-link" href="/admin/new">Создать первый</a>.</p>
+    </div>
+  {% endif %}
+</section>
+{% endblock %}
+
+{% block scripts %}
+<script>
+async function togglePublish(id, btn) {
+  const res = await fetch('/api/articles/' + id + '/publish', { method: 'POST' });
+  if (res.ok) location.reload();
+}
+async function deleteArt(id) {
+  if (!confirm('Удалить материал безвозвратно?')) return;
+  const res = await fetch('/api/articles/' + id, { method: 'DELETE' });
+  if (res.ok) location.reload();
+}
+async function publishAll() {
+  const res = await fetch('/api/publish', { method: 'POST' });
+  const data = await res.json();
+  if (data.ok) {
+    alert('Готово. Опубликовано: ' + data.articles + ' материалов.');
+  } else {
+    alert('Ошибка публикации');
+  }
+}
+</script>
+{% endblock %}

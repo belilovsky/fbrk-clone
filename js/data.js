@@ -35,7 +35,7 @@ const FBRK_DATA = {
       dateIso: '2026-04-23',
       category: 'news',
       categoryLabel: 'Новости',
-      image: 'img/001-grecia.svg',
+      image: 'img/covers/thumb/grecia-ekstraditsiya.webp',
       tags: ['Уголовные дела', 'Интерпол', 'Экстрадиция', 'Мошенничество'],
       source: 'Пресс-служба Генеральной прокуратуры РК',
       sections: [
@@ -67,7 +67,7 @@ const FBRK_DATA = {
       dateIso: '2026-04-23',
       category: 'investigation',
       categoryLabel: 'Расследование',
-      image: 'img/002-vena.svg',
+      image: 'img/covers/thumb/vena-musin.webp',
       tags: ['Назарбаев', 'Мусин', 'Недвижимость чиновников', 'Вена', 'Оффшоры'],
       source: 'Telegram-канал «Выход к морю»',
       featured: true,
@@ -100,7 +100,7 @@ const FBRK_DATA = {
       dateIso: '2026-04-22',
       category: 'investigation',
       categoryLabel: 'Расследование',
-      image: 'img/003-knb.svg',
+      image: 'img/covers/thumb/knb-zakupka.webp',
       tags: ['Госзакупки', 'КНБ', 'Особый порядок', 'Прозрачность'],
       source: null,
       sections: [
@@ -132,7 +132,7 @@ const FBRK_DATA = {
       dateIso: '2026-04-22',
       category: 'investigation',
       categoryLabel: 'Расследование',
-      image: 'img/004-yaschur.svg',
+      image: 'img/covers/thumb/yaschur-step.webp',
       tags: ['Экология', 'Сайгаки', 'Эпизоотия', 'ЗКО', 'МСХ'],
       source: null,
       sections: [
@@ -168,7 +168,7 @@ const FBRK_DATA = {
       dateIso: '2026-04-23',
       category: 'news',
       categoryLabel: 'Новости',
-      image: 'img/005-neftegaz.svg',
+      image: 'img/covers/thumb/neftegaz-avarii.webp',
       tags: ['Нефтегаз', 'Промбезопасность', 'Статистика'],
       sections: [
         { h: 'Рост аварийности', p: 'Согласно данным профильного ведомства, число аварий на нефтегазовых объектах в первом квартале 2026 года увеличилось на 40% по сравнению с аналогичным периодом прошлого года. Основная часть инцидентов связана с износом оборудования и нарушениями технологических регламентов.' },
@@ -185,7 +185,7 @@ const FBRK_DATA = {
       dateIso: '2026-04-23',
       category: 'news',
       categoryLabel: 'Новости',
-      image: 'img/006-enpf.svg',
+      image: 'img/covers/thumb/enpf-doknod.webp',
       tags: ['ЕНПФ', 'Нацбанк', 'Валюта'],
       sections: [
         { h: 'Контекст', p: 'Инвестиционный доход ЕНПФ в марте снизился на 240 млрд тенге. Нацбанк объясняет движение рыночной переоценкой валютной части портфеля: около 40% активов размещено в иностранной валюте, и укрепление тенге к доллару сократило их тенговый эквивалент.' },
@@ -202,7 +202,7 @@ const FBRK_DATA = {
       dateIso: '2026-04-23',
       category: 'news',
       categoryLabel: 'Новости',
-      image: 'img/007-police.svg',
+      image: 'img/covers/thumb/policia-rudnyy.webp',
       tags: ['Силовые структуры', 'Взятка', 'Костанайская область'],
       sections: [
         { h: 'Обстоятельства', p: 'По данным антикоррупционной службы, трое сотрудников отдела криминальной полиции Рудного задержаны с поличным при получении взятки. Подробности схемы пока не раскрываются в интересах следствия.' },
@@ -219,7 +219,7 @@ const FBRK_DATA = {
       dateIso: '2026-04-22',
       category: 'news',
       categoryLabel: 'Новости',
-      image: 'img/008-ktzh.svg',
+      image: 'img/covers/thumb/ktzh-obligacii.webp',
       tags: ['КТЖ', 'Облигации', 'Долговая нагрузка'],
       sections: [
         { h: 'Параметры размещения', p: 'КТЖ объявила о выпуске еврооблигаций на сумму $1 млрд двумя траншами — со сроком обращения 5 и 10 лет. Размещение пройдёт на международных рынках, а также на биржах KASE и AIX.' },
@@ -236,7 +236,7 @@ const FBRK_DATA = {
       dateIso: '2026-04-23',
       category: 'news',
       categoryLabel: 'Новости',
-      image: 'img/009-kanal.svg',
+      image: 'img/covers/thumb/kanal-irtysh.webp',
       tags: ['Инфраструктура', 'Павлодарская область', 'Долгострой'],
       sections: [
         { h: 'Сроки и бюджет', p: 'Первоначально реконструкция канала Иртыш–Успенка должна была завершиться в 2020 году. Стоимость проекта — 7,4 млрд тенге. Работы неоднократно приостанавливались, текущий срок сдачи — 2026 год.' },
@@ -253,7 +253,7 @@ const FBRK_DATA = {
       dateIso: '2026-04-22',
       category: 'news',
       categoryLabel: 'Новости',
-      image: 'img/010-kokshetau.svg',
+      image: 'img/covers/thumb/kokshetau-naberezhnaya.webp',
       tags: ['Приговор', 'Хищение', 'ЖКХ', 'Акмолинская область'],
       sections: [
         { h: 'Суть дела', p: 'По материалам следствия, при строительстве набережной вдоль озера Копа в Кокшетау были похищены более 170 млн тенге бюджетных средств. Завышение объёмов работ и фиктивные акты приёмки установили ревизоры.' },
@@ -270,7 +270,7 @@ const FBRK_DATA = {
       dateIso: '2026-04-22',
       category: 'news',
       categoryLabel: 'Новости',
-      image: 'img/011-abenov.svg',
+      image: 'img/covers/thumb/abenov-oruzhie.webp',
       tags: ['Мажилис', 'Астана', 'Антиквариат'],
       sections: [
         { h: 'Суть инцидента', p: 'Депутат Мажилиса Мурат Абенов опубликовал сообщение о «задержании иностранцев с оружием» в жилом комплексе Highvill в Астане. Публикация вызвала широкий общественный резонанс.' },
@@ -288,7 +288,7 @@ const FBRK_DATA = {
       dateIso: '2026-04-22',
       category: 'news',
       categoryLabel: 'Новости',
-      image: 'img/012-agro.svg',
+      image: 'img/covers/thumb/agrobiznes-abay.webp',
       tags: ['Агробизнес', 'Хищение', 'Область Абай'],
       sections: [
         { h: 'Что установило следствие', p: 'По версии следствия, из средств государственной программы «Агробизнес» были похищены бюджетные деньги, предназначенные для поддержки сельхозпроизводителей. Размер ущерба и круг фигурантов будут озвучены в суде.' },

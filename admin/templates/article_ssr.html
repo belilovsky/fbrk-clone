@@ -1,0 +1,239 @@
+<!doctype html>
+<html lang="ru">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>{{ title|e }} — {{ org_name }}</title>
+    <meta name="description" content="{{ desc|e }}" />
+    <meta name="theme-color" content="#0C115F" />
+    <meta name="robots" content="index, follow, max-image-preview:large, max-snippet:-1" />
+    <meta name="author" content="{{ org_name }}" />
+    <meta name="publisher" content="{{ org_full }}" />
+    <meta name="geo.region" content="KZ" />
+    <meta name="geo.placename" content="Kazakhstan" />
+    <meta name="content-language" content="ru" />
+    <link rel="canonical" href="{{ url }}" />
+    <link rel="alternate" hreflang="ru" href="{{ url }}" />
+    <link rel="alternate" hreflang="ru-KZ" href="{{ url }}" />
+    <link rel="alternate" hreflang="x-default" href="{{ url }}" />
+
+    <!-- Open Graph -->
+    <meta property="og:site_name" content="{{ org_name }}" />
+    <meta property="og:locale" content="ru_RU" />
+    <meta property="og:type" content="article" />
+    <meta property="og:title" content="{{ title|e }}" />
+    <meta property="og:description" content="{{ desc|e }}" />
+    <meta property="og:image" content="{{ image }}" />
+    <meta property="og:image:alt" content="{{ title|e }}" />
+    <meta property="og:image:width" content="1200" />
+    <meta property="og:image:height" content="630" />
+    <meta property="og:url" content="{{ url }}" />
+    <meta property="article:published_time" content="{{ published_iso }}" />
+    <meta property="article:modified_time" content="{{ modified_iso }}" />
+    <meta property="article:section" content="{{ category_label }}" />
+    <meta property="article:publisher" content="{{ site_url }}/" />
+    {% for t in tags %}<meta property="article:tag" content="{{ t|e }}" />
+    {% endfor %}
+
+    <!-- Twitter -->
+    <meta name="twitter:card" content="summary_large_image" />
+    <meta name="twitter:title" content="{{ title|e }}" />
+    <meta name="twitter:description" content="{{ desc|e }}" />
+    <meta name="twitter:image" content="{{ image }}" />
+    <meta name="twitter:image:alt" content="{{ title|e }}" />
+
+    <!-- Facebook Instant Articles / sharing -->
+    <meta property="fb:pages" content="" />
+
+    <link rel="icon" type="image/png" sizes="32x32" href="/img/brand/favicon-32.png" />
+    <link rel="icon" type="image/png" sizes="192x192" href="/img/brand/favicon-192.png" />
+    <link rel="apple-touch-icon" href="/img/brand/apple-touch-icon.png" />
+    <link rel="icon" type="image/svg+xml" href="/img/brand/logo.svg" />
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link href="https://fonts.googleapis.com/css2?family=Onest:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
+    <link rel="stylesheet" href="/css/style.css?v=1777400467" />
+    <link rel="alternate" type="application/rss+xml" title="{{ org_name }} — RSS" href="/feed.xml" />
+
+    <!-- Schema.org NewsArticle -->
+    <script type="application/ld+json">{{ news_article_ld|safe }}</script>
+    <!-- BreadcrumbList -->
+    <script type="application/ld+json">{{ breadcrumb_ld|safe }}</script>
+  </head>
+  <body>
+    <a class="skip-link" href="#main">Перейти к содержимому</a>
+
+    <header class="site-header" role="banner">
+      <div class="container site-header__inner">
+        <a class="site-header__logo" href="/" aria-label="{{ org_name }} — на главную">
+          <span class="site-header__logo-mark">ФБРК</span>
+          <span class="site-header__logo-text">{{ org_full }}</span>
+        </a>
+        <nav class="site-header__nav" aria-label="Основная навигация" data-site-nav>
+          <ul role="list">
+            <li><a href="/" data-nav-link="home">Главная</a></li>
+            <li><a href="/archive.html?cat=investigation" data-nav-link="investigation">Расследования</a></li>
+            <li><a href="/archive.html?cat=news" data-nav-link="news">Новости</a></li>
+            <li><a href="/archive.html" data-nav-link="archive">Архив</a></li>
+            <li><a href="/about.html" data-nav-link="about">О нас</a></li>
+          </ul>
+        </nav>
+        <div class="site-header__actions">
+          <div class="lang-switch" role="group" aria-label="Язык сайта">
+            <button type="button" data-lang="ru" aria-pressed="true">RU</button>
+            <button type="button" data-lang="kk" aria-pressed="false">ҚАЗ</button>
+          </div>
+          <span class="site-header__divider" aria-hidden="true"></span>
+          <button class="site-header__btn" type="button" data-theme-toggle aria-label="Переключить тему">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></svg>
+          </button>
+          <a class="site-header__btn site-header__btn--social" href="{{ telegram_url }}" target="_blank" rel="noopener" aria-label="Telegram-бот">
+            <svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M9.78 18.65l.28-4.23 7.68-6.92c.34-.31-.07-.46-.52-.19L7.74 13.3 3.64 12c-.88-.25-.89-.86.2-1.3l15.97-6.16c.73-.33 1.43.18 1.15 1.3l-2.72 12.81c-.19.91-.74 1.13-1.5.71L12.6 16.3l-1.99 1.93c-.23.23-.42.42-.83.42z"/></svg>
+          </a>
+          <a class="site-header__btn site-header__btn--social" href="{{ youtube_url }}" target="_blank" rel="noopener" aria-label="YouTube">
+            <svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M23.5 6.2a3 3 0 0 0-2.1-2.1C19.4 3.5 12 3.5 12 3.5s-7.4 0-9.4.6A3 3 0 0 0 .5 6.2C0 8.2 0 12 0 12s0 3.8.5 5.8a3 3 0 0 0 2.1 2.1c2 .6 9.4.6 9.4.6s7.4 0 9.4-.6a3 3 0 0 0 2.1-2.1c.5-2 .5-5.8.5-5.8s0-3.8-.5-5.8zM9.6 15.6V8.4l6.4 3.6-6.4 3.6z"/></svg>
+          </a>
+          <button class="site-header__btn site-header__menu-btn" type="button" data-menu-toggle aria-label="Меню" aria-expanded="false">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="18" x2="21" y2="18"/></svg>
+          </button>
+        </div>
+      </div>
+    </header>
+
+    <main id="main">
+      <article class="article container" itemscope itemtype="https://schema.org/NewsArticle">
+        <meta itemprop="inLanguage" content="ru" />
+        <meta itemprop="datePublished" content="{{ published_iso }}" />
+        <meta itemprop="dateModified" content="{{ modified_iso }}" />
+
+        <header class="article__head">
+          <div class="kicker article__kicker">
+            <span>{{ category_label }}</span>
+            {% if meta.importance and meta.importance >= 4 %}
+            <span class="importance-badge importance-badge--high" title="Важная новость">важно</span>
+            {% elif meta.importance and meta.importance >= 3 %}
+            <span class="importance-badge" title="Значимая новость">значимо</span>
+            {% endif %}
+            <span class="article__kicker-sep" aria-hidden="true">·</span>
+            <time datetime="{{ date_iso }}">{{ date_label }}</time>
+            {% if meta.region %}<span class="article__kicker-sep" aria-hidden="true">·</span><span>{{ meta.region|e }}</span>{% endif %}
+          </div>
+          <h1 class="article__title" itemprop="headline">{{ title|e }}</h1>
+          {% if a.dek %}<p class="article__dek" itemprop="description">{{ a.dek|safe }}</p>{% endif %}
+        </header>
+
+        {% if image %}
+        <div class="article__cover">
+          <img src="{{ image }}" alt="{{ title|e }}" itemprop="image" loading="eager" />
+        </div>
+        {% endif %}
+
+        {% if meta.key_points %}
+        <aside class="article__tldr" aria-label="Кратко">
+          <ul class="article__tldr-list">
+            {% for kp in meta.key_points %}<li>{{ kp|e }}</li>{% endfor %}
+          </ul>
+        </aside>
+        {% endif %}
+
+        <div class="article__body" itemprop="articleBody">
+          {{ body_html|safe }}
+        </div>
+
+        {% if meta.entities %}
+        <div class="entity-chips" aria-label="Упомянуты в тексте">
+          <h3 class="entity-chips__title">Упоминания</h3>
+          <div class="entity-chips__row">
+            {% for e in meta.entities %}
+            <span class="entity-chip entity-chip--{{ e.type }}">{{ e.name|e }}</span>
+            {% endfor %}
+          </div>
+        </div>
+        {% endif %}
+
+        {% if a.source %}
+        <div class="article__source">Оригинал: <a href="{{ a.source }}" rel="nofollow noopener" target="_blank">{{ a.source }}</a></div>
+        {% endif %}
+
+        <p class="article__back"><a href="/">← Все материалы</a></p>
+      </article>
+    </main>
+
+    <footer class="site-footer" role="contentinfo">
+      <div class="container">
+        <div class="site-footer__top">
+          <div class="site-footer__brand-block">
+            <div class="site-footer__brand">
+              <span class="site-footer__brand-name">{{ org_name }}</span>
+            </div>
+            <p class="site-footer__about">{{ org_full }} — независимое сетевое издание. Свидетельство СМИ № KZ83VPY00075165 от 21.08.2023.</p>
+          </div>
+          <div>
+            <div class="site-footer__heading">Разделы</div>
+            <ul class="site-footer__list" role="list">
+              <li><a href="/">Главная</a></li>
+              <li><a href="/archive.html?cat=investigation">Расследования</a></li>
+              <li><a href="/archive.html?cat=news">Новости</a></li>
+              <li><a href="/archive.html">Архив</a></li>
+            </ul>
+          </div>
+          <div>
+            <div class="site-footer__heading">Редакция</div>
+            <ul class="site-footer__list" role="list">
+              <li><a href="/about.html">О нас</a></li>
+              <li><a href="/about.html">Контакты</a></li>
+              <li><a href="/feed.xml">RSS-лента</a></li>
+              <li><a href="/sitemap.xml">Карта сайта</a></li>
+            </ul>
+          </div>
+          <div>
+            <div class="site-footer__heading">Анонимно</div>
+            <ul class="site-footer__list" role="list">
+              <li><a href="{{ telegram_url }}" target="_blank" rel="noopener">Telegram-бот</a></li>
+              <li><a href="{{ youtube_url }}" target="_blank" rel="noopener">YouTube-канал</a></li>
+            </ul>
+          </div>
+        </div>
+        <div class="site-footer__bottom">
+          <div class="site-footer__legal">
+            <span>© 2023–2026 {{ org_name }}</span>
+            <span aria-hidden="true">·</span>
+            <span>Астана, Казахстан</span>
+          </div>
+          <div class="site-footer__socials" aria-label="Социальные сети">
+            <a href="{{ telegram_url }}" target="_blank" rel="noopener" aria-label="Telegram">
+              <svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M9.78 18.65l.28-4.23 7.68-6.92c.34-.31-.07-.46-.52-.19L7.74 13.3 3.64 12c-.88-.25-.89-.86.2-1.3l15.97-6.16c.73-.33 1.43.18 1.15 1.3l-2.72 12.81c-.19.91-.74 1.13-1.5.71L12.6 16.3l-1.99 1.93c-.23.23-.42.42-.83.42z"/></svg>
+            </a>
+            <a href="{{ youtube_url }}" target="_blank" rel="noopener" aria-label="YouTube">
+              <svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M23.5 6.2a3 3 0 0 0-2.1-2.1C19.4 3.5 12 3.5 12 3.5s-7.4 0-9.4.6A3 3 0 0 0 .5 6.2C0 8.2 0 12 0 12s0 3.8.5 5.8a3 3 0 0 0 2.1 2.1c2 .6 9.4.6 9.4.6s7.4 0 9.4-.6a3 3 0 0 0 2.1-2.1c.5-2 .5-5.8.5-5.8s0-3.8-.5-5.8zM9.6 15.6V8.4l6.4 3.6-6.4 3.6z"/></svg>
+            </a>
+            <a href="/feed.xml" aria-label="RSS">
+              <svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M5 4v3a13 13 0 0 1 13 13h3A16 16 0 0 0 5 4zm0 6v3a7 7 0 0 1 7 7h3a10 10 0 0 0-10-10zm1 8a2 2 0 1 0 .001 4.001A2 2 0 0 0 6 18z"/></svg>
+            </a>
+          </div>
+        </div>
+      </div>
+    </footer>
+
+    <script src="/js/app.js?v=1777400467"></script>
+
+    <!-- Organization + WebSite JSON-LD (global) -->
+    <script type="application/ld+json">
+    {
+      "@context": "https://schema.org",
+      "@type": "NewsMediaOrganization",
+      "name": "{{ org_name }}",
+      "legalName": "{{ org_full }}",
+      "url": "{{ site_url }}/",
+      "logo": "{{ site_url }}/img/brand/logo-brand-256.png",
+      "sameAs": [
+        "{{ telegram_url }}",
+        "{{ youtube_url }}"
+      ],
+      "foundingLocation": {"@type": "Place", "name": "Казахстан"},
+      "inLanguage": "ru",
+      "areaServed": "KZ"
+    }
+    </script>
+  </body>
+</html>

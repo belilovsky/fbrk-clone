@@ -1,0 +1,22 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 200" role="img" aria-label="ФБРК — Фонд-бюро расследования коррупции">
+  <defs>
+    <path id="fbrk-top" d="M 20,100 A 80,80 0 0 1 180,100" fill="none" />
+    <path id="fbrk-bot" d="M 25,100 A 75,75 0 0 0 175,100" fill="none" />
+  </defs>
+  <!-- Outer circle background -->
+  <circle cx="100" cy="100" r="96" fill="currentColor" />
+  <!-- Inner subtle ring separators -->
+  <circle cx="100" cy="100" r="72" fill="none" stroke="#fff" stroke-width="0" />
+  <!-- Text along top arc -->
+  <text fill="#fff" font-family="'General Sans', 'Satoshi', system-ui, sans-serif" font-weight="700" font-size="15" letter-spacing="2.2">
+    <textPath href="#fbrk-top" startOffset="50%" text-anchor="middle">РАССЛЕДОВАНИЯ · КОРРУПЦИИ</textPath>
+  </text>
+  <!-- Text along bottom arc (readable, not mirrored) -->
+  <text fill="#fff" font-family="'General Sans', 'Satoshi', system-ui, sans-serif" font-weight="700" font-size="15" letter-spacing="2.2">
+    <textPath href="#fbrk-bot" startOffset="50%" text-anchor="middle">ФОНД-БЮРО</textPath>
+  </text>
+  <!-- Center monogram -->
+  <text x="100" y="115" text-anchor="middle" fill="#fff"
+        font-family="'General Sans', 'Satoshi', system-ui, sans-serif"
+        font-weight="700" font-size="44" letter-spacing="-0.5">ФБРК</text>
+</svg>

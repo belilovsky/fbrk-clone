@@ -1,0 +1,13 @@
+[Unit]
+Description=Run FBRK AI enrichment every 30 minutes
+Requires=fbrk-enrich.service
+
+[Timer]
+# 5 minutes after boot, then every 30 minutes
+OnBootSec=10min
+OnUnitActiveSec=1h
+# Don't run if missed (server was offline)
+Persistent=false
+
+[Install]
+WantedBy=timers.target

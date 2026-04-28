@@ -1,0 +1,231 @@
+{% extends "base.html" %}
+{% block title %}{{ 'Новый материал' if is_new else article.title }} — Админка ФБРК{% endblock %}
+{% block head %}
+  <script src="https://cdn.jsdelivr.net/npm/@editorjs/editorjs@2.31.6/dist/editorjs.umd.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/@editorjs/header@2.8.8/dist/header.umd.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/@editorjs/list@2.0.9/dist/editorjs-list.umd.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/@editorjs/quote@2.7.6/dist/quote.umd.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/@editorjs/delimiter@1.4.2/dist/delimiter.umd.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/@editorjs/image@2.10.3/dist/image.umd.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/@editorjs/inline-code@1.5.2/dist/inline-code.umd.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/@editorjs/marker@1.4.0/dist/marker.umd.min.js"></script>
+{% endblock %}
+
+{% block content %}
+<section class="a-section a-editor">
+  <div class="a-editor__bar">
+    <a class="a-back" href="/admin/">← Материалы</a>
+    <div class="a-editor__status" id="saveStatus"></div>
+    <div class="a-actions">
+      <button class="a-btn" id="btnSave">Сохранить</button>
+      <button class="a-btn a-btn--primary" id="btnSavePublish">Сохранить и опубликовать</button>
+    </div>
+  </div>
+
+  <div class="a-editor__grid">
+    <div class="a-editor__main">
+      <label class="a-field">
+        <span>Заголовок</span>
+        <input id="f-title" value="{{ article.title }}" placeholder="Заголовок материала" autofocus/>
+      </label>
+      <label class="a-field">
+        <span>Лид (подзаголовок, 1–2 предложения)</span>
+        <textarea id="f-dek" rows="3" placeholder="Короткое описание для превью">{{ article.dek }}</textarea>
+      </label>
+
+      <div class="a-editor__label">Текст материала</div>
+      <div id="editorjs" class="a-editor__js"></div>
+    </div>
+
+    <aside class="a-editor__side">
+      <div class="a-card">
+        <h3>Параметры</h3>
+
+        <label class="a-field">
+          <span>ID / URL-slug</span>
+          <input id="f-id" value="{{ article.id }}" placeholder="например, vena-musin" {% if not is_new %}readonly{% endif %}/>
+          <small class="a-muted">{% if is_new %}Если пусто — создастся из заголовка.{% else %}ID не меняется после создания.{% endif %}</small>
+        </label>
+
+        <label class="a-field">
+          <span>Раздел</span>
+          <select id="f-category">
+            <option value="news" {% if article.category=='news' %}selected{% endif %}>Новости</option>
+            <option value="investigation" {% if article.category=='investigation' %}selected{% endif %}>Расследования</option>
+          </select>
+        </label>
+
+        <label class="a-field">
+          <span>Дата</span>
+          <input id="f-date" type="date" value="{{ article.dateIso }}"/>
+        </label>
+
+        <label class="a-field">
+          <span>Автор</span>
+          <input id="f-author" value="{{ article.author }}"/>
+        </label>
+
+        <label class="a-field">
+          <span>Источник</span>
+          <input id="f-source" value="{{ article.source }}" placeholder="Напр. Пресс-служба МВД"/>
+        </label>
+
+        <label class="a-field">
+          <span>Теги (через запятую)</span>
+          <input id="f-tags" value="{{ article.tags | join(', ') }}" placeholder="Коррупция, КНБ, ..."/>
+        </label>
+
+        <label class="a-check">
+          <input id="f-featured" type="checkbox" {% if article.featured %}checked{% endif %}/>
+          <span>Главный материал на лендинге</span>
+        </label>
+
+        <label class="a-check">
+          <input id="f-published" type="checkbox" {% if article.published %}checked{% endif %}/>
+          <span>Опубликовать на сайте</span>
+        </label>
+      </div>
+
+      <div class="a-card">
+        <h3>Обложка</h3>
+        <div class="a-cover" id="coverPreview">
+          {% if article.image %}<img src="/{{ article.image.lstrip('/') }}" alt=""/>{% endif %}
+        </div>
+        <input type="file" id="f-coverFile" accept="image/*" hidden/>
+        <button class="a-btn a-btn--ghost" type="button" onclick="document.getElementById('f-coverFile').click()">Загрузить…</button>
+        <input id="f-image" value="{{ article.image }}" placeholder="img/covers/thumb/..." style="margin-top:8px"/>
+        <small class="a-muted">Путь сохраняется относительно корня сайта.</small>
+      </div>
+    </aside>
+  </div>
+</section>
+
+{% endblock %}
+
+{% block scripts %}
+<script>
+const IS_NEW = {{ 'true' if is_new else 'false' }};
+const ARTICLE_ID = {{ article.id | tojson }};
+const INITIAL_BODY = {{ article.body | tojson }};
+
+const editor = new EditorJS({
+  holder: 'editorjs',
+  placeholder: 'Начните писать…',
+  data: INITIAL_BODY && INITIAL_BODY.blocks ? INITIAL_BODY : { blocks: [] },
+  tools: {
+    header:    { class: Header, config: { levels: [2, 3], defaultLevel: 2 } },
+    list:      { class: EditorjsList, inlineToolbar: true },
+    quote:     Quote,
+    delimiter: Delimiter,
+    marker:    Marker,
+    inlineCode: InlineCode,
+    image: {
+      class: ImageTool,
+      config: {
+        endpoints: { byFile: '/api/upload' },
+        captionPlaceholder: 'Подпись к изображению',
+      },
+    },
+  },
+  i18n: {
+    messages: {
+      ui: {
+        blockTunes: { toggler: { 'Click to tune': 'Настроить', 'or drag to move': 'или перетащить' } },
+        inlineToolbar: { converter: { 'Convert to': 'Преобразовать в' } },
+        toolbar: { toolbox: { Add: 'Добавить' } },
+      },
+      toolNames: {
+        Text: 'Параграф', Heading: 'Заголовок', List: 'Список',
+        Quote: 'Цитата', Delimiter: 'Разделитель', Image: 'Изображение',
+        Bold: 'Жирный', Italic: 'Курсив', Link: 'Ссылка', Marker: 'Маркер',
+        InlineCode: 'Моноширинный',
+      },
+    },
+  },
+});
+
+function setStatus(msg, ok = true) {
+  const el = document.getElementById('saveStatus');
+  el.textContent = msg;
+  el.className = 'a-editor__status ' + (ok ? 'is-ok' : 'is-err');
+  if (msg && ok) setTimeout(() => { if (el.textContent === msg) el.textContent = ''; }, 2500);
+}
+
+async function gather(publish = null) {
+  const body = await editor.save();
+  const tags = document.getElementById('f-tags').value
+    .split(',').map(s => s.trim()).filter(Boolean);
+  const publishedFlag = document.getElementById('f-published').checked;
+  return {
+    id: document.getElementById('f-id').value.trim(),
+    title: document.getElementById('f-title').value.trim(),
+    dek: document.getElementById('f-dek').value.trim(),
+    dateIso: document.getElementById('f-date').value,
+    category: document.getElementById('f-category').value,
+    author: document.getElementById('f-author').value.trim(),
+    source: document.getElementById('f-source').value.trim(),
+    image: document.getElementById('f-image').value.trim(),
+    tags,
+    featured: document.getElementById('f-featured').checked,
+    published: publish === null ? publishedFlag : publish,
+    body,
+  };
+}
+
+async function doSave(publishOverride = null) {
+  try {
+    const payload = await gather(publishOverride);
+    if (!payload.title) { setStatus('Введите заголовок', false); return; }
+    setStatus('Сохраняем…');
+    const url = IS_NEW ? '/api/articles' : '/api/articles/' + encodeURIComponent(ARTICLE_ID);
+    const method = IS_NEW ? 'POST' : 'PUT';
+    const res = await fetch(url, {
+      method,
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload),
+    });
+    if (!res.ok) {
+      const err = await res.text();
+      setStatus('Ошибка: ' + err, false);
+      return;
+    }
+    const data = await res.json();
+    setStatus('Сохранено ✓');
+    if (IS_NEW && data.article && data.article.id) {
+      location.href = '/admin/edit/' + encodeURIComponent(data.article.id);
+    }
+  } catch (e) {
+    setStatus('Ошибка: ' + e.message, false);
+  }
+}
+
+document.getElementById('btnSave').addEventListener('click', () => doSave(null));
+document.getElementById('btnSavePublish').addEventListener('click', () => {
+  document.getElementById('f-published').checked = true;
+  doSave(true);
+});
+
+// Cover upload
+document.getElementById('f-coverFile').addEventListener('change', async (e) => {
+  const f = e.target.files[0];
+  if (!f) return;
+  const fd = new FormData(); fd.append('file', f);
+  setStatus('Загружаем обложку…');
+  const res = await fetch('/api/upload', { method: 'POST', body: fd });
+  if (!res.ok) { setStatus('Не удалось загрузить', false); return; }
+  const data = await res.json();
+  const url = data.thumb || (data.file && data.file.url);
+  if (url) {
+    document.getElementById('f-image').value = url;
+    document.getElementById('coverPreview').innerHTML =
+      '<img src="/' + url.replace(/^\/+/, '') + '" alt=""/>';
+    setStatus('Обложка загружена ✓');
+  }
+});
+
+// Autosave on Ctrl/Cmd+S
+document.addEventListener('keydown', (e) => {
+  if ((e.ctrlKey || e.metaKey) && e.key === 's') { e.preventDefault(); doSave(null); }
+});
+</script>
+{% endblock %}

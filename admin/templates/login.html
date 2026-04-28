@@ -1,0 +1,30 @@
+<!doctype html>
+<html lang="ru">
+<head>
+  <meta charset="utf-8"/>
+  <meta name="viewport" content="width=device-width,initial-scale=1"/>
+  <meta name="robots" content="noindex, nofollow"/>
+  <title>Вход — Админка ФБРК</title>
+  <link rel="stylesheet" href="https://api.fontshare.com/v2/css?f[]=satoshi@400,500,700&f[]=general-sans@500,600,700&display=swap"/>
+  <link rel="stylesheet" href="/admin/static/admin.css"/>
+</head>
+<body class="a-login-body">
+  <form class="a-login" method="post" action="/admin/login">
+    <div class="a-login__brand">
+      <span class="a-brand__dot"></span>
+      <span>ФБРК · админка</span>
+    </div>
+    <h1>Вход</h1>
+    {% if error %}<p class="a-error">Неверный логин или пароль</p>{% endif %}
+    <label>
+      <span>Логин</span>
+      <input name="username" autocomplete="username" required autofocus/>
+    </label>
+    <label>
+      <span>Пароль</span>
+      <input name="password" type="password" autocomplete="current-password" required/>
+    </label>
+    <button type="submit" class="a-btn a-btn--primary">Войти</button>
+  </form>
+</body>
+</html>

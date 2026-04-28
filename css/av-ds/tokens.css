@@ -1,0 +1,135 @@
+/* ═══ AV Design System — дизайн-токены (портированы из @sgeo/ui-kit v1.7.2) ═══
+   Источник правды: /opt/sgeo-ui-kit/versions/sgeo-ui-kit-1.7.2.tgz
+   Подключение: ПЕРЕД public.css, так чтобы Total мог точечно переопределять
+   токены в total-overlay.css. Не редактируй этот файл — обновляется при bump версии. */
+
+/* LIGHT MODE (по умолчанию) */
+:root {
+  --button-outline: rgba(0,0,0, .10);
+  --badge-outline: rgba(0,0,0, .05);
+  --opaque-button-border-intensity: -8;
+  --elevate-1: rgba(0,0,0, .03);
+  --elevate-2: rgba(0,0,0, .08);
+  --background: 216 20% 97%;
+  --foreground: 220 25% 10%;
+  --border: 216 12% 88%;
+  --card: 216 18% 98%;
+  --card-foreground: 220 25% 10%;
+  --card-border: 216 12% 92%;
+  --sidebar: 218 22% 95%;
+  --sidebar-foreground: 220 25% 10%;
+  --sidebar-border: 216 12% 90%;
+  --sidebar-primary: 210 70% 42%;
+  --sidebar-primary-foreground: 0 0% 99%;
+  --sidebar-accent: 216 14% 88%;
+  --sidebar-accent-foreground: 220 25% 10%;
+  --sidebar-ring: 210 70% 42%;
+  --popover: 216 18% 96%;
+  --popover-foreground: 220 25% 10%;
+  --popover-border: 216 12% 88%;
+  --primary: 210 70% 42%;
+  --primary-foreground: 0 0% 99%;
+  --secondary: 216 14% 91%;
+  --secondary-foreground: 220 25% 10%;
+  --muted: 216 12% 92%;
+  --muted-foreground: 216 10% 45%;
+  --av-accent-semantic: 210 16% 90%;           /* renamed from --accent to avoid collision with Total's --accent */
+  --av-accent-semantic-foreground: 220 25% 10%;
+  --destructive: 0 72% 48%;
+  --destructive-foreground: 0 0% 99%;
+  --input: 216 12% 78%;
+  --ring: 210 70% 42%;
+  --chart-1: 210 70% 42%;
+  --chart-2: 170 55% 38%;
+  --chart-3: 38 75% 50%;
+  --chart-4: 280 55% 50%;
+  --chart-5: 0 65% 50%;
+  --font-sans: 'Inter', 'Helvetica Neue', sans-serif;
+  --font-serif: Georgia, serif;
+  --font-mono: 'JetBrains Mono', Menlo, monospace;
+  --av-radius: .5rem; /* 8px — переименован из --radius, у Total свой --radius */
+  --shadow-2xs: 0px 1px 1px hsl(220 25% 10% / 0.03);
+  --shadow-xs: 0px 1px 2px hsl(220 25% 10% / 0.04);
+  --shadow-sm: 0px 1px 3px hsl(220 25% 10% / 0.06), 0px 1px 2px hsl(220 25% 10% / 0.04);
+  --shadow: 0px 2px 4px hsl(220 25% 10% / 0.06), 0px 1px 2px hsl(220 25% 10% / 0.04);
+  --shadow-md: 0px 4px 8px hsl(220 25% 10% / 0.06), 0px 2px 4px hsl(220 25% 10% / 0.04);
+  --shadow-lg: 0px 8px 16px hsl(220 25% 10% / 0.08), 0px 4px 8px hsl(220 25% 10% / 0.04);
+  --shadow-xl: 0px 12px 24px hsl(220 25% 10% / 0.10), 0px 8px 12px hsl(220 25% 10% / 0.04);
+  --shadow-2xl: 0px 20px 40px hsl(220 25% 10% / 0.12);
+  --tracking-normal: 0em;
+  --av-spacing: 0.25rem;
+
+  /* Score / светофор (используется в RadialGauge, ScoreBar, BarChart) */
+  --score-high: #059669;   /* >= 70 */
+  --score-mid:  #d97706;   /* 40..69 */
+  --score-low:  #dc2626;   /* < 40 */
+
+  --sidebar-primary-border: hsl(var(--sidebar-primary));
+  --sidebar-primary-border: hsl(from hsl(var(--sidebar-primary)) h s calc(l + var(--opaque-button-border-intensity)) / alpha);
+  --sidebar-accent-border: hsl(var(--sidebar-accent));
+  --sidebar-accent-border: hsl(from hsl(var(--sidebar-accent)) h s calc(l + var(--opaque-button-border-intensity)) / alpha);
+  --primary-border: hsl(var(--primary));
+  --primary-border: hsl(from hsl(var(--primary)) h s calc(l + var(--opaque-button-border-intensity)) / alpha);
+  --secondary-border: hsl(var(--secondary));
+  --secondary-border: hsl(from hsl(var(--secondary)) h s calc(l + var(--opaque-button-border-intensity)) / alpha);
+  --muted-border: hsl(var(--muted));
+  --muted-border: hsl(from hsl(var(--muted)) h s calc(l + var(--opaque-button-border-intensity)) / alpha);
+  --destructive-border: hsl(var(--destructive));
+  --destructive-border: hsl(from hsl(var(--destructive)) h s calc(l + var(--opaque-button-border-intensity)) / alpha);
+}
+
+/* DARK MODE — активируется через класс .dark ИЛИ через [data-theme="dark"] (совместимость с Total) */
+.dark,
+[data-theme="dark"] {
+  --button-outline: rgba(255,255,255, .10);
+  --badge-outline: rgba(255,255,255, .05);
+  --opaque-button-border-intensity: 9;
+  --elevate-1: rgba(255,255,255, .04);
+  --elevate-2: rgba(255,255,255, .09);
+  --background: 220 18% 8%;
+  --foreground: 216 12% 92%;
+  --border: 220 12% 18%;
+  --card: 220 16% 10%;
+  --card-foreground: 216 12% 92%;
+  --card-border: 220 12% 14%;
+  --sidebar: 220 18% 11%;
+  --sidebar-foreground: 216 12% 92%;
+  --sidebar-border: 220 12% 16%;
+  --sidebar-primary: 210 65% 55%;
+  --sidebar-primary-foreground: 0 0% 99%;
+  --sidebar-accent: 220 12% 18%;
+  --sidebar-accent-foreground: 216 12% 92%;
+  --sidebar-ring: 210 65% 55%;
+  --popover: 220 16% 13%;
+  --popover-foreground: 216 12% 92%;
+  --popover-border: 220 12% 18%;
+  --primary: 210 65% 55%;
+  --primary-foreground: 0 0% 99%;
+  --secondary: 220 12% 20%;
+  --secondary-foreground: 216 12% 92%;
+  --muted: 220 10% 22%;
+  --muted-foreground: 216 8% 55%;
+  --av-accent-semantic: 210 12% 19%;
+  --av-accent-semantic-foreground: 216 12% 92%;
+  --destructive: 0 72% 48%;
+  --destructive-foreground: 0 0% 99%;
+  --input: 220 12% 28%;
+  --ring: 210 65% 55%;
+  --chart-1: 210 65% 60%;
+  --chart-2: 170 50% 50%;
+  --chart-3: 38 70% 58%;
+  --chart-4: 280 50% 62%;
+  --chart-5: 0 60% 58%;
+  --shadow-2xs: 0px 1px 1px hsl(0 0% 0% / 0.15);
+  --shadow-xs: 0px 1px 2px hsl(0 0% 0% / 0.20);
+  --shadow-sm: 0px 1px 3px hsl(0 0% 0% / 0.25), 0px 1px 2px hsl(0 0% 0% / 0.15);
+  --shadow: 0px 2px 4px hsl(0 0% 0% / 0.25), 0px 1px 2px hsl(0 0% 0% / 0.15);
+  --shadow-md: 0px 4px 8px hsl(0 0% 0% / 0.25), 0px 2px 4px hsl(0 0% 0% / 0.15);
+  --shadow-lg: 0px 8px 16px hsl(0 0% 0% / 0.30), 0px 4px 8px hsl(0 0% 0% / 0.15);
+  --shadow-xl: 0px 12px 24px hsl(0 0% 0% / 0.35), 0px 8px 12px hsl(0 0% 0% / 0.15);
+  --shadow-2xl: 0px 20px 40px hsl(0 0% 0% / 0.40);
+
+  --score-high: #10b981;
+  --score-mid:  #f59e0b;
+  --score-low:  #ef4444;
+}
