@@ -235,15 +235,31 @@ function importanceBadgeHtml(a) {
   return `<span class="${cls}" aria-label="${label}">${label}</span>`;
 }
 
+function todayAlmatyString() {
+  try {
+    const parts = new Intl.DateTimeFormat('en', {
+      timeZone: 'Asia/Almaty',
+      year: 'numeric',
+      month: '2-digit',
+      day: '2-digit',
+    }).formatToParts(new Date());
+    const byType = {};
+    parts.forEach((p) => { byType[p.type] = p.value; });
+    return `${byType.year}-${byType.month}-${byType.day}`;
+  } catch (_) {
+    const today = new Date();
+    return today.getFullYear() + '-' + String(today.getMonth() + 1).padStart(2, '0') + '-' + String(today.getDate()).padStart(2, '0');
+  }
+}
+
 // Live badge — pulse dot for fresh articles (published within last 6 hours).
 // Inspired by AV DS LiveBadge.
 function liveBadgeHtml(a) {
   if (!a || !a.dateIso) return '';
-  // We only have date precision, not time. Show LIVE for today's articles only.
-  const today = new Date();
-  const todayStr = today.getFullYear() + '-' + String(today.getMonth() + 1).padStart(2, '0') + '-' + String(today.getDate()).padStart(2, '0');
-  if (a.dateIso !== todayStr) return '';
-  return '<span class="live-badge" aria-label="Свежая публикация"><span class="live-badge__dot" aria-hidden="true"></span>СЕГОДНЯ</span>';
+  // dateIso is published in Kazakhstan editorial time; compare in Asia/Almaty,
+  // not in the reader browser timezone.
+  if (a.dateIso !== todayAlmatyString()) return '';
+  return '<span class="live-badge" aria-label="Свежая публикация сегодня по времени Алматы"><span class="live-badge__dot" aria-hidden="true"></span>СЕГОДНЯ</span>';
 }
 
 // ---------- Home page renderer ----------
@@ -255,7 +271,7 @@ function liveBadgeHtml(a) {
 
   leadRoot.innerHTML = `
     <a class="lead__media" href="/a/${featured.slug || featured.id}" aria-label="${escapeHtml(featured.title)}">
-      <img src="${fullCover(featured)}" alt="${escapeHtml(featured.title)}" loading="eager"/>
+      <img src="${fullCover(featured)}" alt="${escapeHtml(featured.title)}" width="1200" height="800" loading="eager"/>
     </a>
     <div class="lead__body">
       <div class="kicker">${featured.categoryLabel}</div>
@@ -289,7 +305,7 @@ function liveBadgeHtml(a) {
         const hasImg = !!(a.image && String(a.image).trim());
         const cardCls = hasImg ? 'card' : 'card card--no-image';
         const mediaInner = hasImg
-          ? `<img src="${a.image}" alt="${escapeHtml(a.title)}" loading="lazy"/>`
+          ? `<img src="${a.image}" alt="${escapeHtml(a.title)}" width="600" height="400" loading="lazy"/>`
           : '';
         return `
       <article class="${cardCls}">
@@ -317,7 +333,7 @@ function liveBadgeHtml(a) {
       const hasImg = !!(a.image && String(a.image).trim());
       const thumbCls = hasImg ? 'latest__thumb' : 'latest__thumb latest__thumb--no-image';
       const thumbInner = hasImg
-        ? `<img src="${a.image}" alt="${escapeHtml(a.title)}" loading="lazy"/>`
+        ? `<img src="${a.image}" alt="${escapeHtml(a.title)}" width="320" height="200" loading="lazy"/>`
         : `<span class="latest__thumb-mark">FBRK</span>`;
       return `
       <li class="latest__item">
@@ -404,7 +420,7 @@ function liveBadgeHtml(a) {
         <div class="video-card__media">
           <img src="${v.thumb}"
                onerror="this.onerror=null;this.src='${v.thumb_fallback || 'https://i.ytimg.com/vi/'+v.id+'/hqdefault.jpg'}'"
-               alt="${escapeHtml(v.title)}" loading="lazy"/>
+               alt="${escapeHtml(v.title)}" width="480" height="270" loading="lazy"/>
           <div class="video-card__play">
             <div class="video-card__play-btn" aria-hidden="true">${playSvg}</div>
           </div>
@@ -550,7 +566,7 @@ function liveBadgeHtml(a) {
         ${shareHtml}
       </header>
       <div class="article__cover">
-        <img src="${fullCover(a)}" alt="${escapeHtml(a.title)}" loading="eager"/>
+        <img src="${fullCover(a)}" alt="${escapeHtml(a.title)}" width="1200" height="675" loading="eager"/>
       </div>
       <div class="article__body">
         ${a.sections.map((s) => `<h2>${escapeHtml(s.h)}</h2><p>${escapeHtml(s.p)}</p>`).join('')}
@@ -568,7 +584,7 @@ function liveBadgeHtml(a) {
                 const hasImg = !!(x.image && String(x.image).trim());
                 const cardCls = hasImg ? 'card' : 'card card--no-image';
                 const mediaInner = hasImg
-                  ? `<img src="${x.image}" alt="${escapeHtml(x.title)}" loading="lazy"/>`
+                  ? `<img src="${x.image}" alt="${escapeHtml(x.title)}" width="600" height="400" loading="lazy"/>`
                   : '';
                 return `
             <article class="${cardCls}">
@@ -811,7 +827,7 @@ function escapeHtml(s) {
     const hasImg = !!(a.image && String(a.image).trim());
     const cardCls = hasImg ? 'card' : 'card card--no-image';
     const mediaInner = hasImg
-      ? `<img src="${a.image}" alt="${escapeHtml(a.title)}" loading="lazy"/>`
+      ? `<img src="${a.image}" alt="${escapeHtml(a.title)}" width="600" height="400" loading="lazy"/>`
       : '';
     return `
       <article class="${cardCls}">
@@ -821,7 +837,7 @@ function escapeHtml(s) {
             <span class="card__date-badge">${fmtDateShort(a.dateIso) || a.date}</span>
             ${importanceBadgeHtml(a)}${liveBadgeHtml(a)}
           </div>
-          <h3 class="card__title">${escapeHtml(a.title)}</h3>
+          <h2 class="card__title">${escapeHtml(a.title)}</h2>
         </a>
         <p class="card__dek">${escapeHtml(a.dek)}</p>
       </article>`;
