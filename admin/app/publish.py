@@ -66,21 +66,20 @@ def _load_articles() -> list[dict]:
 
 
 def _public_shape(a: dict) -> dict:
-    """Strip admin-only fields; keep exactly what js/app.js expects."""
+    """Strip admin-only fields; keep ONLY listing-card fields.
+    Full body (sections), author, source live on SSR /a/<slug> page —
+    not in client-side data.js (saves ~95% bandwidth)."""
     shape = {
         "id": a["id"],
         "slug": a["slug"],
         "title": a["title"],
         "dek": a["dek"],
-        "author": a["author"],
         "date": a["date"],
         "dateIso": a["dateIso"],
         "category": a["category"],
         "categoryLabel": a["categoryLabel"],
         "image": a["image"],
         "tags": a["tags"],
-        "source": a["source"],
-        "sections": a["sections"],
         **({"featured": True} if a.get("featured") else {}),
     }
     imp = a.get("_meta_importance")
@@ -213,9 +212,21 @@ def regenerate_data_js() -> dict:
     lock_file = str(out.with_suffix(out.suffix + ".lock"))
     with _PUBLISH_LOCK, _file_lock(lock_file):
         articles = [_public_shape(a) for a in _load_articles()]
-        data = {**SITE_META, "articles": articles}
-        body = HEADER + json.dumps(data, ensure_ascii=False, indent=2) + ";\n"
+
+        # Tier 1: data.js — homepage (last N articles). Fast initial load.
+        # N is tunable via FBRK_HOME_LATEST_LIMIT env var (default 200).
+        limit = max(1, int(getattr(settings, "home_latest_limit", 200)))
+        recent = articles[:limit]
+        data = {**SITE_META, "articles": recent, "totalCount": len(articles)}
+        body = HEADER + json.dumps(data, ensure_ascii=False) + ";\n"
         _atomic_write(out, body)
+
+        # Tier 2: data-archive.js — full archive (all articles, compact).
+        # Loaded only by archive.html, not by index/article pages.
+        archive_out = out.parent / "data-archive.js"
+        archive_data = {"articles": articles}
+        archive_body = "/* ФБРК archive — auto-generated. */\nwindow.ARTICLES_ARCHIVE = " + json.dumps(archive_data, ensure_ascii=False) + ";\n"
+        _atomic_write(archive_out, archive_body)
 
         # Note: sitemap.xml, feed.xml, feed/ia.xml and robots.txt are now served
         # dynamically by FastAPI (app.seo). Legacy static writers removed so stale

@@ -49,6 +49,9 @@ class Settings:
 
     # Public site regeneration
     data_js_path: str = _env("FBRK_DATA_JS", str(Path(__file__).resolve().parent.parent.parent / "js" / "data.js"))
+    # Tier 1 (homepage data.js): how many recent articles to embed for fast initial load.
+    # Full archive lives in data-archive.js and is loaded only on /archive.html.
+    home_latest_limit: int = int(_env("FBRK_HOME_LATEST_LIMIT", "200"))
 
 
 settings = Settings()

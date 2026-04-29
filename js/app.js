@@ -353,8 +353,16 @@ function liveBadgeHtml(a) {
       const next = pool.slice(rendered, rendered + PAGE);
       latestRoot.insertAdjacentHTML('beforeend', next.map(renderItem).join(''));
       rendered += next.length;
-      if (moreBtn) moreBtn.style.display = rendered >= pool.length ? 'none' : '';
-      if (moreBtn) moreBtn.textContent = `Показать ещё (осталось ${pool.length - rendered})`;
+      if (!moreBtn) return;
+      if (rendered >= pool.length) {
+        // Пул свежих новостей кончился — показываем CTA в архив,
+        // чтобы пользователь не упирался в пустоту.
+        moreBtn.classList.add('latest__more--archive');
+        moreBtn.textContent = 'Открыть весь архив →';
+        moreBtn.onclick = () => { window.location.href = '/archive.html'; };
+      } else {
+        moreBtn.textContent = `Показать ещё (осталось ${pool.length - rendered})`;
+      }
     }
     latestRoot.innerHTML = '';
     // Insert "Ещё" button after the .latest grid container

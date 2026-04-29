@@ -945,6 +945,15 @@ input {
 .latest__more:active {
   transform: translateY(0);
 }
+.latest__more--archive {
+  background: var(--color-brand);
+  color: #fff;
+  border-color: var(--color-brand);
+}
+.latest__more--archive:hover {
+  background: #0a0e4d;
+  border-color: #0a0e4d;
+}
 
 /* ---------- Article share buttons ---------- */
 .article__share {
