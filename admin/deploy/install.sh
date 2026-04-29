@@ -37,6 +37,7 @@ FBRK_UPLOADS_DIR=/var/www/fbrk.qdev.run/img/uploads
 FBRK_UPLOADS_URL=img/uploads
 FBRK_DATA_JS=/var/www/fbrk.qdev.run/js/data.js
 FBRK_SESSION_DAYS=7
+FBRK_COOKIE_SECURE=true
 EOF
     chmod 600 "$ENV_DIR/fbrk-admin.env"
     chown root:root "$ENV_DIR/fbrk-admin.env"
