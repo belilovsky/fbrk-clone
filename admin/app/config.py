@@ -18,12 +18,20 @@ def _env_bool(name: str, default: bool) -> bool:
     return raw.strip().lower() in {"1", "true", "yes", "on"}
 
 
+def _env_first(names: tuple[str, ...], default: str) -> str:
+    for name in names:
+        value = os.environ.get(name)
+        if value:
+            return value
+    return default
+
+
 @dataclass
 class Settings:
     # Paths
     base_dir: Path = Path(__file__).resolve().parent.parent       # admin/
     project_root: Path = Path(__file__).resolve().parent.parent.parent  # fbrk/
-    db_path: str = _env("FBRK_DB_PATH", str(Path(__file__).resolve().parent.parent / "fbrk.db"))
+    db_path: str = _env_first(("FBRK_DB_PATH", "FBRK_DB"), str(Path(__file__).resolve().parent.parent / "fbrk.db"))
     public_root: str = _env("FBRK_PUBLIC_ROOT", str(Path(__file__).resolve().parent.parent.parent))
     uploads_dir: str = _env("FBRK_UPLOADS_DIR", str(Path(__file__).resolve().parent.parent.parent / "img" / "uploads"))
     uploads_url_prefix: str = _env("FBRK_UPLOADS_URL", "img/uploads")
