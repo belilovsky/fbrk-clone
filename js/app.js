@@ -182,8 +182,7 @@ function fbrkToast(message, ms = 2400) {
       return hay.includes(q);
     }).slice(0, 50);
     if (!matches.length) {
-      results.innerHTML =
-        '<div style="color:var(--color-text-muted); padding: var(--space-5) 0; font-size: var(--text-sm);">Ничего не найдено. Попробуйте другой запрос.</div>';
+      results.innerHTML = '<div class="search-empty" role="status">Ничего не найдено. Попробуйте другой запрос.</div>';
       return;
     }
     results.innerHTML = matches.map(toResultHtml).join('');
@@ -544,8 +543,10 @@ function liveBadgeHtml(a) {
     return;
   }
   if (typeof FBRK_DATA === 'undefined') return;
-  const a = FBRK_DATA.articles.find((x) => x.id === id) || FBRK_DATA.articles[0];
-  if (!a) return;
+  const a = id
+    ? FBRK_DATA.articles.find((x) => x.id === id || x.slug === id)
+    : null;
+  if (!a || !Array.isArray(a.sections)) return;
 
   document.title = `${a.title} — ФБРК`;
 
@@ -628,7 +629,7 @@ function liveBadgeHtml(a) {
     e.preventDefault();
     navigator.clipboard?.writeText(location.href).then(() => {
       const prev = btn.innerHTML;
-      btn.innerHTML = '<span style="font-size:.85em">Скопировано</span>';
+      btn.innerHTML = '<span class="article__share-feedback">Скопировано</span>';
       setTimeout(() => { btn.innerHTML = prev; }, 1600);
     });
   });

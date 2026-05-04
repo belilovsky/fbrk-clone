@@ -1359,6 +1359,9 @@ input {
   border-color: var(--color-brand);
   transform: translateY(-1px);
 }
+.article__share-feedback {
+  font-size: 0.85em;
+}
 [data-theme="dark"] .article__share__btn:hover {
   color: #fff;
   background: var(--color-brand);
@@ -1671,6 +1674,11 @@ input {
 }
 .search-result:hover .search-result__title {
   color: var(--color-primary);
+}
+.search-empty {
+  padding: var(--space-5) 0;
+  color: var(--color-text-muted);
+  font-size: var(--text-sm);
 }
 
 /* ---------- Reduced motion ---------- */
