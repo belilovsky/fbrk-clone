@@ -279,8 +279,15 @@ function liveBadgeHtml(a) {
         <a href="/a/${featured.slug || featured.id}">${escapeHtml(featured.title)}</a>
       </h1>
       <p class="lead__dek">${escapeHtml(featured.dek)}</p>
-      <div class="lead__meta">
-        <span>${fmtDateLong(featured.dateIso) || featured.date}</span>
+      <div class="lead__footer">
+        <a class="lead__button" href="/a/${featured.slug || featured.id}">
+          Читать материал
+          <svg viewBox="0 0 20 20" aria-hidden="true"><path d="M7 4l6 6-6 6" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>
+        </a>
+        <div class="lead__meta">
+          <span>${fmtDateLong(featured.dateIso) || featured.date}</span>
+          ${importanceBadgeHtml(featured)}${liveBadgeHtml(featured)}
+        </div>
       </div>
     </div>
   `;
@@ -358,7 +365,7 @@ function liveBadgeHtml(a) {
         // Пул свежих новостей кончился — показываем CTA в архив,
         // чтобы пользователь не упирался в пустоту.
         moreBtn.classList.add('latest__more--archive');
-        moreBtn.textContent = 'Открыть весь архив →';
+        moreBtn.textContent = 'Открыть весь архив';
         moreBtn.onclick = () => { window.location.href = '/archive.html'; };
       } else {
         moreBtn.textContent = `Показать ещё (осталось ${pool.length - rendered})`;
