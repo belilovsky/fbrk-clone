@@ -79,6 +79,32 @@ def _strip_html(s: str) -> str:
     return s
 
 
+_INLINE_TAGS = r"(?:a|b|strong|i|em|u|mark|span)"
+_WORD_CHARS = r"0-9A-Za-zА-Яа-яЁё"
+
+
+def _normalize_inline_spacing(s: str) -> str:
+    """Restore visual word gaps lost around inline HTML tags during ingestion."""
+    if not s:
+        return ""
+    s = re.sub(rf"(?<=[{_WORD_CHARS}])(<{_INLINE_TAGS}\b)", r" \1", s, flags=re.IGNORECASE)
+    s = re.sub(rf"(</{_INLINE_TAGS}>)(?=[{_WORD_CHARS}(«])", r"\1 ", s, flags=re.IGNORECASE)
+    return s
+
+
+def _display_dek(raw_dek: str, plain_body: str) -> str:
+    dek = _strip_html(_normalize_inline_spacing(raw_dek or ""))
+    if not dek:
+        return (plain_body or "")[:240].strip()
+
+    compact_dek = re.sub(r"\s+", "", dek)
+    compact_body = re.sub(r"\s+", "", plain_body or "")
+    prefix_len = min(120, len(compact_dek))
+    if prefix_len >= 40 and compact_body.startswith(compact_dek[:prefix_len]):
+        return (plain_body or "")[:240].strip()
+    return dek
+
+
 def _sections_to_plain(sections: list) -> str:
     parts: list[str] = []
     for s in sections or []:
@@ -108,7 +134,7 @@ def _sections_to_html(sections: list) -> str:
             out.append(f'<figure><img src="{src}" alt="{cap}" /></figure>')
         if p:
             # Body may already contain <p>/<strong>/<em>/<a>. Keep as-is.
-            out.append(str(p))
+            out.append(_normalize_inline_spacing(str(p)))
     return "\n".join(out)
 
 
@@ -176,8 +202,9 @@ def ssr_article(slug: str, request: Request):
 
     url = f"{SITE_URL}/a/{a['slug']}"
     title = a["title"]
-    dek = _strip_html(a.get("dek") or "")
     plain_body = _sections_to_plain(a.get("sections") or [])
+    dek = _display_dek(a.get("dek") or "", plain_body)
+    a = {**a, "dek": dek}
     # Prefer AI short summary when available (tighter, better for SEO/LLMs)
     desc = (meta.get("summary_short") or dek or plain_body[:240]).strip()[:240]
     image = _abs_url(a.get("image") or "")
