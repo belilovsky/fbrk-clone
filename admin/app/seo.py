@@ -76,6 +76,8 @@ def _strip_html(s: str) -> str:
     s = re.sub(r"<[^>]+>", " ", s)
     s = html.unescape(s)
     s = re.sub(r"\s+", " ", s).strip()
+    s = re.sub(r"\s+([,.;:!?%)\]])", r"\1", s)
+    s = re.sub(r"([(«])\s+", r"\1", s)
     return s
 
 
