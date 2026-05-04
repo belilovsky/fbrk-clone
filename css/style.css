@@ -909,7 +909,7 @@ input {
   align-items: center;
   gap: var(--space-3);
   font-size: var(--text-xs);
-  color: var(--color-text-faint);
+  color: var(--color-text-muted);
   letter-spacing: 0;
   font-weight: 500;
   padding-top: var(--space-5);
@@ -2152,9 +2152,22 @@ button:focus-visible, a:focus-visible { outline-offset: 3px; }
 .card__media .live-badge,
 .latest__thumb .live-badge {
   position: absolute;
-  top: var(--space-3);
+  top: auto;
+  bottom: var(--space-3);
   left: var(--space-3);
   z-index: 3;
+}
+.latest__thumb .live-badge {
+  bottom: 6px;
+  left: 6px;
+  gap: 4px;
+  padding: 3px 6px;
+  font-size: 9px;
+  letter-spacing: 0.04em;
+}
+.latest__thumb .live-badge__dot {
+  width: 5px;
+  height: 5px;
 }
 
 .article__tldr {

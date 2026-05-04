@@ -30,9 +30,9 @@ import sqlite3
 import sys
 import time
 from datetime import datetime, timezone
-from html import unescape
+from html import escape
 from pathlib import Path
-from typing import Iterable, Optional
+from typing import Optional
 from urllib.parse import urljoin, urlparse
 
 import requests
@@ -45,7 +45,7 @@ from app.editorjs import editorjs_to_sections  # noqa: E402
 LOG = logging.getLogger("ingest_fbrk")
 BASE = "https://fbrk.kz"
 UA = "Mozilla/5.0 (compatible; FBRK-clone-sync/1.0; +https://fbrk.qdev.run/about)"
-DB_PATH = os.environ.get("FBRK_DB", "/opt/fbrk-admin/fbrk.db")
+DB_PATH = os.environ.get("FBRK_DB_PATH") or os.environ.get("FBRK_DB") or "/opt/fbrk-admin/fbrk.db"
 MEDIA_BASE = os.environ.get("FBRK_MEDIA_BASE", "/img/uploads")  # local proxy if any
 TIMEOUT = 30
 SESSION = requests.Session()
@@ -93,34 +93,137 @@ def fmt_date_label(iso: str) -> str:
 INLINE_TAGS = {"a", "b", "strong", "i", "em", "u", "s", "code", "br", "span", "mark", "small", "sup", "sub"}
 
 
-def _inline_html(node: Tag) -> str:
-    """Render node's children to html, keeping only inline tools allowed by Editor.js."""
-    parts: list[str] = []
+def _clean_inline_text(text: str) -> str:
+    text = (text or "").replace("\xa0", " ")
+    text = re.sub(r"\s+", " ", text).strip()
+    text = re.sub(r"^(?:<br>\s*)+", "", text, flags=re.I).strip()
+    text = re.sub(r"(?:<br>\s*)+$", "", text, flags=re.I).strip()
+    return text
+
+
+def _has_visible_text(fragment: str) -> bool:
+    text = re.sub(r"<[^>]+>", " ", fragment or "")
+    return bool(re.sub(r"\s+", " ", text).strip())
+
+
+def _safe_href(href: str) -> str:
+    href = (href or "").strip()
+    if not href:
+        return ""
+    parsed = urlparse(href)
+    if parsed.scheme and parsed.scheme.lower() not in {"http", "https", "mailto", "tel"}:
+        return ""
+    return escape(href, quote=True)
+
+
+def _inline_tokens(node: Tag) -> list[tuple[str, str, str]]:
+    """Tokenise inline HTML so paragraph splits can keep tags balanced."""
+    tokens: list[tuple[str, str, str]] = []
     for child in node.children:
         if isinstance(child, NavigableString):
-            parts.append(unescape(str(child)))
+            text = str(child).replace("\xa0", " ")
+            if text:
+                tokens.append(("text", escape(text, quote=False), ""))
         elif isinstance(child, Tag):
             t = child.name.lower()
             if t == "br":
-                parts.append("<br>")
+                tokens.append(("br", "<br>", ""))
             elif t == "a":
-                href = (child.get("href") or "").strip()
-                inner = _inline_html(child)
+                href = _safe_href(child.get("href") or "")
+                inner = _inline_tokens(child)
                 if href:
-                    parts.append(f'<a href="{href}">{inner}</a>')
+                    tokens.append(("start", f'<a href="{href}">', "</a>"))
+                    tokens.extend(inner)
+                    tokens.append(("end", "</a>", ""))
                 else:
-                    parts.append(inner)
+                    tokens.extend(inner)
             elif t in ("strong", "b"):
-                parts.append(f"<b>{_inline_html(child)}</b>")
+                tokens.append(("start", "<b>", "</b>"))
+                tokens.extend(_inline_tokens(child))
+                tokens.append(("end", "</b>", ""))
             elif t in ("em", "i"):
-                parts.append(f"<i>{_inline_html(child)}</i>")
+                tokens.append(("start", "<i>", "</i>"))
+                tokens.extend(_inline_tokens(child))
+                tokens.append(("end", "</i>", ""))
             elif t in INLINE_TAGS:
-                parts.append(_inline_html(child))
+                tokens.extend(_inline_tokens(child))
             else:
-                parts.append(_inline_html(child))
-    txt = "".join(parts)
-    txt = re.sub(r"\s+", " ", txt).strip()
-    return txt
+                tokens.extend(_inline_tokens(child))
+    return tokens
+
+
+def _render_inline_tokens(tokens: list[tuple[str, str, str]]) -> str:
+    parts: list[str] = []
+    for kind, value, _ in tokens:
+        parts.append("<br>" if kind == "br" else value)
+    return _clean_inline_text("".join(parts))
+
+
+def _paragraph_parts(el: Tag) -> list[str]:
+    """Split a paragraph on double <br> while keeping inline tags valid."""
+    tokens = _inline_tokens(el)
+    parts: list[str] = []
+    current: list[str] = []
+    active: list[tuple[str, str]] = []
+    i = 0
+
+    def close_active() -> list[str]:
+        return [end for _, end in reversed(active)]
+
+    def open_active() -> list[str]:
+        return [start for start, _ in active]
+
+    def finish_current() -> None:
+        fragment = _clean_inline_text("".join(current + close_active()))
+        if _has_visible_text(fragment):
+            parts.append(fragment)
+
+    while i < len(tokens):
+        kind, value, end = tokens[i]
+        if kind == "br":
+            j = i
+            br_count = 0
+            while j < len(tokens):
+                next_kind, next_value, _ = tokens[j]
+                if next_kind == "br":
+                    br_count += 1
+                    j += 1
+                    continue
+                if next_kind == "text" and not next_value.strip():
+                    j += 1
+                    continue
+                break
+            if br_count >= 2:
+                finish_current()
+                current = open_active()
+                i = j
+                continue
+            current.append("<br>")
+        elif kind == "start":
+            current.append(value)
+            active.append((value, end))
+        elif kind == "end":
+            current.append(value)
+            if active and active[-1][1] == value:
+                active.pop()
+            else:
+                for idx in range(len(active) - 1, -1, -1):
+                    if active[idx][1] == value:
+                        del active[idx]
+                        break
+        else:
+            current.append(value)
+        i += 1
+
+    fragment = _clean_inline_text("".join(current))
+    if _has_visible_text(fragment):
+        parts.append(fragment)
+    return parts
+
+
+def _inline_html(node: Tag) -> str:
+    """Render node's children to html, keeping only inline tools allowed by Editor.js."""
+    return _render_inline_tokens(_inline_tokens(node))
 
 
 def _split_paragraph_on_double_br(text: str) -> list[str]:
@@ -138,14 +241,13 @@ def _split_paragraph_on_double_br(text: str) -> list[str]:
 def _block_from(el: Tag) -> Optional[dict] | list[dict]:
     name = el.name.lower()
     if name in ("p",):
-        text = _inline_html(el)
-        if not text or text in ("&nbsp;", " "):
+        parts = _paragraph_parts(el)
+        if not parts:
             return None
         # If <p> contains <br><br>, split into multiple paragraphs.
-        parts = _split_paragraph_on_double_br(text)
         if len(parts) > 1:
             return [{"type": "paragraph", "data": {"text": p}} for p in parts]
-        return {"type": "paragraph", "data": {"text": text}}
+        return {"type": "paragraph", "data": {"text": parts[0]}}
     if name in ("h2", "h3"):
         text = el.get_text(" ", strip=True)
         if not text:
@@ -241,10 +343,23 @@ def html_to_editorjs(html_text: str | Tag) -> dict:
 
 # ─── article page parser ───────────────────────────────────────────────────────
 ARTICLE_RE = re.compile(r"^/(news|articles)/[^/]+/?$")
+FBRK_HOSTS = {"fbrk.kz", "www.fbrk.kz"}
+
+
+def _is_fbrk_article_url(url: str) -> bool:
+    p = urlparse(url)
+    return (
+        p.scheme in {"http", "https"}
+        and p.netloc.lower() in FBRK_HOSTS
+        and bool(ARTICLE_RE.match(p.path))
+    )
 
 
 def parse_article(url: str) -> Optional[dict]:
     """Fetch + parse a fbrk.kz article URL → dict matching `articles` columns."""
+    if not _is_fbrk_article_url(url):
+        LOG.warning("reject non-fbrk article URL: %s", url)
+        return None
     html_text = fetch(url)
     if not html_text:
         return None
@@ -355,7 +470,7 @@ WHERE
   -- only overwrite body if the new one is *better* — compare total content length
   -- (sections_json count alone misses the case where a single section grows from
   --  one paragraph to many because fbrk.kz uses <br><br> as paragraph separator).
-  length(excluded.sections_json) >= length(articles.sections_json)
+  COALESCE(length(excluded.sections_json), 0) >= COALESCE(length(articles.sections_json), 0)
 """
 
 
@@ -412,8 +527,7 @@ def discover_sitemap_urls() -> list[str]:
         # article URLs
         for loc in re.findall(r"<loc>([^<]+)</loc>", xml):
             loc = loc.strip()
-            p = urlparse(loc)
-            if p.netloc.endswith("fbrk.kz") and ARTICLE_RE.match(p.path):
+            if _is_fbrk_article_url(loc):
                 seen.append(loc)
     # dedup, keep order
     out, dedup = [], set()
@@ -494,8 +608,9 @@ def main():
         datefmt="%H:%M:%S",
     )
 
-    con = sqlite3.connect(DB_PATH)
+    con = sqlite3.connect(DB_PATH, timeout=30)
     con.row_factory = sqlite3.Row
+    con.execute("PRAGMA busy_timeout = 30000")
 
     n = 0
     if args.mode == "rss":

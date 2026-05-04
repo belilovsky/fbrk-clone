@@ -1,8 +1,13 @@
 """Publish articles from SQLite -> public js/data.js + sitemap.xml + feed.xml."""
 from __future__ import annotations
 
+import fcntl
 import html
 import json
+import os
+import tempfile
+import threading
+from contextlib import contextmanager
 from datetime import datetime, timezone
 from pathlib import Path
 
@@ -107,8 +112,9 @@ def _write_sitemap(articles: list[dict], web_root: Path) -> None:
     ]
     for a in articles:
         iso = (a.get("dateIso") or now)
+        slug = a.get("slug") or a["id"]
         urls.append((
-            f"{SITE_URL}/article.html?id={a['id']}",
+            f"{SITE_URL}/a/{slug}",
             iso,
             "monthly",
             "0.7",
@@ -151,7 +157,8 @@ def _write_feed(articles: list[dict], web_root: Path) -> None:
         f'    <atom:link href="{SITE_URL}/feed.xml" rel="self" type="application/rss+xml" />',
     ]
     for a in items:
-        url = f"{SITE_URL}/article.html?id={a['id']}"
+        slug = a.get("slug") or a["id"]
+        url = f"{SITE_URL}/a/{slug}"
         img = a.get("image") or ""
         if img and not img.startswith("http"):
             img = f"{SITE_URL}{img}"
@@ -171,12 +178,6 @@ def _write_feed(articles: list[dict], web_root: Path) -> None:
     (web_root / "feed.xml").write_text("\n".join(lines), encoding="utf-8")
 
 
-import os
-import fcntl
-import tempfile
-import threading
-from contextlib import contextmanager
-
 _PUBLISH_LOCK = threading.Lock()
 
 
@@ -190,8 +191,10 @@ def _atomic_write(path: Path, body: str) -> None:
         os.replace(tmp, path)
     finally:
         if os.path.exists(tmp):
-            try: os.unlink(tmp)
-            except OSError: pass
+            try:
+                os.unlink(tmp)
+            except OSError:
+                pass
 
 
 @contextmanager
@@ -202,8 +205,10 @@ def _file_lock(lock_path: str):
         fcntl.flock(fd, fcntl.LOCK_EX)
         yield
     finally:
-        try: fcntl.flock(fd, fcntl.LOCK_UN)
-        except OSError: pass
+        try:
+            fcntl.flock(fd, fcntl.LOCK_UN)
+        except OSError:
+            pass
         os.close(fd)
 
 
