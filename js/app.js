@@ -645,7 +645,7 @@ function escapeHtml(s) {
   const titleEl = document.querySelector('[data-article-title]');
   if (!titleEl || typeof FBRK_DATA === 'undefined') return;
   const id = new URLSearchParams(location.search).get('id');
-  const a = FBRK_DATA.articles.find((x) => x.id === id) || FBRK_DATA.articles[0];
+  const a = id ? FBRK_DATA.articles.find((x) => x.id === id || x.slug === id) : null;
   if (!a) return;
   const title = `${a.title} — ФБРК`;
   const desc = (a.dek || '').slice(0, 200);

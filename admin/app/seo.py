@@ -89,17 +89,22 @@ def _normalize_inline_spacing(s: str) -> str:
     """Restore visual word gaps lost around inline HTML tags during ingestion."""
     if not s:
         return ""
-    s = re.sub(
+    punctuation_tag = re.compile(
         rf"\s*<{_INLINE_TAGS}\b[^>]*>\s*([,.;:!?%)\]])\s*</{_INLINE_TAGS}>",
-        r"\1",
-        s,
         flags=re.IGNORECASE,
     )
-    s = re.sub(rf"<{_INLINE_TAGS}\b[^>]*>\s*</{_INLINE_TAGS}>", "", s, flags=re.IGNORECASE)
+    empty_tag = re.compile(rf"<{_INLINE_TAGS}\b[^>]*>\s*</{_INLINE_TAGS}>", flags=re.IGNORECASE)
+    while True:
+        normalized = punctuation_tag.sub(r"\1", s)
+        normalized = empty_tag.sub("", normalized)
+        if normalized == s:
+            break
+        s = normalized
     s = re.sub(rf"(?<=[{_WORD_CHARS}])(<{_INLINE_TAGS}\b)", r" \1", s, flags=re.IGNORECASE)
     s = re.sub(rf"(?<=[,.;:!?])(<{_INLINE_TAGS}\b)", r" \1", s, flags=re.IGNORECASE)
     s = re.sub(rf"(</{_INLINE_TAGS}>)(<{_INLINE_TAGS}\b)", r"\1 \2", s, flags=re.IGNORECASE)
     s = re.sub(rf"(</{_INLINE_TAGS}>)(?=[{_WORD_CHARS}(«])", r"\1 ", s, flags=re.IGNORECASE)
+    s = re.sub(rf"(?<=>)([,;:!?])(?=[{_WORD_CHARS}])", r"\1 ", s, flags=re.IGNORECASE)
     return s
 
 
