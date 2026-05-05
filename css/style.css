@@ -1394,6 +1394,26 @@ input {
   margin-bottom: var(--space-5);
   max-width: 68ch;
 }
+.article__body ul,
+.article__body ol {
+  max-width: 68ch;
+  margin: 0 0 var(--space-5) var(--space-6);
+  padding: 0;
+}
+.article__body li {
+  margin-bottom: var(--space-2);
+  padding-left: var(--space-1);
+}
+.article__body blockquote {
+  max-width: 68ch;
+  margin: var(--space-7) 0;
+  padding: var(--space-4) 0 var(--space-4) var(--space-5);
+  border-left: 3px solid #0c115f;
+  color: var(--color-text);
+}
+.article__body blockquote > :last-child {
+  margin-bottom: 0;
+}
 .article__body figure,
 .article__body .article__inline-media {
   margin: var(--space-8) 0;

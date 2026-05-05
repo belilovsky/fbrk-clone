@@ -334,7 +334,15 @@ def _block_from(el: Tag) -> Optional[dict] | list[dict]:
     if name == "blockquote":
         nested_list = el.find(["ul", "ol"], recursive=False)
         if nested_list:
-            return _block_from(nested_list)
+            tag = nested_list.name.lower()
+            items = []
+            for li in nested_list.find_all("li", recursive=False):
+                inner = _inline_html(li)
+                if inner:
+                    items.append(f"<li>{inner}</li>")
+            if items:
+                text = f"<{tag}>{''.join(items)}</{tag}>"
+                return {"type": "quote", "data": {"text": text, "caption": "", "alignment": "left"}}
         text = _inline_html(el)
         if not text:
             return None
