@@ -23,9 +23,10 @@ GitHub PR: https://github.com/belilovsky/fbrk-clone/pull/12
 
 - Repo: `belilovsky/fbrk-clone`.
 - Current branch: `audit/frontend-visual-polish`.
-- Head SHA: `eaaf4bd6fe67b078c539a2d93257583532152b00`.
+- Prod-deployed code SHA: `eaaf4bd6fe67b078c539a2d93257583532152b00`.
+- Current branch head: see PR #12 / `origin/audit/frontend-visual-polish`; docs-only handoff commits may move this after prod deploy.
 - Branch pushed to origin: yes.
-- Current open PR: #12 `fix(frontend): визуальная полировка AV DS страниц`.
+- Current open PR: #12 `fix(frontend): финальная AV DS полировка и prod handoff`.
 - PR #12 is stacked on PR #6 (`audit/frontend-home-avds-refresh`). This is intentional for review history. If the owner wants one direct merge into `master`, retarget/review the stack before merge.
 - `master` at verification time: `5264caa3b8bf6ec1c9b265b8a7279be51bfb89f7`.
 
