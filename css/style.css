@@ -3335,12 +3335,12 @@ body:has(.site-footer) .footer {
 
 .article-main .article__head {
   max-width: var(--content-default);
-  padding: var(--space-8);
-  margin-bottom: var(--space-6);
-  background: var(--page-card);
-  border: 1px solid var(--page-border);
-  border-radius: var(--page-radius);
-  box-shadow: var(--shadow-sm);
+  padding: 0;
+  margin-bottom: var(--space-7);
+  background: transparent;
+  border: 0;
+  border-radius: 0;
+  box-shadow: none;
 }
 
 .article-main .article__kicker {
@@ -3377,11 +3377,11 @@ body:has(.site-footer) .footer {
 }
 
 .article-main .article__body {
-  padding: var(--space-8);
-  background: var(--page-card);
-  border: 1px solid var(--page-border);
-  border-radius: var(--page-radius);
-  box-shadow: var(--shadow-sm);
+  padding: 0;
+  background: transparent;
+  border: 0;
+  border-radius: 0;
+  box-shadow: none;
 }
 
 .article-main .article__body h2 {
@@ -3395,11 +3395,11 @@ body:has(.site-footer) .footer {
 
 .article-main .article__tldr,
 .article-main .article__source {
-  border: 1px solid var(--page-border);
+  border: 0;
   border-left: 3px solid #0c115f;
-  border-radius: var(--page-radius);
-  background: var(--page-card);
-  box-shadow: var(--shadow-2xs);
+  border-radius: 0;
+  background: transparent;
+  box-shadow: none;
 }
 
 .article-main .article__back a {
@@ -3522,9 +3522,12 @@ body:has(.site-footer) .footer {
 
   .archive-main .archive__head,
   .about-main .about__intro,
-  .article-main .article__head,
-  .article-main .article__body {
+  .article-main .article__head {
     padding: var(--space-5);
+  }
+
+  .article-main .article__body {
+    padding: 0 var(--space-5);
   }
 
   .archive-main .archive__toolbar {
