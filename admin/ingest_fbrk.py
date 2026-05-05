@@ -522,6 +522,17 @@ WHERE
 
 
 def upsert(con: sqlite3.Connection, art: dict) -> str:
+    legacy = con.execute(
+        "SELECT id FROM articles WHERE slug = ? AND id <> ? LIMIT 1",
+        (art["slug"], art["id"]),
+    ).fetchone()
+    if legacy:
+        # Some legacy hand-curated rows keep a short stable id while already
+        # using the canonical fbrk.kz slug. Preserve that id and update in
+        # place instead of creating a duplicate or tripping the slug constraint.
+        art = dict(art)
+        art["id"] = legacy["id"]
+
     cur = con.execute("SELECT json_array_length(json_extract(body_json,'$.blocks')) FROM articles WHERE id = ?", (art["id"],))
     row = cur.fetchone()
     before = row[0] if row else None
