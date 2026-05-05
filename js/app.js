@@ -138,6 +138,11 @@ function fbrkToast(message, ms = 2400) {
   if (!overlay) return;
   const input = overlay.querySelector('.search-box__input');
   const results = overlay.querySelector('.search-box__results');
+  let activeIndex = -1;
+  results.id = results.id || 'search-results';
+  results.setAttribute('role', 'listbox');
+  input.setAttribute('aria-controls', results.id);
+  input.setAttribute('aria-autocomplete', 'list');
   // Lazy getter: when full archive lands later, search uses it automatically.
   function dataset() {
     if (typeof ARTICLES_ARCHIVE !== 'undefined' && ARTICLES_ARCHIVE.articles) return ARTICLES_ARCHIVE.articles;
@@ -154,10 +159,29 @@ function fbrkToast(message, ms = 2400) {
     overlay.classList.remove('is-open');
     document.body.style.overflow = '';
     input.value = '';
+    activeIndex = -1;
+    input.removeAttribute('aria-activedescendant');
     renderResults('');
   }
-  function toResultHtml(a) {
-    return `<a class="search-result" href="/a/${a.slug || a.id}">
+  function resultItems() {
+    return [...results.querySelectorAll('.search-result')];
+  }
+  function setActive(index) {
+    const items = resultItems();
+    activeIndex = items.length ? (index + items.length) % items.length : -1;
+    items.forEach((item, i) => {
+      const active = i === activeIndex;
+      item.classList.toggle('is-active', active);
+      item.setAttribute('aria-selected', active ? 'true' : 'false');
+      if (active) {
+        input.setAttribute('aria-activedescendant', item.id);
+        item.scrollIntoView({ block: 'nearest' });
+      }
+    });
+    if (activeIndex < 0) input.removeAttribute('aria-activedescendant');
+  }
+  function toResultHtml(a, index) {
+    return `<a class="search-result" id="search-result-${index}" role="option" aria-selected="false" href="/a/${a.slug || a.id}">
       <div class="search-result__title">${escapeHtml(a.title)}</div>
       <div class="search-result__meta">${a.categoryLabel} · ${fmtDateLong(a.dateIso) || a.date}</div>
     </a>`;
@@ -165,6 +189,8 @@ function fbrkToast(message, ms = 2400) {
   function renderResults(q) {
     const data = dataset();
     q = q.trim().toLowerCase();
+    activeIndex = -1;
+    input.removeAttribute('aria-activedescendant');
     if (!q) {
       results.innerHTML = data.slice(0, 5).map(toResultHtml).join('');
       return;
@@ -198,6 +224,27 @@ function fbrkToast(message, ms = 2400) {
       e.preventDefault();
       open();
     }
+  });
+  input.addEventListener('keydown', (e) => {
+    const items = resultItems();
+    if (!items.length) return;
+    if (e.key === 'ArrowDown') {
+      e.preventDefault();
+      setActive(activeIndex + 1);
+    } else if (e.key === 'ArrowUp') {
+      e.preventDefault();
+      setActive(activeIndex - 1);
+    } else if (e.key === 'Enter') {
+      e.preventDefault();
+      const item = items[activeIndex >= 0 ? activeIndex : 0];
+      if (item) item.click();
+    }
+  });
+  results.addEventListener('mousemove', (e) => {
+    const item = e.target.closest('.search-result');
+    if (!item) return;
+    const index = resultItems().indexOf(item);
+    if (index >= 0) setActive(index);
   });
   input.addEventListener('input', (e) => renderResults(e.target.value));
   renderResults('');
