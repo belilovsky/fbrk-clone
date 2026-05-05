@@ -1394,6 +1394,19 @@ input {
   margin-bottom: var(--space-5);
   max-width: 68ch;
 }
+.article__body figure,
+.article__body .article__inline-media {
+  margin: var(--space-8) 0;
+}
+.article__body img {
+  display: block;
+  width: 100%;
+  max-width: 100%;
+  height: auto;
+  border: 1px solid var(--page-border, var(--color-divider));
+  border-radius: var(--page-radius, var(--radius-md));
+  box-shadow: var(--shadow-sm);
+}
 .article__body h2 {
   font-family: var(--font-display);
   font-size: clamp(1.25rem, 1.1rem + 0.6vw, 1.5rem);

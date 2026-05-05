@@ -150,6 +150,26 @@ def _truncate_plain(s: str, limit: int = 240) -> str:
 def _sections_to_html(sections: list) -> str:
     """Render sections as clean semantic HTML for SSR body + RSS content:encoded."""
     out: list[str] = []
+
+    def append_body(body: str) -> None:
+        body = _normalize_inline_spacing(str(body)).strip()
+        if not body:
+            return
+        parts = [
+            p.strip()
+            for p in re.split(r"(?:\n\s*){2,}|(?:<br\s*/?>\s*){2,}", body, flags=re.IGNORECASE)
+            if p.strip()
+        ]
+        if not parts:
+            return
+        for part in parts:
+            if re.search(r"<img\b", part, flags=re.IGNORECASE):
+                out.append(f'<figure class="article__inline-media">{part}</figure>')
+            elif re.search(r"<(?:p|ul|ol|li|blockquote|figure|table|div|hr)\b", part, flags=re.IGNORECASE):
+                out.append(part)
+            else:
+                out.append(f"<p>{part}</p>")
+
     for s in sections or []:
         if not isinstance(s, dict):
             continue
@@ -163,15 +183,10 @@ def _sections_to_html(sections: list) -> str:
             cap = html.escape(str(s.get("caption") or ""))
             out.append(f'<figure><img src="{src}" alt="{cap}" /></figure>')
         if p:
-            # Body may already contain block HTML from legacy rows. Inline-only
-            # paragraph text needs a wrapper for readable SSR typography.
-            body = _normalize_inline_spacing(str(p)).strip()
-            if not body:
-                continue
-            if re.search(r"<(?:p|ul|ol|li|blockquote|figure|table|div)\b", body, flags=re.IGNORECASE):
-                out.append(body)
-            else:
-                out.append(f"<p>{body}</p>")
+            # Body may contain multiple paragraphs joined by editorjs_to_sections
+            # with blank lines. Render each paragraph/media block separately so
+            # article typography does not collapse into one long paragraph.
+            append_body(str(p))
     return "\n".join(out)
 
 

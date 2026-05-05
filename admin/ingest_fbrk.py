@@ -22,6 +22,7 @@ Notes:
 from __future__ import annotations
 
 import argparse
+import copy
 import json
 import logging
 import os
@@ -226,6 +227,62 @@ def _inline_html(node: Tag) -> str:
     return _render_inline_tokens(_inline_tokens(node))
 
 
+def _image_block_from_img(img: Tag, caption: str = "") -> Optional[dict]:
+    src = img.get("src")
+    if not src:
+        return None
+    return {"type": "image", "data": {
+        "file": {"url": urljoin(BASE, src)},
+        "caption": caption or img.get("alt") or "",
+        "withBorder": False, "stretched": False, "withBackground": False,
+    }}
+
+
+def _paragraph_blocks(el: Tag) -> list[dict]:
+    """Return paragraph and inline-image blocks in the original order.
+
+    Drupal sometimes stores article illustrations directly inside a paragraph,
+    often after ``<br><br>``. Treat those images as real Editor.js image blocks
+    instead of dropping them while rendering inline text.
+    """
+    if not el.find("img"):
+        return [{"type": "paragraph", "data": {"text": p}} for p in _paragraph_parts(el)]
+
+    soup = BeautifulSoup("", "html.parser")
+    current = soup.new_tag("p")
+    blocks: list[dict] = []
+
+    def flush_current() -> None:
+        nonlocal current
+        for part in _paragraph_parts(current):
+            blocks.append({"type": "paragraph", "data": {"text": part}})
+        current = soup.new_tag("p")
+
+    for child in el.children:
+        if isinstance(child, Tag) and child.name and child.name.lower() == "img":
+            flush_current()
+            image = _image_block_from_img(child)
+            if image:
+                blocks.append(image)
+        elif isinstance(child, Tag) and child.find("img"):
+            # Rare but valid: image wrapped in an inline tag/link. Keep any
+            # surrounding text, then emit each nested image in place.
+            child_copy = copy.copy(child)
+            for img in child_copy.find_all("img"):
+                img.extract()
+            current.append(child_copy)
+            flush_current()
+            for img in child.find_all("img"):
+                image = _image_block_from_img(img)
+                if image:
+                    blocks.append(image)
+        else:
+            current.append(copy.copy(child))
+
+    flush_current()
+    return blocks
+
+
 def _split_paragraph_on_double_br(text: str) -> list[str]:
     """fbrk.kz often packs an entire article body into one <p> with <br><br>
     as paragraph separators. Split such an HTML fragment into multiple paragraphs.
@@ -241,13 +298,12 @@ def _split_paragraph_on_double_br(text: str) -> list[str]:
 def _block_from(el: Tag) -> Optional[dict] | list[dict]:
     name = el.name.lower()
     if name in ("p",):
-        parts = _paragraph_parts(el)
-        if not parts:
+        blocks = _paragraph_blocks(el)
+        if not blocks:
             return None
-        # If <p> contains <br><br>, split into multiple paragraphs.
-        if len(parts) > 1:
-            return [{"type": "paragraph", "data": {"text": p}} for p in parts]
-        return {"type": "paragraph", "data": {"text": parts[0]}}
+        if len(blocks) > 1:
+            return blocks
+        return blocks[0]
     if name in ("h2", "h3"):
         text = el.get_text(" ", strip=True)
         if not text:
@@ -278,19 +334,10 @@ def _block_from(el: Tag) -> Optional[dict] | list[dict]:
         img = el.find("img")
         cap = el.find("figcaption")
         if img and img.get("src"):
-            return {"type": "image", "data": {
-                "file": {"url": urljoin(BASE, img["src"])},
-                "caption": cap.get_text(" ", strip=True) if cap else "",
-                "withBorder": False, "stretched": False, "withBackground": False,
-            }}
+            return _image_block_from_img(img, cap.get_text(" ", strip=True) if cap else "")
         return None
     if name == "img":
-        if el.get("src"):
-            return {"type": "image", "data": {
-                "file": {"url": urljoin(BASE, el["src"])},
-                "caption": el.get("alt") or "",
-                "withBorder": False, "stretched": False, "withBackground": False,
-            }}
+        return _image_block_from_img(el)
     if name == "hr":
         return {"type": "delimiter", "data": {}}
     return None
@@ -459,8 +506,8 @@ ON CONFLICT(id) DO UPDATE SET
   dek           = CASE WHEN length(excluded.dek) > length(articles.dek) THEN excluded.dek ELSE articles.dek END,
   date_iso      = excluded.date_iso,
   date_label    = excluded.date_label,
-  category      = excluded.category,
-  category_label= excluded.category_label,
+  category      = CASE WHEN articles.category = 'investigation' THEN articles.category ELSE excluded.category END,
+  category_label= CASE WHEN articles.category = 'investigation' THEN articles.category_label ELSE excluded.category_label END,
   image         = CASE WHEN excluded.image <> '' THEN excluded.image ELSE articles.image END,
   source        = excluded.source,
   body_json     = excluded.body_json,
