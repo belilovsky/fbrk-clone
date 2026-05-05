@@ -108,6 +108,27 @@ def _normalize_inline_spacing(s: str) -> str:
     return s
 
 
+_IMG_TAG_RE = re.compile(r"<img\b[^>]*>", flags=re.IGNORECASE)
+_ALT_ATTR_RE = re.compile(r"""\salt\s*=\s*(["'])(.*?)\1""", flags=re.IGNORECASE | re.DOTALL)
+
+
+def _ensure_img_alt(fragment: str, fallback_alt: str = "") -> str:
+    alt_text = html.escape(_strip_html(fallback_alt) or "Иллюстрация к материалу", quote=True)
+
+    def replace(match: re.Match[str]) -> str:
+        tag = match.group(0)
+        alt = _ALT_ATTR_RE.search(tag)
+        if alt and alt.group(2).strip():
+            return tag
+        if alt:
+            return _ALT_ATTR_RE.sub(f' alt="{alt_text}"', tag, count=1)
+        if tag.endswith("/>"):
+            return f'{tag[:-2].rstrip()} alt="{alt_text}" />'
+        return f'{tag[:-1].rstrip()} alt="{alt_text}">'
+
+    return _IMG_TAG_RE.sub(replace, fragment)
+
+
 def _display_dek(raw_dek: str, plain_body: str) -> str:
     dek = _strip_html(_normalize_inline_spacing(raw_dek or ""))
     if not dek:
@@ -147,7 +168,7 @@ def _truncate_plain(s: str, limit: int = 240) -> str:
     return f"{cut}…" if cut else ""
 
 
-def _sections_to_html(sections: list) -> str:
+def _sections_to_html(sections: list, fallback_alt: str = "") -> str:
     """Render sections as clean semantic HTML for SSR body + RSS content:encoded."""
     out: list[str] = []
 
@@ -164,6 +185,7 @@ def _sections_to_html(sections: list) -> str:
             return
         for part in parts:
             if re.search(r"<img\b", part, flags=re.IGNORECASE):
+                part = _ensure_img_alt(part, fallback_alt)
                 out.append(f'<figure class="article__inline-media">{part}</figure>')
             elif re.search(r"<(?:p|ul|ol|li|blockquote|figure|table|div|hr)\b", part, flags=re.IGNORECASE):
                 out.append(part)
@@ -180,7 +202,7 @@ def _sections_to_html(sections: list) -> str:
             out.append(f"<h2>{html.escape(str(h))}</h2>")
         if img:
             src = _abs_url(str(img))
-            cap = html.escape(str(s.get("caption") or ""))
+            cap = html.escape(str(s.get("caption") or fallback_alt or "Иллюстрация к материалу"))
             out.append(f'<figure><img src="{src}" alt="{cap}" /></figure>')
         if p:
             # Body may contain multiple paragraphs joined by editorjs_to_sections
@@ -260,7 +282,7 @@ def ssr_article(slug: str, request: Request):
     # Prefer AI short summary when available (tighter, better for SEO/LLMs)
     desc = (meta.get("summary_short") or dek or plain_body[:240]).strip()[:240]
     image = _abs_url(a.get("image") or "")
-    body_html = _sections_to_html(a.get("sections") or [])
+    body_html = _sections_to_html(a.get("sections") or [], title)
     word_count = len((plain_body or "").split())
 
     date_iso = a.get("dateIso") or ""
@@ -536,7 +558,7 @@ def feed_xml():
         url = f"{SITE_URL}/a/{slug}"
         img = _abs_url(a.get("image") or "") if a.get("image") else ""
         dek = _strip_html(a.get("dek") or "")[:500]
-        body_html = _sections_to_html(a.get("sections") or [])
+        body_html = _sections_to_html(a.get("sections") or [], a.get("title") or "")
         content_encoded = f"<![CDATA[{body_html}]]>"
         lines.append("    <item>")
         lines.append(f"      <title>{html.escape(a.get('title') or '')}</title>")
@@ -572,7 +594,7 @@ def _render_ia_body_html(a: dict, url: str, image: str) -> str:
     date_iso = a.get("dateIso") or ""
     pub_iso = _iso8601(date_iso)
     date_label = html.escape(a.get("date") or date_iso)
-    body_inner = _sections_to_html(a.get("sections") or [])
+    body_inner = _sections_to_html(a.get("sections") or [], a.get("title") or "")
 
     parts = [
         '<!doctype html>',
