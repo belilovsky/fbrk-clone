@@ -1063,12 +1063,12 @@ input {
 }
 
 .home-main .card__title {
-  padding: var(--space-5) var(--space-5) 0;
+  padding: var(--space-5);
   letter-spacing: 0;
 }
 
 .home-main .card__dek {
-  padding: var(--space-3) var(--space-5) var(--space-5);
+  display: none;
 }
 
 .home-main .latest {
