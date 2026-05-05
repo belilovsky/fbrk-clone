@@ -3292,26 +3292,28 @@ body:has(.site-footer) .footer {
 }
 
 .archive-main .card {
-  overflow: hidden;
+  overflow: visible;
   gap: 0;
-  background: var(--page-card);
+  background: transparent;
+  border: 0;
+  border-radius: 0;
+  box-shadow: none;
+}
+
+.archive-main .card__media {
+  margin-bottom: var(--space-4);
   border: 1px solid var(--page-border);
   border-radius: var(--page-radius);
   box-shadow: var(--shadow-sm);
 }
 
-.archive-main .card__media {
-  margin-bottom: 0;
-  border-radius: 0;
-}
-
 .archive-main .card__title {
-  padding: var(--space-5) var(--space-5) 0;
+  padding: 0;
   letter-spacing: 0;
 }
 
 .archive-main .card__dek {
-  padding: var(--space-3) var(--space-5) var(--space-5);
+  padding: var(--space-2) 0 0;
 }
 
 .archive-main .archive__empty {
