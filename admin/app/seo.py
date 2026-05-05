@@ -111,13 +111,13 @@ def _normalize_inline_spacing(s: str) -> str:
 def _display_dek(raw_dek: str, plain_body: str) -> str:
     dek = _strip_html(_normalize_inline_spacing(raw_dek or ""))
     if not dek:
-        return (plain_body or "")[:240].strip()
+        return _truncate_plain(plain_body)
 
     compact_dek = re.sub(r"\s+", "", dek)
     compact_body = re.sub(r"\s+", "", plain_body or "")
     prefix_len = min(120, len(compact_dek))
     if prefix_len >= 40 and compact_body.startswith(compact_dek[:prefix_len]):
-        return (plain_body or "")[:240].strip()
+        return _truncate_plain(plain_body)
     return dek
 
 
@@ -131,6 +131,20 @@ def _sections_to_plain(sections: list) -> str:
         if s.get("p"):
             parts.append(_strip_html(str(s["p"])))
     return "\n\n".join(p for p in parts if p)
+
+
+def _truncate_plain(s: str, limit: int = 240) -> str:
+    s = re.sub(r"\s+", " ", s or "").strip()
+    if len(s) <= limit:
+        return s
+
+    cut = s[:limit].rstrip()
+    sentence_end = max(cut.rfind("."), cut.rfind("!"), cut.rfind("?"))
+    if sentence_end >= 80:
+        return cut[:sentence_end + 1]
+
+    cut = re.sub(r"\s+\S*$", "", cut).rstrip(" ,;:–-")
+    return f"{cut}…" if cut else ""
 
 
 def _sections_to_html(sections: list) -> str:
@@ -149,8 +163,15 @@ def _sections_to_html(sections: list) -> str:
             cap = html.escape(str(s.get("caption") or ""))
             out.append(f'<figure><img src="{src}" alt="{cap}" /></figure>')
         if p:
-            # Body may already contain <p>/<strong>/<em>/<a>. Keep as-is.
-            out.append(_normalize_inline_spacing(str(p)))
+            # Body may already contain block HTML from legacy rows. Inline-only
+            # paragraph text needs a wrapper for readable SSR typography.
+            body = _normalize_inline_spacing(str(p)).strip()
+            if not body:
+                continue
+            if re.search(r"<(?:p|ul|ol|li|blockquote|figure|table|div)\b", body, flags=re.IGNORECASE):
+                out.append(body)
+            else:
+                out.append(f"<p>{body}</p>")
     return "\n".join(out)
 
 
