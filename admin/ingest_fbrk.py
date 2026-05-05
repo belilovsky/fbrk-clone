@@ -318,14 +318,23 @@ def _block_from(el: Tag) -> Optional[dict] | list[dict]:
         return {"type": "header", "data": {"text": text, "level": 3}}
     if name in ("ul", "ol"):
         items = []
+        images = []
         for li in el.find_all("li", recursive=False):
             inner = _inline_html(li)
             if inner:
                 items.append(inner)
+            for img in li.find_all("img"):
+                image = _image_block_from_img(img)
+                if image:
+                    images.append(image)
         if not items:
             return None
-        return {"type": "list", "data": {"style": "ordered" if name == "ol" else "unordered", "items": items}}
+        list_block = {"type": "list", "data": {"style": "ordered" if name == "ol" else "unordered", "items": items}}
+        return [list_block, *images] if images else list_block
     if name == "blockquote":
+        nested_list = el.find(["ul", "ol"], recursive=False)
+        if nested_list:
+            return _block_from(nested_list)
         text = _inline_html(el)
         if not text:
             return None
@@ -517,7 +526,8 @@ WHERE
   -- only overwrite body if the new one is *better* — compare total content length
   -- (sections_json count alone misses the case where a single section grows from
   --  one paragraph to many because fbrk.kz uses <br><br> as paragraph separator).
-  COALESCE(length(excluded.sections_json), 0) >= COALESCE(length(articles.sections_json), 0)
+  COALESCE(json_array_length(json_extract(excluded.body_json,'$.blocks')), 0) >= COALESCE(json_array_length(json_extract(articles.body_json,'$.blocks')), 0)
+  OR COALESCE(length(excluded.body_json), 0) >= COALESCE(length(articles.body_json), 0)
 """
 
 
