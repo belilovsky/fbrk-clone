@@ -1,5 +1,10 @@
 # ФБРК — финальный пост-Codex аудит
 
+> Обновление 2026-05-05: текущий prod handoff, GitHub state, финальные
+> backup/snapshot paths и последние regression artifacts находятся в
+> `docs/audit/PROD_HANDOFF_2026-05-05.md`.
+> Ниже сохранён исторический отчёт предыдущего этапа.
+
 **Дата:** 29 апреля 2026
 **Среда:** prod (`https://fbrk.qdev.run`, VPS 62.72.32.112)
 **Состояние БД:** 4547 статей, 4464 news / 83 investigation
