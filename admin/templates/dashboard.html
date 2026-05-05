@@ -5,7 +5,7 @@
   <div class="a-section__head">
     <h1>Материалы</h1>
     <div class="a-actions">
-      <button class="a-btn" onclick="publishAll()">Перегенерировать сайт</button>
+      <button class="a-btn" type="button" data-admin-action="publish-all">Перегенерировать сайт</button>
       <a class="a-btn a-btn--primary" href="/admin/new">+ Новый материал</a>
     </div>
   </div>
@@ -43,9 +43,9 @@
           {% endif %}
         </td>
         <td class="a-col-actions">
-          <a class="a-iconbtn" href="/admin/edit/{{ a.id }}" title="Редактировать">✎</a>
-          <button class="a-iconbtn" onclick="togglePublish('{{ a.id }}', this)" title="Опубликовать/скрыть">●</button>
-          <button class="a-iconbtn a-iconbtn--danger" onclick="deleteArt('{{ a.id }}')" title="Удалить">✕</button>
+          <a class="a-iconbtn" href="/admin/edit/{{ a.id | urlencode }}" title="Редактировать">✎</a>
+          <button class="a-iconbtn" type="button" data-admin-action="toggle-publish" data-article-id="{{ a.id }}" title="Опубликовать/скрыть">●</button>
+          <button class="a-iconbtn a-iconbtn--danger" type="button" data-admin-action="delete" data-article-id="{{ a.id }}" title="Удалить">✕</button>
         </td>
       </tr>
     {% endfor %}
@@ -61,13 +61,13 @@
 
 {% block scripts %}
 <script>
-async function togglePublish(id, btn) {
-  const res = await fetch('/api/articles/' + id + '/publish', { method: 'POST' });
+async function togglePublish(id) {
+  const res = await fetch('/api/articles/' + encodeURIComponent(id) + '/publish', { method: 'POST' });
   if (res.ok) location.reload();
 }
 async function deleteArt(id) {
   if (!confirm('Удалить материал безвозвратно?')) return;
-  const res = await fetch('/api/articles/' + id, { method: 'DELETE' });
+  const res = await fetch('/api/articles/' + encodeURIComponent(id), { method: 'DELETE' });
   if (res.ok) location.reload();
 }
 async function publishAll() {
@@ -79,5 +79,18 @@ async function publishAll() {
     alert('Ошибка публикации');
   }
 }
+document.addEventListener('click', (event) => {
+  const control = event.target.closest('[data-admin-action]');
+  if (!control) return;
+  const action = control.getAttribute('data-admin-action');
+  const articleId = control.getAttribute('data-article-id') || '';
+  if (action === 'toggle-publish' && articleId) {
+    togglePublish(articleId);
+  } else if (action === 'delete' && articleId) {
+    deleteArt(articleId);
+  } else if (action === 'publish-all') {
+    publishAll();
+  }
+});
 </script>
 {% endblock %}
