@@ -77,6 +77,16 @@
   --color-primary-active: #090d48;
   --color-primary-subtle: #e7e8f0;
 
+  /* FBRK ink system: branded dark-blue surfaces */
+  --brand-ink: #03052d;
+  --brand-night: #070b45;
+  --brand-core: #0c115f;
+  --brand-ridge: #182a8a;
+  --brand-glow: #253ba8;
+  --brand-gradient: linear-gradient(118deg, var(--brand-ink) 0%, var(--brand-night) 24%, var(--brand-core) 58%, var(--brand-ridge) 100%);
+  --brand-gradient-soft: linear-gradient(135deg, var(--brand-night) 0%, var(--brand-core) 62%, var(--brand-glow) 100%);
+  --brand-border: rgba(178, 191, 255, 0.22);
+
   /* Shadows (quiet) */
   --shadow-sm: 0 1px 2px rgb(0 0 0 / 0.04);
   --shadow-md: 0 4px 16px rgb(0 0 0 / 0.06);
@@ -289,11 +299,11 @@ input {
 
 /* ---------- Masthead (brand blue banner, like fbrk.kz) ---------- */
 .masthead {
-  background: linear-gradient(160deg, var(--color-brand) 0%, var(--color-brand-deep) 78%);
+  background: var(--brand-gradient);
   color: #ffffff;
 }
 [data-theme='dark'] .masthead {
-  background: linear-gradient(160deg, #0c115f 0%, #05071f 78%);
+  background: var(--brand-gradient);
 }
 .masthead__inner {
   display: grid;
@@ -767,20 +777,20 @@ input {
   padding: var(--space-6);
 }
 .widget--brand {
-  background: var(--color-brand);
+  background: var(--brand-gradient-soft);
   color: #ffffff;
-  border-color: transparent;
+  border-color: var(--brand-border);
 }
 [data-theme='dark'] .widget--brand {
-  background: var(--color-brand-deep, #05071f);
+  background: var(--brand-gradient);
   color: #ffffff;
-  border: 1px solid var(--color-border);
+  border: 1px solid var(--brand-border);
 }
 @media (prefers-color-scheme: dark) {
   :root:not([data-theme]) .widget--brand {
-    background: #05071f;
+    background: var(--brand-gradient);
     color: #ffffff;
-    border: 1px solid var(--color-border);
+    border: 1px solid var(--brand-border);
   }
 }
 .widget--brand .widget__label {
@@ -1116,7 +1126,7 @@ input {
 }
 
 .home-main .widget--brand {
-  background: linear-gradient(150deg, #0c115f 0%, #11185e 68%, #151b41 100%);
+  background: var(--brand-gradient-soft);
 }
 
 .home-main .widget__label {
@@ -1130,7 +1140,7 @@ input {
 }
 
 .home-main .widget--brand .widget__btn {
-  color: #0c115f;
+  color: var(--brand-core);
 }
 
 .home-main .tag-cloud a {
@@ -2754,10 +2764,10 @@ button:focus-visible, a:focus-visible { outline-offset: 3px; }
   position: sticky;
   top: 0;
   z-index: 50;
-  background: linear-gradient(180deg, #0C115F 0%, #0a0f4d 100%);
+  background: var(--brand-gradient);
   color: #fff;
-  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
-  box-shadow: 0 1px 0 rgba(255, 255, 255, 0.04), 0 4px 16px rgba(0, 0, 0, 0.08);
+  border-bottom: 1px solid var(--brand-border);
+  box-shadow: 0 1px 0 rgba(255, 255, 255, 0.05), 0 8px 24px rgba(3, 5, 45, 0.18);
 }
 .site-header__inner {
   display: grid;
@@ -2786,6 +2796,7 @@ button:focus-visible, a:focus-visible { outline-offset: 3px; }
   line-height: 1;
   padding: 6px 10px;
   border: 1.5px solid rgba(255, 255, 255, 0.85);
+  background: rgba(255, 255, 255, 0.06);
   border-radius: 6px;
 }
 .site-header__logo-text {
@@ -2889,7 +2900,7 @@ button:focus-visible, a:focus-visible { outline-offset: 3px; }
 .lang-switch button:hover { color: #fff; }
 .lang-switch button[aria-pressed="true"] {
   background: #fff;
-  color: #0C115F;
+  color: var(--brand-core);
 }
 
 /* Mobile nav toggle */
@@ -2903,7 +2914,7 @@ button:focus-visible, a:focus-visible { outline-offset: 3px; }
   .site-header__nav {
     position: fixed;
     inset: 56px 0 auto 0;
-    background: #0C115F;
+    background: var(--brand-gradient);
     padding: var(--space-6);
     transform: translateY(-110%);
     transition: transform .25s ease, visibility .25s ease;
@@ -2933,7 +2944,7 @@ button:focus-visible, a:focus-visible { outline-offset: 3px; }
   bottom: 24px;
   left: 50%;
   transform: translateX(-50%) translateY(20px);
-  background: #0C115F;
+  background: var(--brand-gradient-soft);
   color: #fff;
   padding: 12px 20px;
   border-radius: 999px;
@@ -2954,12 +2965,13 @@ button:focus-visible, a:focus-visible { outline-offset: 3px; }
 /* NEW FOOTER (2026-04 redesign)                                  */
 /* ============================================================ */
 .site-footer {
-  background: #0C115F;
+  background: var(--brand-gradient);
   color: rgba(255, 255, 255, 0.72);
   padding-block: clamp(40px, 5vw, 64px) 24px;
   margin-top: clamp(48px, 6vw, 80px);
   font-size: 0.9375rem;
   line-height: 1.55;
+  box-shadow: inset 0 1px 0 var(--brand-border);
 }
 .site-footer__top {
   display: grid;
@@ -3047,7 +3059,7 @@ button:focus-visible, a:focus-visible { outline-offset: 3px; }
 }
 .site-footer__socials a:hover {
   background: #fff;
-  color: #0C115F;
+  color: var(--brand-core);
 }
 .site-footer__socials svg { width: 18px; height: 18px; }
 @media (max-width: 880px) {
@@ -3150,7 +3162,7 @@ body:has(.site-footer) .footer {
 .card--no-image .card__media {
   aspect-ratio: 3 / 2;
   background:
-    linear-gradient(135deg, rgba(12, 17, 95, 0.96) 0%, rgba(12, 17, 95, 0.78) 60%, rgba(20, 28, 140, 0.88) 100%),
+    var(--brand-gradient-soft),
     repeating-linear-gradient(
       45deg,
       rgba(255, 255, 255, 0.04) 0px,
@@ -3196,7 +3208,7 @@ body:has(.site-footer) .footer {
 
 /* Latest thumb fallback — small square, brand gradient + tiny "FBRK" */
 .latest__thumb--no-image {
-  background: linear-gradient(135deg, #0c115f 0%, #1a2280 100%);
+  background: var(--brand-gradient-soft);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -3215,7 +3227,7 @@ body:has(.site-footer) .footer {
 /* Dark theme: slightly deeper background */
 [data-theme='dark'] .card--no-image .card__media {
   background:
-    linear-gradient(135deg, rgba(8, 11, 56, 0.98) 0%, rgba(12, 17, 95, 0.86) 100%),
+    var(--brand-gradient),
     repeating-linear-gradient(
       45deg,
       rgba(255, 255, 255, 0.03) 0px,
@@ -3357,9 +3369,9 @@ body:has(.site-footer) .footer {
 
 .archive-main .archive__reset,
 .error-main .errorpage__btn--primary {
-  background: #0c115f;
+  background: var(--brand-gradient-soft);
   color: #fff;
-  border-color: #0c115f;
+  border-color: var(--brand-border);
 }
 
 .article-main .article {
