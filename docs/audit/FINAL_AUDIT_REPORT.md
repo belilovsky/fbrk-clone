@@ -1,5 +1,52 @@
 # ФБРК — финальный пост-Codex аудит
 
+## Follow-up audit — 5 мая 2026
+
+**Среда:** prod `https://fbrk.qdev.run`, VPS `148.230.117.131`
+**Состояние БД:** `4589` статей, `4505 news / 84 investigation`
+**Статус:** публичный фронт, admin security, content DB, ingester/cron и infra quick-wins проверены и доведены до прода.
+
+### Executive summary
+
+1. Публичный сайт после AV DS-переделки проверен по sitemap и браузерной матрице: `4594/4594` внутренних URL OK; `60` page/viewport/theme checks OK; поиск, тема, mobile menu и archive filters OK.
+2. Исправлены SSR-склейки вокруг inline-тегов (`<b>`, `<a>`, `<i>`) и punctuation-only legacy tags; problematic article sweep теперь чистый.
+3. `/article.html` без `id` больше не подставляет мета-заголовок первой статьи; shell теперь `Материал не найден — ФБРК`, `noindex, follow`.
+4. Главная получила static raw-HTML `<h1>` fallback для no-JS/первичного HTML; после JS он заменяется актуальной главной новостью.
+5. Admin dashboard hardened: inline `onclick` actions заменены на `data-admin-action` + event delegation; authenticated prod smoke показывает `onclick_count=0`.
+6. Content DB integrity: `body_json`/`sections_json` пустых нет; `editorjs_to_sections(body_json)` совпадает с `sections_json` у всех `4589`; `data.js` и `data-archive.js` hash-match с dry-run.
+7. Нормализованы 2 high-confidence `source` URL; 10 text-source строк оставлены без изменений, потому что canonical candidates на fbrk.kz не подтвердились.
+8. Ingester синхронизирован с production source и сделан идемпотентным: double `rss --no-regen` не меняет article count, `updated_at` и `data.js` hash.
+9. Infra quick-wins: HSTS `max-age=15552000`, `server_tokens off`, `/etc/logrotate.d/fbrk`; nginx reload OK.
+10. На новом VPS диск здоровый: `/` used `31%`; DB backups около `1.00G`, web snapshots `5.6G`.
+
+### PRs / branches
+
+- PR #6 `audit/frontend-home-avds-refresh`: AV DS public pages + SSR/article shell/home fallback fixes. Deployed and smoke-tested.
+- PR #7 `audit/security-admin-js`: admin dashboard inline JS hardening. Deployed and smoke-tested.
+- PR #8 `audit/content-db-integrity`: content DB evidence + 2 source URL normalizations. DB updated with backup.
+- PR #9 `audit/ingester-prod-sync-idempotency`: prod ingester sync + idempotent RSS UPSERT. Deployed and double-run verified.
+- PR #10 `audit/infra-hsts-logrotate`: HSTS/server_tokens/logrotate. Deployed and header-verified.
+
+### Fresh backups / snapshots created
+
+- Public/SSR/frontend deploys: `/opt/fbrk-admin/backups/fbrk-20260504T194512Z-pre-public-avds-refresh.db`, `/opt/fbrk-admin/backups/fbrk-20260504T195034Z-pre-public-avds-shell.db`, plus web/template snapshots.
+- SSR inline fixes: `/opt/fbrk-admin/backups/fbrk-20260504T200739Z-pre-ssr-inline-spacing.db`, `/opt/fbrk-admin/backups/fbrk-20260504T200906Z-pre-ssr-punctuation-cleanup.db`, `/opt/fbrk-admin/backups/fbrk-20260504T201146Z-pre-ssr-inline-legacy-tags.db`, `/opt/fbrk-admin/backups/fbrk-20260504T201936Z-pre-ssr-nested-inline-spacing.db`.
+- Public shell/cache/home fallback: `/opt/fbrk-admin/backups/fbrk-20260504T202453Z-pre-public-shell-meta-cache.db`, `/opt/fbrk-admin/backups/fbrk-20260504T202931Z-pre-home-noscript-h1.db`.
+- Admin security: `/opt/fbrk-admin/backups/fbrk-20260505T034222Z-pre-admin-dashboard-inline-js.db`.
+- Content source normalization: `/opt/fbrk-admin/backups/fbrk-20260505T034616Z-pre-content-source-normalize-two.db`.
+- Ingester: `/opt/fbrk-admin/backups/fbrk-20260505T035028Z-pre-ingester-idempotent-upsert.db`, `/opt/fbrk-admin/backups/fbrk-20260505T035058Z-pre-ingester-rss-idempotency-check.db`.
+- Infra: `/opt/fbrk-admin/backups/fbrk-20260505T035422Z-pre-infra-hsts-logrotate.db`, config snapshot `/opt/fbrk-admin/config-snapshots/20260505T035422Z/nginx-fbrk.qdev.run`.
+
+### Remaining deferred items
+
+- CSP: add staged `Content-Security-Policy-Report-Only` first; direct enforcing CSP can break inline JSON-LD/admin scripts.
+- Backup/web-snapshot retention: disk is fine now, but `/opt/fbrk-admin/web-snapshots` should get retention before it grows unchecked.
+- Full external image crawl: local upload files are all present and external sample `120/120` is OK; a complete 4036-URL external crawl should be a slow scheduled check, not an ad-hoc burst.
+- Nginx warnings from unrelated qdev sites: `nginx -t` succeeds but reports duplicate/conflicting server names outside FBRK scope.
+- CSRF/rate limiting: admin uses `SameSite=Lax` and auth is working; explicit CSRF/origin enforcement plus login/API throttling should be a separate tested PR.
+
+---
+
 **Дата:** 29 апреля 2026
 **Среда:** prod (`https://fbrk.qdev.run`, VPS 62.72.32.112)
 **Состояние БД:** 4547 статей, 4464 news / 83 investigation
