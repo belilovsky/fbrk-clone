@@ -886,11 +886,13 @@ function escapeHtml(s) {
     history.replaceState(null, '', qs ? `?${qs}` : location.pathname);
   }
 
-  function itemHtml(a) {
+  function itemHtml(a, index = 0) {
     const hasImg = !!(a.image && String(a.image).trim());
     const cardCls = hasImg ? 'card' : 'card card--no-image';
+    const loading = index < 6 ? 'eager' : 'lazy';
+    const priority = index < 3 ? ' fetchpriority="high"' : '';
     const mediaInner = hasImg
-      ? `<img src="${a.image}" alt="${escapeHtml(a.title)}" width="600" height="400" loading="lazy"/>`
+      ? `<img src="${a.image}" alt="${escapeHtml(a.title)}" width="600" height="400" loading="${loading}"${priority}/>`
       : '';
     return `
       <article class="${cardCls}">
@@ -907,8 +909,9 @@ function escapeHtml(s) {
   }
 
   function renderMore() {
+    const start = rendered;
     const next = filtered.slice(rendered, rendered + PAGE);
-    grid.insertAdjacentHTML('beforeend', next.map(itemHtml).join(''));
+    grid.insertAdjacentHTML('beforeend', next.map((a, i) => itemHtml(a, start + i)).join(''));
     rendered += next.length;
     if (moreBtn) {
       if (rendered >= filtered.length) {
