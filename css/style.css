@@ -996,7 +996,7 @@ input {
 
 .article__cover {
   position: relative;
-  max-width: var(--content-default);
+  max-width: var(--content-wide);
   margin-inline: auto;
   margin-bottom: var(--space-12);
   border-radius: var(--radius-md);
@@ -2789,4 +2789,28 @@ body:has(.site-footer) .footer {
       transparent 1px,
       transparent 14px
     );
+}
+
+/* ---------- Ad blocks ---------- */
+.ad-block {
+  max-width: var(--content-narrow);
+  margin: var(--space-10) auto;
+  padding: var(--space-6);
+  min-height: 90px;
+  background: var(--color-surface-2);
+  border-radius: var(--radius-md);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--color-text-faint);
+  font-size: var(--text-sm);
+}
+.ad-block:empty::after {
+  content: '';
+}
+.ad-block--article {
+  margin-top: var(--space-12);
+}
+.ad-block--footer {
+  margin-bottom: var(--space-8);
 }
