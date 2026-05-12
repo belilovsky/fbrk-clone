@@ -574,15 +574,16 @@ function liveBadgeHtml(a) {
         ${shareHtml}
       </header>
       <div class="article__cover">
-        <img src="${fullCover(a)}" alt="${escapeHtml(a.title)}" width="1200" height="675" loading="eager"/>
+        <img src="${fullCover(a)}" alt="${escapeHtml(a.title)}" width="1440" height="810" loading="eager"/>
       </div>
       <div class="article__body">
-        ${a.sections.map((s) => `<h2>${escapeHtml(s.h)}</h2><p>${escapeHtml(s.p)}</p>`).join('')}
+        ${a.sections.map((s) => `<h2>${escapeHtml(s.h).replace(/^(.)(.*)/,(_,f,r)=>f+r.toLowerCase())}</h2><p>${escapeHtml(s.p)}</p>`).join('')}
       </div>
-      ${a.source ? `<div class="article__source">Оригинал: <a href="${a.source}" target="_blank" rel="noopener">${escapeHtml(a.source)}</a></div>` : ''}
+                ${a.source && !a.source.includes('fbrk.kz') ? `<div class="article_source">Источник: <a href="${a.source}" target="_blank" rel="noopener">${new URL(a.source).hostname}</a></div>` : ''}
 
+          <div class="ad-block ad-block--article" data-ad-slot="article-bottom"></div>
       <section class="related">
-        <h2 class="related__title">Читайте также</h2>
+                    <h2 class="related__title">Материалы по теме</h2>
         <div class="card-grid">
           ${FBRK_DATA.articles
             .filter((x) => x.id !== a.id)
@@ -611,6 +612,7 @@ function liveBadgeHtml(a) {
             .join('')}
         </div>
       </section>
+                <div class="ad-block ad-block--footer" data-ad-slot="article-footer"></div>
     </article>
   `;
 
