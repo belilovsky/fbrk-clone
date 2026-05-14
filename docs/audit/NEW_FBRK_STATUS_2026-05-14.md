@@ -230,3 +230,62 @@ Safety snapshot created (2026-05-14):
   - equals `title`: `1`
 
 These are low-volume data hygiene items and should be fixed by targeted update script only after backup gate and approval for production DB mutation.
+
+## Enrichment Recovery Update (2026-05-14)
+
+### Problem confirmed
+
+- `article_meta` had a large error tail due provider quota failures:
+  - `gemini` -> `429 RESOURCE_EXHAUSTED`
+  - `openai` -> `429 insufficient_quota`
+- Because failed rows were stored with non-empty `error`, article pages lost `Кратко` and `Упоминания` on those rows.
+
+### GitHub-first fixes shipped
+
+Branch: `audit/new-fbrk-cutover-20260514`
+
+- `9b56328` — fallback to OpenAI when Gemini is unavailable.
+- `429d90a` — include failed rows in default enrich queue and slow call rate.
+- `66fd08f` — deterministic local fallback (`summary_short`, `summary_tts`, `key_points`, `entities`) when external LLMs are unavailable.
+
+### Production safety gates executed
+
+Before mutations:
+
+- `/opt/fbrk-admin/backups/fbrk-20260514T112404Z-pre-enrich-fallback.db`
+- `/opt/fbrk-admin/backups/fbrk-20260514T112701Z-pre-enrich-retry.db`
+- `/opt/fbrk-admin/backups/fbrk-20260514T113234Z-pre-fallback-local.db`
+
+All backup files were verified as existing and non-zero (~70 MB each).
+
+### Production deploy actions
+
+- Updated `/opt/fbrk-admin/enrich.py` from branch head.
+- Updated `/etc/systemd/system/fbrk-enrich.service` (`--sleep 15`).
+- Applied ownership: `chown www-data:www-data /opt/fbrk-admin/enrich.py`.
+- Reloaded units and restarted services:
+  - `systemctl daemon-reload`
+  - `systemctl restart fbrk-admin`
+  - `systemctl restart fbrk-enrich.timer`
+
+### Recovery run and result
+
+- Ran one-shot retry pass:
+  - `python3 /opt/fbrk-admin/enrich.py --retry-errors --limit 700 --sleep 0`
+- Post-run DB state:
+  - `SELECT COUNT(*) FROM article_meta WHERE error<>'';` -> `0`
+  - `key_points` non-empty rows -> `4654`
+  - `entities_json` non-empty rows -> `4651`
+
+### Live verification
+
+Checked on production:
+
+- `https://fbrk.qdev.run/a/sanzhar-bokaev-ostanetsya-pod-arestom-v-almaty-do-18-iyunya`
+- `https://fbrk.qdev.run/a/trekhkratnyi-razryv-potrebleniia-miasa-fiksiruetsia-u-kazakhstantsev-s-raznym-dostatkom`
+- `https://fbrk.qdev.run/a/vspyshki-yaschura-fiksiruyut-v-stepi`
+
+All three now render:
+
+- `<aside class="article__tldr">` present
+- `<div class="entity-chips">` present
