@@ -296,7 +296,7 @@ def _select_pending(limit: int | None, only_id: str | None, retry_errors: bool) 
             q = (
                 "SELECT a.* FROM articles a "
                 "LEFT JOIN article_meta m ON a.id = m.article_id "
-                "WHERE a.published=1 AND m.article_id IS NULL "
+                "WHERE a.published=1 AND (m.article_id IS NULL OR m.error <> '') "
                 "ORDER BY a.date_iso DESC"
             )
             if limit:
@@ -378,7 +378,7 @@ def run(limit: int | None = None, only_id: str | None = None,
             _upsert_meta(a["id"], result, model=model, input_chars=len(text))
             ok += 1
         except Exception as e:
-            primary_msg = f"{type(e).__name__}: {e}"[:500]
+            primary_msg = f"{type(e).__name__}: {e}"[:320]
             if _should_fallback_from_gemini(model, primary_msg):
                 try:
                     print(
@@ -391,7 +391,7 @@ def run(limit: int | None = None, only_id: str | None = None,
                     ok += 1
                     continue
                 except Exception as e2:
-                    fallback_msg = f"{type(e2).__name__}: {e2}"[:300]
+                    fallback_msg = f"{type(e2).__name__}: {e2}"[:180]
                     msg = (
                         f"primary[{model}]: {primary_msg}; "
                         f"fallback[{FALLBACK_MODEL}]: {fallback_msg}"
