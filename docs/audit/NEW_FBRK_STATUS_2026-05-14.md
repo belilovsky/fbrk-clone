@@ -92,3 +92,7 @@ Interpretation: current production code path is split between GitHub and manual 
 - `git ls-remote root@62.72.32.112:/var/www/fbrk.qdev.run` -> `a4ae632`
 - `git rev-list --left-right --count origin/master...vps148/master` -> `11 4`
 - `ls -l /etc/nginx/sites-enabled | grep new.fbrk.kz` on VPS #2 -> no enabled link
+
+Safety snapshot created (2026-05-14):
+
+- `/opt/fbrk-admin/backups/fbrk-web-dirty-20260514T083849Z.tar.gz` (tracked dirty files from `/var/www/fbrk.qdev.run`: `index.html`, `style.css`, `js/data.js`, `js/data-archive.js`).
