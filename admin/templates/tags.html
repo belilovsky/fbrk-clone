@@ -1,0 +1,12 @@
+{% extends "base.html" %}
+{% block title %}Теги — Админка ФБРК{% endblock %}
+{% block page_title %}Теги ({{ items|length }}){% endblock %}
+{% block content %}
+<div class="section-card">
+  <p class="muted">Агрегация тегов из articles.tags_json. Сортировка по частоте.</p>
+  <div class="tag-cloud">
+    {% for t in items %}<span class="tag-chip">{{ t.tag }} <b>{{ t.count }}</b></span>{% endfor %}
+    {% if not items %}<p class="muted">Тегов пока нет.</p>{% endif %}
+  </div>
+</div>
+{% endblock %}

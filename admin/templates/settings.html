@@ -1,0 +1,16 @@
+{% extends "base.html" %}
+{% block title %}Настройки{% endblock %}
+{% block page_title %}Настройки ({{ items|length }}){% endblock %}
+{% block content %}
+<div class="section-card">
+  <form method="post" action="/admin/settings/set" class="a-form-inline">
+    <input name="key" placeholder="key (site.title)" required>
+    <input name="value" placeholder="value" style="flex:1">
+    <button type="submit" class="a-btn a-btn--primary">Сохранить</button>
+  </form>
+  <table class="a-table" style="margin-top:14px"><thead><tr><th>Key</th><th>Value</th><th>Updated</th></tr></thead><tbody>
+  {% for x in items %}<tr><td><code>{{ x.key }}</code></td><td>{{ x.value }}</td><td class="muted">{{ x.updated_at }}</td></tr>{% endfor %}
+  {% if not items %}<tr><td colspan="3" class="muted">Пусто — добавьте первую настройку.</td></tr>{% endif %}
+  </tbody></table>
+</div>
+{% endblock %}

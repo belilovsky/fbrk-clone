@@ -1,0 +1,45 @@
+{% extends "base.html" %}
+{% block title %}Медиа{% endblock %}
+{% block page_title %}Медиа ({{ total }}){% endblock %}
+{% block content %}
+<div class="section-card">
+  <form method="get" action="/admin/uploads/list" style="display:flex;gap:8px;margin-bottom:14px;flex-wrap:wrap;align-items:center">
+    <input type="text" name="q" value="{{ q }}" placeholder="Поиск по имени файла / url…" style="padding:8px 10px;border:1px solid #e3e3e3;border-radius:8px;min-width:280px">
+    <button type="submit" class="btn">Найти</button>
+    {% if q %}<a class="btn btn-ghost" href="/admin/uploads/list">Сброс</a>{% endif %}
+  </form>
+  <p class="muted" style="margin-bottom:14px">Всего: <b>{{ total }}</b>{% if q %} · фильтр: «{{ q }}»{% endif %} · загрузка через редактор материала.</p>
+  <div id="mgrid" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(160px,1fr));gap:10px;margin-top:14px">
+    {% for x in items %}
+    <div class="mcell" data-id="{{ x.id }}" style="border:1px solid #e5e7eb;border-radius:8px;overflow:hidden;background:#fff;position:relative">
+      <a href="{{ '/' if not x.url.startswith('/') and not x.url.startswith('http') else '' }}{{ x.url }}" target="_blank" style="display:block;text-decoration:none;color:inherit">
+        <div style="aspect-ratio:1/1;background:#f3f4f6 url('{{ '/' if not x.url.startswith('/') and not x.url.startswith('http') else '' }}{{ x.url }}') center/cover no-repeat"></div>
+        <div style="padding:6px 8px;font-size:11px;line-height:1.3">
+          <div style="white-space:nowrap;overflow:hidden;text-overflow:ellipsis" title="{{ x.filename }}">{{ x.filename }}</div>
+          <div class="muted" style="font-size:10px">{{ (x.size_bytes/1024)|round(1) }} KB · #{{ x.id }}</div>
+        </div>
+      </a>
+      <button type="button" onclick="delMedia({{ x.id }},this)" title="Удалить" style="position:absolute;top:4px;right:4px;background:rgba(220,38,38,.92);color:#fff;border:none;border-radius:4px;padding:2px 6px;font-size:11px;cursor:pointer">✕</button>
+    </div>
+    {% else %}
+      <div class="muted">Пусто.</div>
+    {% endfor %}
+  </div>
+  {% if pages and pages > 1 %}
+  <div style="display:flex;gap:6px;margin-top:14px;flex-wrap:wrap">
+    {% for pn in range(1, pages+1) %}
+      {% if pn==page %}<span class="btn" style="background:#111;color:#fff">{{ pn }}</span>
+      {% else %}<a class="btn btn-ghost" href="/admin/uploads/list?page={{ pn }}{% if q %}&q={{ q }}{% endif %}">{{ pn }}</a>{% endif %}
+    {% endfor %}
+  </div>
+  {% endif %}
+</div>
+<script>
+async function delMedia(id,btn){
+  if(!confirm('Удалить этот файл? Действие необратимо.')) return;
+  const r=await fetch('/admin/uploads/'+id+'/delete',{method:'POST',credentials:'same-origin'});
+  if(!r.ok){alert('Ошибка'); return;}
+  const cell=btn.closest('.mcell'); if(cell) cell.remove();
+}
+</script>
+{% endblock %}

@@ -1,0 +1,14 @@
+{% extends "base.html" %}
+{% block title %}Сущности — Админка ФБРК{% endblock %}
+{% block page_title %}Сущности{% endblock %}
+{% block content %}
+{% for bk, label in [("person","Персоны"),("org","Организации"),("location","Локации"),("other","Прочее")] %}
+<div class="section-card" style="margin-top:14px">
+  <h3>{{ label }} ({{ buckets[bk]|length }})</h3>
+  <div class="tag-cloud">
+    {% for e in buckets[bk] %}<span class="tag-chip">{{ e.name }} <b>{{ e.count }}</b></span>{% endfor %}
+    {% if not buckets[bk] %}<p class="muted">Пусто.</p>{% endif %}
+  </div>
+</div>
+{% endfor %}
+{% endblock %}

@@ -1,0 +1,12 @@
+{% extends "base.html" %}
+{% block title %}{{ title }} — Админка ФБРК{% endblock %}
+{% block page_title %}{{ title }}{% endblock %}
+{% block content %}
+<div class="section-card">
+  <p class="muted">Раздел «{{ title }}» — подключается в ближайших коммитах.</p>
+  {% if section == "ads" %}
+    <h3>Инвентарь рекламных слотов</h3>
+    <p class="muted">Слоты из AD_INVENTORY_SPEC уже засеены в БД. CRUD-форма — следующий шаг.</p>
+  {% endif %}
+</div>
+{% endblock %}

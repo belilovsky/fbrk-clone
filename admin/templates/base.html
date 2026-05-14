@@ -7,37 +7,53 @@
   <title>{% block title %}Админка ФБРК{% endblock %}</title>
   <link rel="icon" href="/admin/static/favicon.svg" type="image/svg+xml"/>
   <link rel="stylesheet" href="https://api.fontshare.com/v2/css?f[]=satoshi@400,500,700&f[]=general-sans@500,600,700&display=swap"/>
-  <link rel="stylesheet" href="/admin/static/admin.css"/>
+  <link rel="stylesheet" href="/admin/static/admin.css?v=7"/>
   {% block head %}{% endblock %}
 </head>
-<body>
-  <header class="a-header">
-    <div class="a-header__inner">
-      <a class="a-brand" href="/admin/">
-        <span class="a-brand__dot"></span>
-        <span>ФБРК · админка</span>
-      </a>
-      <nav class="a-nav">
-        <a href="/admin/">Материалы</a>
-        <a href="/admin/new">Новый</a>
-        <a href="/" target="_blank" rel="noopener">Публичный сайт ↗</a>
-      </nav>
-      <div class="a-header__user">
-        {% if user %}
-          <span class="a-user">{{ user }}</span>
-          <a class="a-logout" href="/admin/logout">Выйти</a>
-        {% endif %}
-      </div>
+<body class="a-body">
+  <button class="a-burger" id="a-burger" aria-label="Меню"><span></span><span></span><span></span></button>
+  <aside class="a-sidebar" id="a-sidebar">
+    <a class="a-brand" href="/admin/">
+      <span class="a-brand__dot"></span>
+      <span>ФБРК · админка</span>
+      <span class="a-badge" title="Версия сборки">v0.3</span>
+    </a>
+    <nav class="a-side-nav">
+      <a href="/admin/home" class="a-side-link">📊 Дашборд</a>
+      <a href="/admin/" class="a-side-link">📰 Материалы</a>
+      <a href="/admin/new" class="a-side-link">✏️ Новый материал</a>
+      <a href="/admin/categories" class="a-side-link">📂 Категории</a>
+      <a href="/admin/tags" class="a-side-link">🏷️ Теги</a>
+      <a href="/admin/entities" class="a-side-link">🧠 Сущности</a>
+      <a href="/admin/ads" class="a-side-link">💰 Реклама</a>
+      <a href="/admin/uploads" class="a-side-link">🖼️ Медиа</a>
+      <a href="/admin/users" class="a-side-link">👥 Пользователи</a>
+      <a href="/admin/settings" class="a-side-link">⚙️ Настройки</a>
+      <a href="/admin/audit" class="a-side-link">📜 Аудит</a>
+      <div class="a-side-sep"></div>
+      <a href="/" target="_blank" rel="noopener" class="a-side-link a-side-link--muted">↗ Публичный сайт</a>
+    </nav>
+    <div class="a-side-foot">
+      {% if user %}<span class="a-user">{{ user }}</span> · <a class="a-logout" href="/admin/logout">Выйти</a>{% endif %}
+      <div class="a-side-foot__small">ФБРК админка · AV DS 2026</div>
     </div>
-  </header>
-
-  <main class="a-main">
-    {% block content %}{% endblock %}
-  </main>
-
-  <footer class="a-footer">
-    <span>ФБРК админка · AV DS 2026</span>
-  </footer>
+  </aside>
+  <div class="a-shell">
+    <header class="a-topbar">
+      <div class="a-topbar__title">{% block page_title %}{% endblock %}</div>
+      <div class="a-topbar__actions">{% block topbar_actions %}{% endblock %}</div>
+    </header>
+    <main class="a-main">
+      {% block content %}{% endblock %}
+    </main>
+  </div>
+  <script>
+    (function(){
+      var b=document.getElementById('a-burger'),s=document.getElementById('a-sidebar');
+      if(b&&s){b.addEventListener('click',function(){s.classList.toggle('is-open');b.classList.toggle('is-open');});}
+      try{var p=location.pathname;document.querySelectorAll('.a-side-link').forEach(function(a){var h=a.getAttribute('href');if(h&&p.indexOf(h)===0&&h!=='/'){a.classList.add('is-active');}if(h===p){a.classList.add('is-active');}});}catch(e){}
+    })();
+  </script>
   {% block scripts %}{% endblock %}
 </body>
 </html>

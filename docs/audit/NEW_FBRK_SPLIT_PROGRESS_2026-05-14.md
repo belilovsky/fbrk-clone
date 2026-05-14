@@ -160,3 +160,47 @@ Live verification:
 Long-term: Plesk split-proxy всё ещё предпочтительнее, потому что отдаёт SSR
 без тяжёлого static payload, но на конец дня `new.fbrk.kz/a/<slug>` уже не
 теряет полный текст свежих статей.
+
+---
+
+## Admin dashboard recovery (2026-05-14, 16:20Z)
+
+После split-работ публичная админка на `https://fbrk.qdev.run/admin/`
+редиректила неавторизованного пользователя на `/admin/login`, но после логина
+dashboard падал при рендере live-шаблона: `jinja2.exceptions.UndefinedError:
+'stats' is undefined`.
+
+Root cause: на VPS уже лежала новая версия admin UI с KPI-блоками, `recent` и
+`audit`, но route `/admin/` всё ещё отдавал старый контекст только с
+`articles` и `user`. Активные live-файлы админки синхронизированы обратно в
+репозиторий, чтобы следующий деплой из GitHub не откатил рабочие разделы.
+
+Safety gates перед deploy на активный VPS `148.230.117.131`:
+
+- DB backup: `/opt/fbrk-admin/backups/fbrk-20260514T161856Z-pre-admin-dashboard.db`
+  (`72M`, non-zero).
+- Web snapshot: `/opt/fbrk-admin/web-snapshots/20260514T161856Z/` (`2.3G`).
+- Admin snapshot:
+  `/opt/fbrk-admin/admin-snapshots/20260514T161856Z/` (`752K`).
+
+Deploy:
+
+- обновлены `/opt/fbrk-admin/app/main.py`, активные
+  `/opt/fbrk-admin/templates/*.html`, `/opt/fbrk-admin/static/admin.css`;
+- применён `chown www-data:www-data`;
+- выполнен `python3 -m py_compile /opt/fbrk-admin/app/main.py`;
+- выполнен `systemctl restart fbrk-admin`, сервис `active`.
+
+Live verification:
+
+- `https://fbrk.qdev.run/admin/login` -> `200`;
+- `https://fbrk.qdev.run/admin/healthz` -> `200`;
+- `https://fbrk.qdev.run/admin/` без cookie -> `302` на `/admin/login`;
+- `https://fbrk.qdev.run/admin/` с валидной session cookie -> `200`,
+  dashboard содержит `Всего материалов`, `Последние материалы`, `Сущности`;
+- authenticated smoke for `/admin/home`, `/admin/articles`,
+  `/admin/categories/list`, `/admin/tags/list`, `/admin/entities/list`,
+  `/admin/ads/list`, `/admin/uploads/list`, `/admin/audit/list`,
+  `/admin/settings/list` -> `200`;
+- в `journalctl -u fbrk-admin --since "2026-05-14 16:20:00 UTC"` нет
+  `UndefinedError`, `Traceback` или `ERROR`.

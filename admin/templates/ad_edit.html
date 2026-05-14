@@ -1,0 +1,90 @@
+{% extends 'base.html' %}
+{% block title %}{{ title }}
+
+{% endblock %}
+{% block content %}
+<div class="page-header"><h1>Слот {{ item.slot_id }} — {{ item.name }}</h1>
+  <a class="btn btn-ghost" href="/admin/ads/list">← К списку</a>
+</div>
+<div class="card">
+  <div class="kpis" style="display:flex;gap:1.5rem;margin-bottom:1rem;color:#555;font-size:.9rem">
+    <div><b>Страница:</b> {{ item.page }}</div>
+    <div><b>Позиция:</b> {{ item.position }}</div>
+    <div><b>Desktop:</b> {{ item.size_desktop }}</div>
+    <div><b>Mobile:</b> {{ item.size_mobile }}</div>
+    <div><b>Статус:</b> {% if item.is_active %}<span class="badge ok">вкл</span>{% else %}<span class="badge muted">выкл</span>{% endif %}</div>
+    <div><b>Показы:</b> {{ item.impressions or 0 }}</div>
+    <div><b>Клики:</b> {{ item.clicks or 0 }}</div>
+    {% if item.impressions and item.impressions>0 %}<div><b>CTR:</b> {{ '%.2f'|format((item.clicks or 0)*100/item.impressions) }}%</div>{% endif %}
+  </div>
+
+  {% if error %}<div style="background:#fee;border:1px solid #f99;color:#900;padding:10px 14px;border-radius:8px;margin:0 0 14px;font-size:14px;">⚠️ {{ error }}</div>{% endif %}
+        <form method="post" action="/admin/ads/{{ item.id }}/update" class="form-grid">
+    <label>Клиент (название)
+      <input type="text" name="client_name" value="{{ item.client_name or '' }}" placeholder="напр. «ФБРК — демо»">
+    </label>
+    <label>URL перехода
+      <input type="url" name="client_url" value="{{ item.client_url or '' }}" placeholder="https://…">
+    </label>
+    <label>URL картинки
+      <input type="text" name="image_url" value="{{ item.image_url or '' }}" placeholder="/img/uploads/thumb/….webp">
+        <div style="margin-top:.4rem;"><button type="button" id="mediaPickerBtn" class="btn btn-ghost" onclick="openMediaPicker()">🖼️ Выбрать из медиа</button></div>
+    </label>
+    {% if item.image_url %}
+    <div class="preview"><img src="{{ item.image_url if item.image_url.startswith('http') or item.image_url.startswith('/') else '/' + item.image_url }}" alt="preview" style="max-width:320px;max-height:120px;border:1px solid #eee;border-radius:6px"></div>
+    {% endif %}
+    <label>Заметки
+      <textarea name="notes" rows="3" placeholder="Служебные пометки">{{ item.notes or '' }}</textarea>
+    </label>
+    <div class="actions" style="display:flex;gap:.5rem;align-items:center">
+      <button type="submit" class="btn btn-primary">Сохранить</button>
+      <a class="btn btn-ghost" href="/admin/ads/list">Отмена</a>
+    </div>
+  </form>
+  <form method="post" action="/admin/ads/{{ item.id }}/toggle" style="margin-top:1rem">
+    <button type="submit" class="btn btn-ghost">{% if item.is_active %}⛔ Выключить слот{% else %}✅ Включить слот{% endif %}</button>
+  </form>
+</div>
+<style>
+.form-grid{display:flex;flex-direction:column;gap:.85rem;max-width:720px}
+.form-grid label{display:flex;flex-direction:column;gap:.25rem;font-size:.9rem;color:#444}
+.form-grid input,.form-grid textarea{padding:.55rem .7rem;border:1px solid #d8dde6;border-radius:6px;font:inherit}
+.btn{padding:.55rem 1rem;border-radius:6px;border:1px solid transparent;cursor:pointer;font:inherit;text-decoration:none;display:inline-block}
+.btn-primary{background:#1d4ed8;color:#fff}
+.btn-ghost{background:#fff;color:#1d4ed8;border-color:#1d4ed8}
+.badge.ok{background:#dcfce7;color:#166534;padding:.15rem .5rem;border-radius:4px;font-size:.75rem}
+.badge.muted{background:#e5e7eb;color:#6b7280;padding:.15rem .5rem;border-radius:4px;font-size:.75rem}
+</style>
+<div id="mediaPickerModal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.55);z-index:9999;align-items:center;justify-content:center;">
+  <div style="background:#fff;width:min(900px,92vw);max-height:84vh;overflow:hidden;border-radius:12px;display:flex;flex-direction:column;">
+    <div style="display:flex;justify-content:space-between;align-items:center;padding:.8rem 1rem;border-bottom:1px solid #eee;">
+      <b>Выбор из медиа-библиотеки</b>
+      <button type="button" class="btn btn-ghost" onclick="closeMediaPicker()">✕</button>
+    </div>
+    <div id="mediaPickerGrid" style="padding:1rem;display:grid;grid-template-columns:repeat(auto-fill,minmax(140px,1fr));gap:.6rem;overflow:auto;">Загрузка…</div>
+  </div>
+</div>
+<script>
+function openMediaPicker(){
+  var m=document.getElementById('mediaPickerModal');
+  m.style.display='flex';
+  var g=document.getElementById('mediaPickerGrid');
+  g.innerHTML='Загрузка…';
+  fetch('/api/admin/uploads?limit=200',{credentials:'same-origin'}).then(r=>r.json()).then(d=>{
+    var items=(d&&d.items)||[];
+    if(!items.length){g.innerHTML='<div style="color:#888">Пусто</div>';return;}
+    g.innerHTML=items.map(it=>{
+      var u=it.url; var n=it.name||'';
+      return '<div style="cursor:pointer;border:1px solid #eee;border-radius:8px;overflow:hidden;background:#fafafa" onclick="pickMedia(\''+u.replace(/\'/g,"\\\'")+'\')"><img src="'+u+'" loading="lazy" style="display:block;width:100%;height:90px;object-fit:cover"><div style="font-size:11px;color:#666;padding:4px 6px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">'+n+'</div></div>';
+    }).join('');
+  }).catch(e=>{g.innerHTML='Ошибка загрузки: '+e;});
+}
+function closeMediaPicker(){document.getElementById('mediaPickerModal').style.display='none';}
+function pickMedia(url){
+  var i=document.querySelector('input[name="image_url"]');
+  if(i){ i.value=url; i.dispatchEvent(new Event('change')); }
+  closeMediaPicker();
+}
+</script>
+
+{% endblock %}

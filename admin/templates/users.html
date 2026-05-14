@@ -1,0 +1,11 @@
+{% extends "base.html" %}
+{% block title %}Пользователи{% endblock %}
+{% block page_title %}Пользователи ({{ items|length }}){% endblock %}
+{% block content %}
+<div class="section-card">
+  <p class="muted">Список админов. Смена пароля — через CLI по соображениям безопасности.</p>
+  <table class="a-table"><thead><tr><th>#</th><th>username</th><th>created</th></tr></thead><tbody>
+  {% for x in items %}<tr><td>{{ x.id }}</td><td>{{ x.username }}</td><td>{{ x.created_at }}</td></tr>{% endfor %}
+  </tbody></table>
+</div>
+{% endblock %}
