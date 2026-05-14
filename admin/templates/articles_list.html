@@ -83,7 +83,7 @@ async function toggleFeat(e,id,el){e.preventDefault();e.stopPropagation();
       {% for it in items %}
         <tr style="border-bottom:1px solid #f1f1f1">
           <td style="text-align:center;padding:8px 6px"><input type="checkbox" name="ids" value="{{ it.id }}" class="rowCb" onchange="updateBulk()"></td>
-          <td style="padding:8px 12px">{% if it.image %}<img src="{{ it.image }}" style="width:56px;height:36px;object-fit:cover;border-radius:6px" loading="lazy">{% else %}<div style="width:56px;height:36px;background:#f1f1f1;border-radius:6px"></div>{% endif %}</td>
+          <td style="padding:8px 12px">{% if it.image %}<img src="{{ admin_asset_url(it.image) }}" style="width:56px;height:36px;object-fit:cover;border-radius:6px" loading="lazy">{% else %}<div style="width:56px;height:36px;background:#f1f1f1;border-radius:6px"></div>{% endif %}</td>
           <td style="padding:8px 12px"><a href="/admin/edit/{{ it.id }}" style="color:#0a58ca;text-decoration:none">{{ it.title }}</a> <a href="#" onclick="toggleFeat(event,'{{ it.id }}',this)" style="text-decoration:none" title="featured">{% if it.featured %}<span style="font-size:11px;padding:2px 6px;background:#fff3cd;border-radius:10px;color:#8a6d3b">★ featured</span>{% else %}<span style="font-size:11px;color:#bbb">☆</span>{% endif %}</a><div class="muted" style="font-size:11px;color:#999">{{ it.id }}</div></td>
           <td style="padding:8px 12px">{{ it.category_label }}</td>
           <td style="padding:8px 12px;white-space:nowrap">{{ it.date_label }}</td>

@@ -57,6 +57,20 @@ app.mount(
 
 templates = Jinja2Templates(directory=str(BASE / "templates"))
 
+
+def admin_asset_url(value: str | None) -> str:
+    url = (value or "").strip()
+    if not url:
+        return ""
+    if url.startswith(("http://", "https://", "//", "data:", "blob:")):
+        return url
+    if url.startswith("/"):
+        return url
+    return "/" + url.lstrip("/")
+
+
+templates.env.globals["admin_asset_url"] = admin_asset_url
+
 # Public SEO/OG/IA routes — /a/{slug}, /sitemap.xml, /robots.txt, /feed.xml, /feed/ia.xml
 app.include_router(seo_router)
 
@@ -568,6 +582,7 @@ try:
 except NameError:
     from fastapi.templating import Jinja2Templates as _J
     _templates = _J(directory=str(Path(__file__).resolve().parent.parent/"templates"))
+_templates.env.globals["admin_asset_url"] = admin_asset_url
 
 
 @app.get("/admin/articles/list")

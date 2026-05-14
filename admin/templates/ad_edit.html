@@ -31,7 +31,7 @@
         <div style="margin-top:.4rem;"><button type="button" id="mediaPickerBtn" class="btn btn-ghost" onclick="openMediaPicker()">🖼️ Выбрать из медиа</button></div>
     </label>
     {% if item.image_url %}
-    <div class="preview"><img src="{{ item.image_url if item.image_url.startswith('http') or item.image_url.startswith('/') else '/' + item.image_url }}" alt="preview" style="max-width:320px;max-height:120px;border:1px solid #eee;border-radius:6px"></div>
+    <div class="preview"><img src="{{ admin_asset_url(item.image_url) }}" alt="preview" style="max-width:320px;max-height:120px;border:1px solid #eee;border-radius:6px"></div>
     {% endif %}
     <label>Заметки
       <textarea name="notes" rows="3" placeholder="Служебные пометки">{{ item.notes or '' }}</textarea>
@@ -65,6 +65,13 @@
   </div>
 </div>
 <script>
+function adminAssetUrl(url) {
+  url = (url || '').trim();
+  if (!url) return '';
+  if (/^(https?:)?\/\//i.test(url) || /^(data|blob):/i.test(url)) return url;
+  if (url.startsWith('/')) return url;
+  return '/' + url.replace(/^\/+/, '');
+}
 function openMediaPicker(){
   var m=document.getElementById('mediaPickerModal');
   m.style.display='flex';
@@ -75,7 +82,7 @@ function openMediaPicker(){
     if(!items.length){g.innerHTML='<div style="color:#888">Пусто</div>';return;}
     g.innerHTML=items.map(it=>{
       var u=it.url; var n=it.name||'';
-      return '<div style="cursor:pointer;border:1px solid #eee;border-radius:8px;overflow:hidden;background:#fafafa" onclick="pickMedia(\''+u.replace(/\'/g,"\\\'")+'\')"><img src="'+u+'" loading="lazy" style="display:block;width:100%;height:90px;object-fit:cover"><div style="font-size:11px;color:#666;padding:4px 6px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">'+n+'</div></div>';
+      return '<div style="cursor:pointer;border:1px solid #eee;border-radius:8px;overflow:hidden;background:#fafafa" onclick="pickMedia(\''+u.replace(/\'/g,"\\\'")+'\')"><img src="'+adminAssetUrl(u).replace(/"/g, '&quot;')+'" loading="lazy" style="display:block;width:100%;height:90px;object-fit:cover"><div style="font-size:11px;color:#666;padding:4px 6px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">'+n+'</div></div>';
     }).join('');
   }).catch(e=>{g.innerHTML='Ошибка загрузки: '+e;});
 }

@@ -204,3 +204,53 @@ Live verification:
   `/admin/settings/list` -> `200`;
 - в `journalctl -u fbrk-admin --since "2026-05-14 16:20:00 UTC"` нет
   `UndefinedError`, `Traceback` или `ERROR`.
+
+---
+
+## Admin save + image preview recovery (2026-05-14, 16:45Z)
+
+После восстановления dashboard обнаружены два связанных дефекта в админке:
+
+1. Сохранение материала возвращало `500 Internal Server Error`.
+   Root cause: `regenerate_data_js()` не мог создать
+   `/var/www/fbrk.qdev.run/js/data.js.lock`, потому что директория `js/` и
+   сгенерированные файлы были под чужим владельцем (`501:staff`/`root`), а
+   backend работает как `www-data`.
+2. Обложки с абсолютными URL `https://fbrk.kz/...` в admin templates
+   превращались в `/<https-url>` и не грузились в preview/listing.
+
+Safety gates перед deploy:
+
+- DB backup:
+  `/opt/fbrk-admin/backups/fbrk-20260514T163915Z-pre-admin-save-images.db`
+  (`72M`, non-zero).
+- Web snapshot: `/opt/fbrk-admin/web-snapshots/20260514T163915Z/` (`2.3G`).
+- Admin snapshot:
+  `/opt/fbrk-admin/admin-snapshots/20260514T163915Z/` (`756K`).
+
+Fix:
+
+- `chown -R www-data:www-data /var/www/fbrk.qdev.run/js` и нормальные
+  read/write permissions для generated JS.
+- `admin_asset_url()` добавлен в Jinja globals для обеих admin template envs.
+- `editor.html`, `articles.html`, `articles_list.html`, `ad_edit.html`
+  больше не добавляют `/` перед absolute/external image URL.
+- В editor JS preview добавлен такой же URL normalizer.
+- Исправлен typo `<scritt>` -> `<script>` для tag chips.
+
+Live verification:
+
+- реальный `PUT /api/articles/smi-soobschayut-o-zaderzhanii-zamnachalnika-rop-po-podozreniyu-vo-vzyatke-v-sko`
+  с валидной session cookie -> `200 OK`;
+- после PUT перегенерированы:
+  `/var/www/fbrk.qdev.run/js/data.js`,
+  `/var/www/fbrk.qdev.run/js/data-archive.js`,
+  `/var/www/fbrk.qdev.run/js/article-full.js`;
+- `/admin/articles`, `/admin/edit/<slug>`, `/admin/ads/list`,
+  `/admin/uploads/list` -> `200`;
+- на проверенных admin pages `bad_prefixed_external=0` для `src="/https://..."`;
+- `https://fbrk.qdev.run/admin/healthz` -> `200`;
+- `https://fbrk.qdev.run/js/data.js` -> `200`;
+- `https://new.fbrk.kz/` -> `200`;
+- в свежем `journalctl` после финального restart нет `PermissionError`,
+  `UndefinedError`, `Traceback`, `ERROR`.

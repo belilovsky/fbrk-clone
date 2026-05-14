@@ -26,7 +26,7 @@
     {% for a in articles %}
       <tr>
         <td class="a-col-cover">
-          {% if a.image %}<img src="/{{ a.image.lstrip('/') }}" alt=""/>{% else %}<div class="a-cover-ph"></div>{% endif %}
+          {% if a.image %}<img src="{{ admin_asset_url(a.image) }}" alt=""/>{% else %}<div class="a-cover-ph"></div>{% endif %}
         </td>
         <td>
           <a class="a-link" href="/admin/edit/{{ a.id }}">{{ a.title }}</a>
