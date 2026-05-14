@@ -17,6 +17,8 @@ import html
 import json
 import os
 import re
+import sqlite3 as _ad_sqlite
+import time as _ad_time
 from datetime import datetime, timezone
 from pathlib import Path
 
@@ -34,6 +36,50 @@ YOUTUBE = "https://www.youtube.com/@fbrk_news"
 
 BASE = Path(__file__).resolve().parent.parent  # admin/
 templates = Jinja2Templates(directory=str(BASE / "templates"))
+
+# SSR template uses ad("slot") helper for promo blocks.
+# Keep it resilient: if ad table is unavailable we return empty HTML.
+_AD_DB_PATH = str(BASE / "fbrk.db") if (BASE / "fbrk.db").exists() else "/opt/fbrk-admin/fbrk.db"
+_AD_CACHE = {"t": 0.0, "data": {}}
+
+
+def _ads_load() -> dict:
+    now = _ad_time.time()
+    if now - float(_AD_CACHE.get("t", 0)) < 60 and _AD_CACHE.get("data"):
+        return _AD_CACHE["data"]
+    out: dict = {}
+    try:
+        con = _ad_sqlite.connect(_AD_DB_PATH)
+        con.row_factory = _ad_sqlite.Row
+        rows = con.execute(
+            "SELECT slot_id, client_name, client_url, image_url, notes "
+            "FROM ad_placements WHERE is_active=1 AND COALESCE(image_url, '') != ''"
+        ).fetchall()
+        for r in rows:
+            out[r["slot_id"]] = dict(r)
+        con.close()
+    except Exception:
+        pass
+    _AD_CACHE["t"] = now
+    _AD_CACHE["data"] = out
+    return out
+
+
+def _ad(slot_id: str) -> str:
+    a = _ads_load().get(slot_id)
+    if not a:
+        return ""
+    url = a.get("client_url") or "#"
+    img = a.get("image_url") or ""
+    name = str(a.get("client_name") or "").replace('"', "&quot;")
+    return (
+        f'<a class="ad-slot ad-{slot_id}" href="{url}" target="_blank" rel="sponsored noopener" '
+        f'data-slot="{slot_id}" aria-label="Реклама: {name}">'
+        f'<img src="{img}" alt="{name}" loading="lazy"></a>'
+    )
+
+
+templates.env.globals["ad"] = _ad
 
 router = APIRouter()
 
