@@ -275,6 +275,99 @@ def _sanitize_result(raw: dict) -> dict:
     }
 
 
+def _fallback_result(a: dict) -> dict:
+    """Deterministic fallback when model providers are unavailable."""
+    title = (a.get("title") or "").strip()
+    dek = _strip(a.get("dek") or "")
+
+    paragraphs: list[str] = []
+    for s in a.get("sections") or []:
+        if isinstance(s, dict) and s.get("p"):
+            p = _strip(str(s.get("p")))
+            if p:
+                paragraphs.append(p)
+
+    lead = dek or (paragraphs[0] if paragraphs else "")
+    summary_short = (lead or title)[:220]
+    summary_tts = " ".join(x for x in [dek, paragraphs[0] if paragraphs else ""] if x).strip()
+    if not summary_tts:
+        summary_tts = summary_short
+    summary_tts = summary_tts[:600]
+
+    key_points: list[str] = []
+    for chunk in [dek, *paragraphs[:6]]:
+        for sent in re.split(r"(?<=[.!?])\s+", chunk or ""):
+            s = _strip(sent).strip(" .")
+            if len(s) < 40:
+                continue
+            s = s[:160]
+            if s and s not in key_points:
+                key_points.append(s)
+            if len(key_points) >= 5:
+                break
+        if len(key_points) >= 5:
+            break
+    if not key_points and summary_short:
+        key_points = [summary_short[:160]]
+
+    entities: list[dict] = []
+    seen: set[str] = set()
+    for t in a.get("tags") or []:
+        if not isinstance(t, str):
+            continue
+        name = t.strip()[:120]
+        if not name:
+            continue
+        lk = name.lower()
+        if lk in seen:
+            continue
+        seen.add(lk)
+        entities.append({"name": name, "type": "other", "wikidata": None, "wiki_url": None})
+        if len(entities) >= 12:
+            break
+
+    blob = " ".join(x for x in [title, dek] if x)
+    for m in re.finditer(
+        r"\b[A-ZА-ЯЁ][A-Za-zА-Яа-яЁё0-9-]{2,}(?:\s+[A-ZА-ЯЁ][A-Za-zА-Яа-яЁё0-9-]{2,}){0,2}\b",
+        blob,
+    ):
+        name = m.group(0).strip()[:120]
+        lk = name.lower()
+        if lk in seen:
+            continue
+        if lk in {"новости", "расследование", "казахстан", "республика"}:
+            continue
+        seen.add(lk)
+        entities.append({"name": name, "type": "other", "wikidata": None, "wiki_url": None})
+        if len(entities) >= 12:
+            break
+
+    category_auto = (a.get("category") or "").strip().lower()
+    if category_auto not in {"news", "investigation"}:
+        category_auto = "news"
+
+    importance = 3 if category_auto == "investigation" else 2
+
+    tags_auto = []
+    for t in a.get("tags") or []:
+        if isinstance(t, str) and t.strip():
+            tags_auto.append(t.strip()[:60])
+        if len(tags_auto) >= 6:
+            break
+
+    return {
+        "summary_short": summary_short,
+        "summary_tts": summary_tts,
+        "key_points": key_points[:5],
+        "importance": importance,
+        "sentiment": "neutral",
+        "entities": entities,
+        "region": "",
+        "category_auto": category_auto,
+        "tags_auto": tags_auto,
+    }
+
+
 def _select_pending(limit: int | None, only_id: str | None, retry_errors: bool) -> list[dict]:
     with db() as conn:
         if only_id:
@@ -361,13 +454,12 @@ def run(limit: int | None = None, only_id: str | None = None,
     for i, a in enumerate(articles, 1):
         text = _build_article_text(a)
         if len(text) < 80:  # too short to enrich
-            _upsert_meta(a["id"], {
-                "summary_short": (a.get("dek") or a.get("title") or "")[:220],
-                "summary_tts": a.get("dek") or a.get("title") or "",
-                "key_points": [], "importance": 1, "sentiment": "neutral",
-                "entities": [], "region": "", "category_auto": a.get("category") or "",
-                "tags_auto": a.get("tags") or [],
-            }, model="fallback", input_chars=len(text))
+            _upsert_meta(
+                a["id"],
+                _fallback_result(a),
+                model="fallback-local",
+                input_chars=len(text),
+            )
             ok += 1
             if i % 20 == 0:
                 print(f"[enrich] {i}/{total} ok={ok} err={err} ({(time.time()-t0):.1f}s)", flush=True)
@@ -400,12 +492,14 @@ def run(limit: int | None = None, only_id: str | None = None,
                 msg = primary_msg
             err += 1
             print(f"[enrich] FAIL {a['id']}: {msg}", flush=True)
-            # Write a stub row so we don't reprocess forever
-            _upsert_meta(a["id"], {
-                "summary_short": "", "summary_tts": "", "key_points": [],
-                "importance": 0, "sentiment": "", "entities": [],
-                "region": "", "category_auto": "", "tags_auto": [],
-            }, model=model, input_chars=len(text), error=msg)
+            # Persist deterministic fallback so article pages keep key points/entities.
+            _upsert_meta(
+                a["id"],
+                _fallback_result(a),
+                model="fallback-local",
+                input_chars=len(text),
+                error="",
+            )
         if i % 10 == 0:
             elapsed = time.time() - t0
             rate = i / max(elapsed, 1e-3)
