@@ -204,6 +204,22 @@ Safety snapshot created (2026-05-14):
   - `https://new.fbrk.kz/sitemap.xml` still contains `<loc>` URLs on `https://fbrk.qdev.run/...`
 - Conclusion: static mirror exists, but proxy/runtime split directives are not applied yet on KZ host.
 
+### Plesk permission gate (confirmed 2026-05-14)
+
+- Auth to Plesk succeeds for `a.belilovsky@gmail.com` (session cookie is issued).
+- Domain page `new.fbrk.kz` -> `Apache и nginx` opens (`/smb/web/web-server-settings/id/1507`).
+- But embedded feature flags for this account show:
+  - `"nginx": true`
+  - `"additionalNginxSettings": false`
+  - `"additionalSettings": false`
+- Result: this role can view web-server settings but cannot edit **Additional nginx directives** for the domain.
+- Because of this gate, split-proxy routes (`/a/`, `/sitemap.xml`, `/robots.txt`, `/feed*`, optional `/js/data*.js`) cannot be applied by this account via UI/API.
+
+Required to complete cutover:
+
+1. Use a Plesk role with permission to edit `Additional nginx directives` for `new.fbrk.kz`, **or**
+2. Apply equivalent vhost changes via SSH/CLI on the Plesk host (provider-side operation).
+
 ## DB Integrity Quick Check (Production, 2026-05-14)
 
 - Total articles: `4652`
