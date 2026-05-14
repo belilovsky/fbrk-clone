@@ -115,3 +115,54 @@ Interpretation: current production code path is split between GitHub and manual 
 Safety snapshot created (2026-05-14):
 
 - `/opt/fbrk-admin/backups/fbrk-web-dirty-20260514T083849Z.tar.gz` (tracked dirty files from `/var/www/fbrk.qdev.run`: `index.html`, `style.css`, `js/data.js`, `js/data-archive.js`).
+
+## Rollout Update (2026-05-14)
+
+### Production actions performed on `148.230.117.131`
+
+1. Safety gate executed before file updates:
+   - DB backup: `/opt/fbrk-admin/backups/fbrk-20260514T091325Z-pre-split-rollout.db` (non-zero, ~70 MB).
+   - Web snapshot: `/opt/fbrk-admin/web-snapshots/20260514T091325Z/` (~2.3 GB).
+2. Deployed frontend files to `/var/www/fbrk.qdev.run/`:
+   - `index.html`, `archive.html`, `about.html`, `article.html`
+   - `js/app.js`, `js/runtime-config.js`
+3. Deployed backend files to `/opt/fbrk-admin/app/`:
+   - `publish.py`, `seo.py`
+4. Ownership normalized:
+   - `chown www-data:www-data` for all copied frontend/backend files.
+5. Backend restarted:
+   - `systemctl restart fbrk-admin` (status `active`).
+
+### Incident and fix during rollout
+
+- At ~09:14 UTC, `/a/<slug>` returned `500` due Jinja error:
+  - `UndefinedError: 'ad' is undefined` in `article_ssr.html`.
+- Immediate recovery:
+  - temporary rollback of `seo.py` to server backup (`seo.py.bak_1778658357`).
+  - service restart and smoke -> `/a/<slug>` back to `200`.
+- Permanent fix applied:
+  - restored SSR `ad` helper compatibility in repo `admin/app/seo.py`.
+  - redeployed fixed `seo.py`.
+  - revalidated `/a/<slug>`, `/`, `/sitemap.xml` as `200`.
+
+### Verified after recovery
+
+- Public smoke:
+  - `https://fbrk.qdev.run/` -> `200`
+  - `https://fbrk.qdev.run/archive.html` -> `200`
+  - `https://fbrk.qdev.run/a/<slug>` -> `200`
+  - `https://fbrk.qdev.run/sitemap.xml` -> `200`
+- Headless browser smoke (Playwright):
+  - home/archive/article load successfully, no page JS errors.
+- Host-aware check (direct app test):
+  - `curl -H "Host: new.fbrk.kz" -H "X-Forwarded-Proto: https" http://127.0.0.1:8787/sitemap.xml`
+  - generated `<loc>` URLs use `https://new.fbrk.kz/...`.
+
+### Remaining blocker for full split cutover
+
+- `new.fbrk.kz` hosting node `195.210.46.10` is reachable over HTTPS but not over SSH from current access path (port 22 timeout), so KZ-host-side config was not directly mutated in this rollout.
+- To complete split mode on KZ host, still required:
+  - apply `admin/deploy/plesk-new-fbrk-split-proxy.conf` in Plesk Additional nginx directives;
+  - set `js/runtime-config.js` on KZ host:
+    - `window.FBRK_PUBLIC_ORIGIN = 'https://new.fbrk.kz'`
+    - `window.FBRK_BACKEND_ORIGIN = 'https://fbrk.qdev.run'`
