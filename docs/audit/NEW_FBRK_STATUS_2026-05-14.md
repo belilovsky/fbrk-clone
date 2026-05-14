@@ -71,16 +71,34 @@ Interpretation: current production code path is split between GitHub and manual 
 - `js/app.js` made host-aware for client-side article SEO fallback:
   - JSON-LD and canonical image/article URLs now use `location.origin` instead of hardcoded `fbrk.qdev.run`.
 
+## Follow-up Code Prep (split frontend mode)
+
+- Added frontend runtime split config:
+  - `js/runtime-config.js` (public-origin/backend-origin overrides).
+  - `index.html`, `archive.html`, `about.html`, `article.html` now load runtime config before `app.js`.
+- Updated `js/app.js` routing behavior:
+  - article links now use configurable backend origin (instead of hardcoded relative `/a/...`).
+  - when backend origin differs from public host, article fallback page redirects to backend SSR canonical.
+  - fixed wrong fallback behavior where unknown `id`/`slug` could open the first article.
+- Updated `admin/app/publish.py`:
+  - `SITE_URL` now comes from `FBRK_SITE_URL` (with fallback).
+  - sitemap/feed article URLs are now `/a/<slug>` instead of `article.html?id=...`.
+- Added KZ-hosting proxy template:
+  - `admin/deploy/plesk-new-fbrk-split-proxy.conf`.
+  - routes `/a/*`, `/sitemap.xml`, `/robots.txt`, `/feed*` (and optional `/js/data*.js`) to VPS backend.
+- Added split runbook:
+  - `docs/audit/NEW_FBRK_SPLIT_FRONTEND_RUNBOOK.md`.
+
 ## Recommended Continuation Plan
 
 1. Snapshot current VPS #2 web repo state into GitHub branch (including dirty tracked files).
 2. Decide merge strategy:
    - Option A: rebase VPS stream onto `origin/master`.
    - Option B: merge `origin/master` into VPS stream and resolve intentionally.
-3. Cutover prep for `new.fbrk.kz`:
-   - Point DNS to `148.230.117.131`.
-   - Issue LE cert for `new.fbrk.kz`.
-   - Enable `nginx-new-fbrk.conf`.
+3. Split-hosting prep for `new.fbrk.kz`:
+   - Keep frontend static on KZ host.
+   - Apply `plesk-new-fbrk-split-proxy.conf` in Plesk for dynamic routes to VPS backend.
+   - Configure `js/runtime-config.js` on KZ host (`PUBLIC_ORIGIN=new.fbrk.kz`, `BACKEND_ORIGIN=fbrk.qdev.run`).
    - Run smoke matrix on both hosts (`fbrk.qdev.run` and `new.fbrk.kz`).
 4. Only after stable smoke, decide canonical/SEO host policy for the new frontend domain.
 5. Execute cutover only by checklist: `docs/audit/NEW_FBRK_CUTOVER_RUNBOOK.md`.

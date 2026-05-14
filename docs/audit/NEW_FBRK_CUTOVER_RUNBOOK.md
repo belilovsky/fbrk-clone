@@ -1,5 +1,7 @@
 # Runbook: new.fbrk.kz Cutover
 
+> Note (2026-05-14): if `new.fbrk.kz` must stay on KZ hosting while backend/DB stay on separate VPS, use `docs/audit/NEW_FBRK_SPLIT_FRONTEND_RUNBOOK.md` instead of this same-VPS cutover flow.
+
 Date: 2026-05-14  
 Target host: `148.230.117.131`  
 Current public host: `fbrk.qdev.run`  

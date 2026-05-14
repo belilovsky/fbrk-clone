@@ -30,6 +30,7 @@ fbrk/
 │   └── av-ds/tokens.css  — AV Design System токены (опционально подключаются)
 ├── js/
 │   ├── app.js            — рендереры + ⌘K-поиск + listing
+│   ├── runtime-config.js — runtime overrides (split-hosting mode)
 │   ├── data.js           — 80 свежих статей (генерируется)
 │   └── data-archive.js   — полный архив (генерируется)
 ├── img/                  — обложки, бренд
@@ -49,11 +50,15 @@ chown -R www-data:www-data /var/www/fbrk.qdev.run/...
 systemctl restart fbrk-admin
 ```
 
+Для split-схемы (`new.fbrk.kz` = статика, `fbrk.qdev.run` = backend/DB):
+- `docs/audit/NEW_FBRK_SPLIT_FRONTEND_RUNBOOK.md`
+- `admin/deploy/plesk-new-fbrk-split-proxy.conf`
+
 ## ENV (через `/etc/fbrk-admin/fbrk-admin.env`)
 
 - `FBRK_API_KEY` — admin API-ключ (заголовок `X-API-Key`)
 - `FBRK_DB_PATH` / `FBRK_DB` — путь к SQLite (по умолчанию `/opt/fbrk-admin/fbrk.db`)
-- `FBRK_SITE_URL` — опциональный fallback base URL для SEO-роутов (`/sitemap.xml`, `/feed.xml`, `/robots.txt`) когда `Host` недоступен
+- `FBRK_SITE_URL` — fallback base URL для SEO/publish ссылок (`/sitemap.xml`, `/feed.xml`, `/robots.txt`, RSS item links) когда `Host` недоступен
 - LLM-ключи для AI-обогащения
 
 ## Cron

@@ -2,7 +2,19 @@
 // ФБРК — интерактив (AV DS 2026)
 // ============================================================
 
+function _cfgOrigin(key) {
+  try {
+    const value = (window && window[key]) ? String(window[key]).trim() : '';
+    if (!value) return '';
+    return value.replace(/\/+$/, '');
+  } catch (_) {
+    return '';
+  }
+}
+
 function siteOrigin() {
+  const configured = _cfgOrigin('FBRK_PUBLIC_ORIGIN');
+  if (configured) return configured;
   try {
     if (window.location && window.location.origin) {
       return window.location.origin.replace(/\/+$/, '');
@@ -11,12 +23,35 @@ function siteOrigin() {
   return 'https://fbrk.qdev.run';
 }
 
+function backendOrigin() {
+  const configured = _cfgOrigin('FBRK_BACKEND_ORIGIN');
+  return configured || siteOrigin();
+}
+
 function absSiteUrl(pathOrUrl) {
   if (!pathOrUrl) return siteOrigin();
   if (/^https?:\/\//i.test(pathOrUrl)) return pathOrUrl;
   const base = siteOrigin();
   if (String(pathOrUrl).startsWith('/')) return base + pathOrUrl;
   return base + '/' + pathOrUrl;
+}
+
+function absBackendUrl(pathOrUrl) {
+  if (!pathOrUrl) return backendOrigin();
+  if (/^https?:\/\//i.test(pathOrUrl)) return pathOrUrl;
+  const base = backendOrigin();
+  if (String(pathOrUrl).startsWith('/')) return base + pathOrUrl;
+  return base + '/' + pathOrUrl;
+}
+
+function articleUrl(slugOrId) {
+  const id = encodeURIComponent(String(slugOrId || ''));
+  return absBackendUrl(`/a/${id}`);
+}
+
+function articleHref(a) {
+  if (!a) return articleUrl('');
+  return articleUrl(a.slug || a.id);
 }
 
 // ---------- date formatting (used everywhere; defined first) ----------
@@ -174,7 +209,7 @@ function fbrkToast(message, ms = 2400) {
     renderResults('');
   }
   function toResultHtml(a) {
-    return `<a class="search-result" href="/a/${a.slug || a.id}">
+    return `<a class="search-result" href="${articleHref(a)}">
       <div class="search-result__title">${escapeHtml(a.title)}</div>
       <div class="search-result__meta">${a.categoryLabel} · ${fmtDateLong(a.dateIso) || a.date}</div>
     </a>`;
@@ -287,13 +322,13 @@ function liveBadgeHtml(a) {
   const featured = all.find((a) => a.featured) || all[0];
 
   leadRoot.innerHTML = `
-    <a class="lead__media" href="/a/${featured.slug || featured.id}" aria-label="${escapeHtml(featured.title)}">
+    <a class="lead__media" href="${articleHref(featured)}" aria-label="${escapeHtml(featured.title)}">
       <img src="${fullCover(featured)}" alt="${escapeHtml(featured.title)}" width="1200" height="800" loading="eager"/>
     </a>
     <div class="lead__body">
       <div class="kicker">${featured.categoryLabel}</div>
       <h1 class="lead__title">
-        <a href="/a/${featured.slug || featured.id}">${escapeHtml(featured.title)}</a>
+        <a href="${articleHref(featured)}">${escapeHtml(featured.title)}</a>
       </h1>
       <p class="lead__dek">${escapeHtml(featured.dek)}</p>
       <div class="lead__meta">
@@ -326,7 +361,7 @@ function liveBadgeHtml(a) {
           : '';
         return `
       <article class="${cardCls}">
-        <a href="/a/${a.slug || a.id}">
+        <a href="${articleHref(a)}">
           <div class="card__media">
             ${mediaInner}
             <span class="card__date-badge">${fmtDateShort(a.dateIso) || a.date}</span>
@@ -354,13 +389,13 @@ function liveBadgeHtml(a) {
         : `<span class="latest__thumb-mark">FBRK</span>`;
       return `
       <li class="latest__item">
-        <a class="${thumbCls}" href="/a/${a.slug || a.id}">
+        <a class="${thumbCls}" href="${articleHref(a)}">
           ${thumbInner}
           ${importanceBadgeHtml(a)}${liveBadgeHtml(a)}
         </a>
         <div>
           <h3 class="latest__title">
-            <a href="/a/${a.slug || a.id}">${escapeHtml(a.title)}</a>
+            <a href="${articleHref(a)}">${escapeHtml(a.title)}</a>
           </h3>
           <div class="latest__meta">${fmtDateShort(a.dateIso) || a.date}</div>
         </div>
@@ -549,12 +584,13 @@ function liveBadgeHtml(a) {
   // entity-chips, Schema.org NewsArticle. data.js no longer carries full
   // article bodies (only listing metadata for the latest 80 articles), so
   // SPA rendering is not viable for older articles. Trust the id as slug.
-  if (id && params.get('spa') !== '1') {
-    location.replace('/a/' + id + (location.hash || ''));
+  const redirectToBackend = backendOrigin() !== siteOrigin();
+  if (id && (params.get('spa') !== '1' || redirectToBackend)) {
+    location.replace(articleUrl(id) + (location.hash || ''));
     return;
   }
   if (typeof FBRK_DATA === 'undefined') return;
-  const a = FBRK_DATA.articles.find((x) => x.id === id) || FBRK_DATA.articles[0];
+  const a = FBRK_DATA.articles.find((x) => x.id === id || x.slug === id);
   if (!a) return;
 
   document.title = `${a.title} — ФБРК`;
@@ -614,7 +650,7 @@ function liveBadgeHtml(a) {
                   : '';
                 return `
             <article class="${cardCls}">
-              <a href="/a/${x.slug || x.id}">
+              <a href="${articleHref(x)}">
                 <div class="card__media">
                   ${mediaInner}
                   <span class="card__date-badge">${fmtDateShort(x.dateIso) || x.date}</span>
@@ -656,12 +692,12 @@ function escapeHtml(s) {
   const titleEl = document.querySelector('[data-article-title]');
   if (!titleEl || typeof FBRK_DATA === 'undefined') return;
   const id = new URLSearchParams(location.search).get('id');
-  const a = FBRK_DATA.articles.find((x) => x.id === id) || FBRK_DATA.articles[0];
+  const a = FBRK_DATA.articles.find((x) => x.id === id || x.slug === id);
   if (!a) return;
   const base = siteOrigin();
   const title = `${a.title} — ФБРК`;
   const desc = (a.dek || '').slice(0, 200);
-  const url = absSiteUrl(`/a/${a.slug || a.id}`);
+  const url = articleUrl(a.slug || a.id);
   const img = (a.image || '').startsWith('http') ? a.image : absSiteUrl(a.image || '/img/og-default.jpg');
   titleEl.textContent = title;
   const descEl = document.querySelector('[data-article-desc]');
@@ -859,7 +895,7 @@ function escapeHtml(s) {
       : '';
     return `
       <article class="${cardCls}">
-        <a href="/a/${a.slug || a.id}">
+        <a href="${articleHref(a)}">
           <div class="card__media">
             ${mediaInner}
             <span class="card__date-badge">${fmtDateShort(a.dateIso) || a.date}</span>

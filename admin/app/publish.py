@@ -3,6 +3,7 @@ from __future__ import annotations
 
 import html
 import json
+import os
 from datetime import datetime, timezone
 from pathlib import Path
 
@@ -10,7 +11,7 @@ from .config import settings
 from .db import db, row_to_article
 
 
-SITE_URL = "https://fbrk.qdev.run"
+SITE_URL = (os.environ.get("FBRK_SITE_URL") or "https://fbrk.qdev.run").rstrip("/")
 
 HEADER = """// ============================================================
 // ФБРК — данные статей
@@ -107,12 +108,8 @@ def _write_sitemap(articles: list[dict], web_root: Path) -> None:
     ]
     for a in articles:
         iso = (a.get("dateIso") or now)
-        urls.append((
-            f"{SITE_URL}/article.html?id={a['id']}",
-            iso,
-            "monthly",
-            "0.7",
-        ))
+        slug_or_id = a.get("slug") or a["id"]
+        urls.append((f"{SITE_URL}/a/{slug_or_id}", iso, "weekly", "0.7"))
     body = ['<?xml version="1.0" encoding="UTF-8"?>',
             '<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">']
     for loc, lastmod, cf, pr in urls:
@@ -151,7 +148,8 @@ def _write_feed(articles: list[dict], web_root: Path) -> None:
         f'    <atom:link href="{SITE_URL}/feed.xml" rel="self" type="application/rss+xml" />',
     ]
     for a in items:
-        url = f"{SITE_URL}/article.html?id={a['id']}"
+        slug_or_id = a.get("slug") or a["id"]
+        url = f"{SITE_URL}/a/{slug_or_id}"
         img = a.get("image") or ""
         if img and not img.startswith("http"):
             img = f"{SITE_URL}{img}"
@@ -171,7 +169,6 @@ def _write_feed(articles: list[dict], web_root: Path) -> None:
     (web_root / "feed.xml").write_text("\n".join(lines), encoding="utf-8")
 
 
-import os
 import fcntl
 import tempfile
 import threading
