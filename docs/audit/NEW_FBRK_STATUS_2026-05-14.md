@@ -194,3 +194,39 @@ Safety snapshot created (2026-05-14):
   - API error: `errcode=1001`, `Неверное имя пользователя или пароль`.
 - SSH to KZ host `195.210.46.10:22` still times out from both local path and VPS #2:
   - cannot apply Plesk directives or runtime-config directly on KZ host without additional access path.
+
+## KZ Host Live-State (Observed via VPS #2)
+
+- `new.fbrk.kz` currently serves static frontend from Plesk host (`x-powered-by: PleskLin`).
+- Current KZ-host frontend is not yet in split mode:
+  - homepage canonical still points to `https://fbrk.qdev.run/`
+  - article page canonical/OG URL still points to `https://fbrk.qdev.run/article.html`
+  - `https://new.fbrk.kz/sitemap.xml` still contains `<loc>` URLs on `https://fbrk.qdev.run/...`
+- Conclusion: static mirror exists, but proxy/runtime split directives are not applied yet on KZ host.
+
+## DB Integrity Quick Check (Production, 2026-05-14)
+
+- Total articles: `4652`
+- Empty payload checks:
+  - `body_json` empty/null: `0`
+  - `sections_json` empty/null: `0`
+- Categories:
+  - `news`: `4568`
+  - `investigation`: `84`
+- Duplicate slugs: `0`
+- Date integrity:
+  - invalid format: `0`
+  - future dates: `0`
+  - dates before `2010-01-01`: `0`
+
+### Data quality findings to normalize (small targeted set)
+
+- `source` distribution:
+  - `https://fbrk.kz/...`: `4642`
+  - non-URL / external-style source values: `10`
+- Duplicate source URL count: `1` (same `source` used by two rows).
+- `dek` anomalies:
+  - empty: `1`
+  - equals `title`: `1`
+
+These are low-volume data hygiene items and should be fixed by targeted update script only after backup gate and approval for production DB mutation.
