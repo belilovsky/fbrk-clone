@@ -64,3 +64,24 @@
 - canonical на `new` указывает на `https://new.fbrk.kz/...`
 - `/a/<slug>`, `/sitemap.xml`, `/feed.xml`, `/robots.txt` на `new` обслуживаются через split-маршруты.
 
+---
+
+## Hotfix (2026-05-14, вечером)
+
+Выполнен аварийный фикс на `new.fbrk.kz` без прав Plesk Admin (через File Manager):
+
+1. Карточки теперь ведут на `https://new.fbrk.kz/a/<slug>`, а не сразу на `fbrk.qdev.run`.
+2. `article.html` переведён на абсолютные ассеты (`/css/...`, `/js/...`) и подключает `data-archive.js`,
+   чтобы URL вида `/a/<slug>` больше не ломался из-за `404` на `/a/js/*` и `/a/css/*`.
+3. `js/app.js` обновлён:
+   - поддержка чтения slug из пути `/a/<slug>`;
+   - fallback-поиск статьи в `ARTICLES_ARCHIVE`, если нет в `FBRK_DATA`;
+   - fallback-рендер текста из `dek`, если `sections` отсутствуют;
+   - мягкий fallback на backend только если статьи нет в локальных данных вообще.
+
+Smoke после выкладки:
+- главная генерирует ссылки на `new.fbrk.kz/a/...`;
+- `https://new.fbrk.kz/a/trekhkratnyi-...` открывается на `new.fbrk.kz` (без редиректа на `fbrk.qdev.run`);
+- `https://new.fbrk.kz/a/latifundisty-kazakhstana-glava-7-yug` рендерится полностью из локального архива.
+
+Важно: это рабочий hotfix маршрутизации и UI. Для 100% канонической схемы split-proxy всё ещё нужен доступ Plesk Admin к `Additional nginx directives`.

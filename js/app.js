@@ -46,7 +46,7 @@ function absBackendUrl(pathOrUrl) {
 
 function articleUrl(slugOrId) {
   const id = encodeURIComponent(String(slugOrId || ''));
-  return absBackendUrl(`/a/${id}`);
+  return absSiteUrl(`/a/${id}`);
 }
 
 function articleHref(a) {
@@ -611,25 +611,44 @@ function liveBadgeHtml(a) {
   const root = document.querySelector('[data-article]');
   if (!root) return;
   const params = new URLSearchParams(location.search);
-  const id = params.get('id');
+  const pathMatch = (location.pathname || '').match(/^\/a\/([^/?#]+)/);
+  const id = params.get('id') || (pathMatch ? decodeURIComponent(pathMatch[1]) : '');
+  if (!id) return;
 
-  // ALWAYS redirect to canonical SSR /a/<slug>. The SSR page has TL;DR,
-  // entity-chips, Schema.org NewsArticle. data.js no longer carries full
-  // article bodies (only listing metadata for the latest 80 articles), so
-  // SPA rendering is not viable for older articles. Trust the id as slug.
+  const primary = (typeof FBRK_DATA !== 'undefined' && Array.isArray(FBRK_DATA.articles))
+    ? FBRK_DATA.articles
+    : [];
+  const archive = (typeof ARTICLES_ARCHIVE !== 'undefined' && Array.isArray(ARTICLES_ARCHIVE.articles))
+    ? ARTICLES_ARCHIVE.articles
+    : [];
+  const findById = (list) => list.find((x) => x && (x.id === id || x.slug === id));
+  const a = findById(primary) || findById(archive);
+
+  // If article is not present in local static data, fallback to backend canonical.
   const redirectToBackend = backendOrigin() !== siteOrigin();
-  if (id && (params.get('spa') !== '1' || redirectToBackend)) {
-    location.replace(articleUrl(id) + (location.hash || ''));
+  if (!a) {
+    if (redirectToBackend) {
+      location.replace(absBackendUrl(`/a/${encodeURIComponent(id)}`) + (location.hash || ''));
+    }
     return;
   }
-  if (typeof FBRK_DATA === 'undefined') return;
-  const a = FBRK_DATA.articles.find((x) => x.id === id || x.slug === id);
-  if (!a) return;
+
+  const sectionItems = Array.isArray(a.sections)
+    ? a.sections.filter((s) => s && ((s.h && String(s.h).trim()) || (s.p && String(s.p).trim())))
+    : [];
+  const fallbackParagraphs = String(a.dek || '')
+    .replace(/\r\n/g, '\n')
+    .split(/\n{2,}/)
+    .map((x) => x.trim())
+    .filter(Boolean)
+    .map((p) => ({ h: '', p }));
+  const bodySections = sectionItems.length ? sectionItems : fallbackParagraphs;
+  const heroDek = sectionItems.length ? String(a.dek || '').trim() : '';
 
   document.title = `${a.title} — ФБРК`;
 
   // Reading time estimate
-  const plainText = (a.dek || '') + ' ' + (a.sections || []).map((s) => (s.h || '') + ' ' + (s.p || '')).join(' ');
+  const plainText = (heroDek || '') + ' ' + bodySections.map((s) => (s.h || '') + ' ' + (s.p || '')).join(' ');
   const wordCount = plainText.trim().split(/\s+/).filter(Boolean).length;
   const readMin = Math.max(1, Math.round(wordCount / 180));
 
@@ -652,7 +671,7 @@ function liveBadgeHtml(a) {
       <header class="article__head">
         <div class="kicker article__kicker">${a.categoryLabel}</div>
         <h1 class="article__title">${escapeHtml(a.title)}</h1>
-        <p class="article__dek">${escapeHtml(a.dek)}</p>
+        ${heroDek ? `<p class="article__dek">${escapeHtml(heroDek)}</p>` : ''}
         <div class="article__meta">
           <span>${fmtDateLong(a.dateIso) || a.date}</span>
           <span class="article__meta__dot">${readMin} мин чтения</span>
@@ -663,7 +682,13 @@ function liveBadgeHtml(a) {
         <img src="${fullCover(a)}" alt="${escapeHtml(a.title)}" width="1440" height="810" loading="eager"/>
       </div>
       <div class="article__body">
-        ${a.sections.map((s) => `<h2>${escapeHtml(s.h).replace(/^(.)(.*)/,(_,f,r)=>f+r.toLowerCase())}</h2><p>${escapeHtml(s.p)}</p>`).join('')}
+        ${bodySections.map((s) => {
+          const h = String((s && s.h) || '').trim();
+          const p = String((s && s.p) || '').trim();
+          const hHtml = h ? `<h2>${escapeHtml(h).replace(/^(.)(.*)/,(_,f,r)=>f+r.toLowerCase())}</h2>` : '';
+          const pHtml = p ? `<p>${escapeHtml(p)}</p>` : '';
+          return hHtml + pHtml;
+        }).join('')}
       </div>
                 ${a.source && !a.source.includes('fbrk.kz') ? `<div class="article_source">Источник: <a href="${a.source}" target="_blank" rel="noopener">${new URL(a.source).hostname}</a></div>` : ''}
 
@@ -724,8 +749,15 @@ function escapeHtml(s) {
 (function () {
   const titleEl = document.querySelector('[data-article-title]');
   if (!titleEl || typeof FBRK_DATA === 'undefined') return;
-  const id = new URLSearchParams(location.search).get('id');
-  const a = FBRK_DATA.articles.find((x) => x.id === id || x.slug === id);
+  const params = new URLSearchParams(location.search);
+  const pathMatch = (location.pathname || '').match(/^\/a\/([^/?#]+)/);
+  const id = params.get('id') || (pathMatch ? decodeURIComponent(pathMatch[1]) : '');
+  const primary = Array.isArray(FBRK_DATA.articles) ? FBRK_DATA.articles : [];
+  const archive = (typeof ARTICLES_ARCHIVE !== 'undefined' && Array.isArray(ARTICLES_ARCHIVE.articles))
+    ? ARTICLES_ARCHIVE.articles
+    : [];
+  const a = primary.find((x) => x.id === id || x.slug === id)
+    || archive.find((x) => x.id === id || x.slug === id);
   if (!a) return;
   const base = siteOrigin();
   const title = `${a.title} — ФБРК`;
