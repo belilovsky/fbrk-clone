@@ -53,6 +53,7 @@ systemctl restart fbrk-admin
 
 - `FBRK_API_KEY` — admin API-ключ (заголовок `X-API-Key`)
 - `FBRK_DB_PATH` / `FBRK_DB` — путь к SQLite (по умолчанию `/opt/fbrk-admin/fbrk.db`)
+- `FBRK_SITE_URL` — опциональный fallback base URL для SEO-роутов (`/sitemap.xml`, `/feed.xml`, `/robots.txt`) когда `Host` недоступен
 - LLM-ключи для AI-обогащения
 
 ## Cron

@@ -63,6 +63,14 @@ Interpretation: current production code path is split between GitHub and manual 
   - Uses dedicated LE cert path for `new.fbrk.kz`.
   - Mirrors current FBRK routing (`/admin`, `/api`, `/a/`, `/sitemap.xml`, `/robots.txt`, `/feed.xml`).
 
+## Follow-up Code Prep (same date)
+
+- `admin/app/seo.py` made host-aware:
+  - `/a/<slug>`, `/robots.txt`, `/sitemap.xml`, `/feed.xml`, `/feed/ia.xml` now build absolute URLs from current request host/proto.
+  - Fallback remains `FBRK_SITE_URL` or `https://fbrk.qdev.run`.
+- `js/app.js` made host-aware for client-side article SEO fallback:
+  - JSON-LD and canonical image/article URLs now use `location.origin` instead of hardcoded `fbrk.qdev.run`.
+
 ## Recommended Continuation Plan
 
 1. Snapshot current VPS #2 web repo state into GitHub branch (including dirty tracked files).
@@ -84,4 +92,3 @@ Interpretation: current production code path is split between GitHub and manual 
 - `git ls-remote root@62.72.32.112:/var/www/fbrk.qdev.run` -> `a4ae632`
 - `git rev-list --left-right --count origin/master...vps148/master` -> `11 4`
 - `ls -l /etc/nginx/sites-enabled | grep new.fbrk.kz` on VPS #2 -> no enabled link
-

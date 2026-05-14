@@ -15,6 +15,7 @@ from __future__ import annotations
 
 import html
 import json
+import os
 import re
 from datetime import datetime, timezone
 from pathlib import Path
@@ -25,12 +26,9 @@ from fastapi.templating import Jinja2Templates
 
 from .db import db, row_to_article
 
-SITE_URL = "https://fbrk.qdev.run"
+DEFAULT_SITE_URL = (os.environ.get("FBRK_SITE_URL") or "https://fbrk.qdev.run").rstrip("/")
 ORG_NAME = "ФБРК"
 ORG_FULL = "Фонд-бюро расследования коррупции"
-ORG_LOGO = f"{SITE_URL}/img/brand/logo-white-512.png"
-ORG_LOGO_BRAND = f"{SITE_URL}/img/brand/logo-brand-256.png"
-DEFAULT_OG = f"{SITE_URL}/img/brand/logo-on-brand-640.png"
 TELEGRAM = "https://t.me/fund_kz_bot"
 YOUTUBE = "https://www.youtube.com/@fbrk_news"
 
@@ -43,14 +41,35 @@ router = APIRouter()
 # ---------------------------------------------------------------------------
 # Helpers
 # ---------------------------------------------------------------------------
-def _abs_url(u: str) -> str:
+def _site_url(request: Request | None = None) -> str:
+    if request is not None:
+        proto = (request.headers.get("x-forwarded-proto") or request.url.scheme or "https").split(",")[0].strip()
+        host = (request.headers.get("x-forwarded-host") or request.headers.get("host") or "").split(",")[0].strip()
+        if host:
+            return f"{proto}://{host}"
+    return DEFAULT_SITE_URL
+
+
+def _brand_logo(site_url: str) -> str:
+    return f"{site_url}/img/brand/logo-white-512.png"
+
+
+def _brand_logo_mark(site_url: str) -> str:
+    return f"{site_url}/img/brand/logo-brand-256.png"
+
+
+def _default_og(site_url: str) -> str:
+    return f"{site_url}/img/brand/logo-on-brand-640.png"
+
+
+def _abs_url(u: str, site_url: str) -> str:
     if not u:
-        return DEFAULT_OG
+        return _default_og(site_url)
     if u.startswith("http"):
         return u
     if u.startswith("/"):
-        return f"{SITE_URL}{u}"
-    return f"{SITE_URL}/{u}"
+        return f"{site_url}{u}"
+    return f"{site_url}/{u}"
 
 
 def _rfc822(iso: str) -> str:
@@ -91,7 +110,7 @@ def _sections_to_plain(sections: list) -> str:
     return "\n\n".join(p for p in parts if p)
 
 
-def _sections_to_html(sections: list) -> str:
+def _sections_to_html(sections: list, site_url: str) -> str:
     """Render sections as clean semantic HTML for SSR body + RSS content:encoded."""
     out: list[str] = []
     for s in sections or []:
@@ -103,7 +122,7 @@ def _sections_to_html(sections: list) -> str:
         if h:
             out.append(f"<h2>{html.escape(str(h))}</h2>")
         if img:
-            src = _abs_url(str(img))
+            src = _abs_url(str(img), site_url)
             cap = html.escape(str(s.get("caption") or ""))
             out.append(f'<figure><img src="{src}" alt="{cap}" /></figure>')
         if p:
@@ -173,15 +192,16 @@ def ssr_article(slug: str, request: Request):
         raise HTTPException(404, "Article not found")
 
     meta = _load_article_meta(a["id"]) or {}
+    site_url = _site_url(request)
 
-    url = f"{SITE_URL}/a/{a['slug']}"
+    url = f"{site_url}/a/{a['slug']}"
     title = a["title"]
     dek = _strip_html(a.get("dek") or "")
     plain_body = _sections_to_plain(a.get("sections") or [])
     # Prefer AI short summary when available (tighter, better for SEO/LLMs)
     desc = (meta.get("summary_short") or dek or plain_body[:240]).strip()[:240]
-    image = _abs_url(a.get("image") or "")
-    body_html = _sections_to_html(a.get("sections") or [])
+    image = _abs_url(a.get("image") or "", site_url)
+    body_html = _sections_to_html(a.get("sections") or [], site_url)
     word_count = len((plain_body or "").split())
 
     date_iso = a.get("dateIso") or ""
@@ -207,7 +227,7 @@ def ssr_article(slug: str, request: Request):
         "author": {
             "@type": "Organization",
             "name": ORG_NAME,
-            "url": SITE_URL,
+            "url": site_url,
         },
         "publisher": {
             "@type": "Organization",
@@ -215,7 +235,7 @@ def ssr_article(slug: str, request: Request):
             "legalName": ORG_FULL,
             "logo": {
                 "@type": "ImageObject",
-                "url": ORG_LOGO_BRAND,
+                "url": _brand_logo_mark(site_url),
                 "width": 256,
                 "height": 256,
             },
@@ -243,12 +263,12 @@ def ssr_article(slug: str, request: Request):
         "@context": "https://schema.org",
         "@type": "BreadcrumbList",
         "itemListElement": [
-            {"@type": "ListItem", "position": 1, "name": "Главная", "item": f"{SITE_URL}/"},
+            {"@type": "ListItem", "position": 1, "name": "Главная", "item": f"{site_url}/"},
             {
                 "@type": "ListItem",
                 "position": 2,
                 "name": category_label,
-                "item": f"{SITE_URL}/archive.html?cat={a.get('category') or 'news'}",
+                "item": f"{site_url}/archive.html?cat={a.get('category') or 'news'}",
             },
             {"@type": "ListItem", "position": 3, "name": title, "item": url},
         ],
@@ -271,7 +291,7 @@ def ssr_article(slug: str, request: Request):
         "tags": tags,
         "news_article_ld": json.dumps(news_article_ld, ensure_ascii=False),
         "breadcrumb_ld": json.dumps(breadcrumb_ld, ensure_ascii=False),
-        "site_url": SITE_URL,
+        "site_url": site_url,
         "org_name": ORG_NAME,
         "org_full": ORG_FULL,
         "telegram_url": TELEGRAM,
@@ -287,7 +307,8 @@ def ssr_article(slug: str, request: Request):
 # ---------------------------------------------------------------------------
 # robots.txt
 # ---------------------------------------------------------------------------
-_ROBOTS_BODY = """# ФБРК — robots.txt
+def _robots_body(site_url: str) -> str:
+    return f"""# ФБРК — robots.txt
 User-agent: *
 Allow: /
 Disallow: /admin/
@@ -340,21 +361,22 @@ Allow: /
 User-agent: TelegramBot
 Allow: /
 
-Sitemap: https://fbrk.qdev.run/sitemap.xml
+Sitemap: {site_url}/sitemap.xml
 """
 
 
 @router.api_route("/robots.txt", methods=["GET", "HEAD"], response_class=PlainTextResponse)
-def robots_txt():
-    return PlainTextResponse(_ROBOTS_BODY, media_type="text/plain; charset=utf-8")
+def robots_txt(request: Request):
+    return PlainTextResponse(_robots_body(_site_url(request)), media_type="text/plain; charset=utf-8")
 
 
 # ---------------------------------------------------------------------------
 # sitemap.xml — dynamic with <lastmod> per article
 # ---------------------------------------------------------------------------
 @router.api_route("/sitemap.xml", methods=["GET", "HEAD"])
-def sitemap_xml():
+def sitemap_xml(request: Request):
     arts = _load_all_article_meta()
+    site_url = _site_url(request)
     now = datetime.now(timezone.utc).strftime("%Y-%m-%d")
     newest = arts[0]["date_iso"] if arts else now
 
@@ -403,16 +425,16 @@ def sitemap_xml():
         lines.append("  </url>")
 
     # Static pages
-    _url(f"{SITE_URL}/", newest, "hourly", "1.0")
-    _url(f"{SITE_URL}/archive.html", newest, "daily", "0.9")
-    _url(f"{SITE_URL}/archive.html?cat=investigation", newest, "daily", "0.8")
-    _url(f"{SITE_URL}/archive.html?cat=news", newest, "daily", "0.8")
-    _url(f"{SITE_URL}/about.html", now, "monthly", "0.5")
+    _url(f"{site_url}/", newest, "hourly", "1.0")
+    _url(f"{site_url}/archive.html", newest, "daily", "0.9")
+    _url(f"{site_url}/archive.html?cat=investigation", newest, "daily", "0.8")
+    _url(f"{site_url}/archive.html?cat=news", newest, "daily", "0.8")
+    _url(f"{site_url}/about.html", now, "monthly", "0.5")
 
     recent_ids = {a["id"] for a in recent_news}
     for a in arts:
         slug = a.get("slug") or a["id"]
-        loc = f"{SITE_URL}/a/{slug}"
+        loc = f"{site_url}/a/{slug}"
         lastmod = (a.get("updated_at") or a.get("date_iso") or now)[:10]
         news = None
         if a["id"] in recent_ids:
@@ -420,7 +442,7 @@ def sitemap_xml():
                 "pubdate": _iso8601(a["date_iso"]),
                 "title": a["title"],
             }
-        img = _abs_url(a.get("image") or "") if a.get("image") else None
+        img = _abs_url(a.get("image") or "", site_url) if a.get("image") else None
         _url(loc, lastmod, "weekly", "0.7", news=news, image=img)
 
     lines.append("</urlset>")
@@ -433,8 +455,10 @@ def sitemap_xml():
 # RSS feed.xml with <content:encoded>
 # ---------------------------------------------------------------------------
 @router.api_route("/feed.xml", methods=["GET", "HEAD"])
-def feed_xml():
+def feed_xml(request: Request):
     arts = _load_recent_articles(limit=50)
+    site_url = _site_url(request)
+    org_logo_brand = _brand_logo_mark(site_url)
     now_rfc = datetime.now(timezone.utc).strftime("%a, %d %b %Y %H:%M:%S +0000")
     lines = [
         '<?xml version="1.0" encoding="UTF-8"?>',
@@ -445,19 +469,19 @@ def feed_xml():
         '     xmlns:media="http://search.yahoo.com/mrss/">',
         '  <channel>',
         f'    <title>{html.escape(ORG_NAME)} — Независимые расследования</title>',
-        f'    <link>{SITE_URL}/</link>',
+        f'    <link>{site_url}/</link>',
         f'    <description>{html.escape(ORG_FULL)}. Журналистские расследования и новости Казахстана.</description>',
         '    <language>ru</language>',
         f'    <lastBuildDate>{now_rfc}</lastBuildDate>',
-        f'    <atom:link href="{SITE_URL}/feed.xml" rel="self" type="application/rss+xml" />',
-        f'    <image><url>{ORG_LOGO_BRAND}</url><title>{html.escape(ORG_NAME)}</title><link>{SITE_URL}/</link></image>',
+        f'    <atom:link href="{site_url}/feed.xml" rel="self" type="application/rss+xml" />',
+        f'    <image><url>{org_logo_brand}</url><title>{html.escape(ORG_NAME)}</title><link>{site_url}/</link></image>',
     ]
     for a in arts:
         slug = a.get("slug") or a["id"]
-        url = f"{SITE_URL}/a/{slug}"
-        img = _abs_url(a.get("image") or "") if a.get("image") else ""
+        url = f"{site_url}/a/{slug}"
+        img = _abs_url(a.get("image") or "", site_url) if a.get("image") else ""
         dek = _strip_html(a.get("dek") or "")[:500]
-        body_html = _sections_to_html(a.get("sections") or [])
+        body_html = _sections_to_html(a.get("sections") or [], site_url)
         content_encoded = f"<![CDATA[{body_html}]]>"
         lines.append("    <item>")
         lines.append(f"      <title>{html.escape(a.get('title') or '')}</title>")
@@ -484,7 +508,7 @@ def feed_xml():
 # ---------------------------------------------------------------------------
 # Facebook Instant Articles RSS /feed/ia.xml
 # ---------------------------------------------------------------------------
-def _render_ia_body_html(a: dict, url: str, image: str) -> str:
+def _render_ia_body_html(a: dict, url: str, image: str, site_url: str) -> str:
     """Build the <content:encoded> HTML per Facebook IA Markup."""
     title = html.escape(a.get("title") or "")
     dek = html.escape(_strip_html(a.get("dek") or ""))
@@ -493,7 +517,7 @@ def _render_ia_body_html(a: dict, url: str, image: str) -> str:
     date_iso = a.get("dateIso") or ""
     pub_iso = _iso8601(date_iso)
     date_label = html.escape(a.get("date") or date_iso)
-    body_inner = _sections_to_html(a.get("sections") or [])
+    body_inner = _sections_to_html(a.get("sections") or [], site_url)
 
     parts = [
         '<!doctype html>',
@@ -533,8 +557,9 @@ def _render_ia_body_html(a: dict, url: str, image: str) -> str:
 
 
 @router.api_route("/feed/ia.xml", methods=["GET", "HEAD"])
-def feed_ia_xml():
+def feed_ia_xml(request: Request):
     arts = _load_recent_articles(limit=100)
+    site_url = _site_url(request)
     now_rfc = datetime.now(timezone.utc).strftime("%a, %d %b %Y %H:%M:%S +0000")
     lines = [
         '<?xml version="1.0" encoding="utf-8" standalone="no"?>',
@@ -542,16 +567,16 @@ def feed_ia_xml():
         '     xmlns:content="http://purl.org/rss/1.0/modules/content/">',
         '  <channel>',
         f'    <title>{html.escape(ORG_NAME)} — Instant Articles</title>',
-        f'    <link>{SITE_URL}/</link>',
+        f'    <link>{site_url}/</link>',
         f'    <description>{html.escape(ORG_FULL)} — Facebook Instant Articles feed</description>',
         '    <language>ru</language>',
         f'    <lastBuildDate>{now_rfc}</lastBuildDate>',
     ]
     for a in arts:
         slug = a.get("slug") or a["id"]
-        url = f"{SITE_URL}/a/{slug}"
-        img = _abs_url(a.get("image") or "") if a.get("image") else ""
-        body_html_ia = _render_ia_body_html(a, url, img)
+        url = f"{site_url}/a/{slug}"
+        img = _abs_url(a.get("image") or "", site_url) if a.get("image") else ""
+        body_html_ia = _render_ia_body_html(a, url, img, site_url)
         lines.append("    <item>")
         lines.append(f"      <title>{html.escape(a.get('title') or '')}</title>")
         lines.append(f"      <link>{html.escape(url)}</link>")

@@ -2,6 +2,23 @@
 // ФБРК — интерактив (AV DS 2026)
 // ============================================================
 
+function siteOrigin() {
+  try {
+    if (window.location && window.location.origin) {
+      return window.location.origin.replace(/\/+$/, '');
+    }
+  } catch (_) {}
+  return 'https://fbrk.qdev.run';
+}
+
+function absSiteUrl(pathOrUrl) {
+  if (!pathOrUrl) return siteOrigin();
+  if (/^https?:\/\//i.test(pathOrUrl)) return pathOrUrl;
+  const base = siteOrigin();
+  if (String(pathOrUrl).startsWith('/')) return base + pathOrUrl;
+  return base + '/' + pathOrUrl;
+}
+
 // ---------- date formatting (used everywhere; defined first) ----------
 // Genitive month names («22 апреля» / «22 апр»)
 var _RU_MONTHS_FULL = ['января','февраля','марта','апреля','мая','июня','июля','августа','сентября','октября','ноября','декабря'];
@@ -641,10 +658,11 @@ function escapeHtml(s) {
   const id = new URLSearchParams(location.search).get('id');
   const a = FBRK_DATA.articles.find((x) => x.id === id) || FBRK_DATA.articles[0];
   if (!a) return;
+  const base = siteOrigin();
   const title = `${a.title} — ФБРК`;
   const desc = (a.dek || '').slice(0, 200);
-  const url = `https://fbrk.qdev.run/a/${a.slug || a.id}`;
-  const img = (a.image || '').startsWith('http') ? a.image : `https://fbrk.qdev.run${a.image || '/img/og-default.jpg'}`;
+  const url = absSiteUrl(`/a/${a.slug || a.id}`);
+  const img = (a.image || '').startsWith('http') ? a.image : absSiteUrl(a.image || '/img/og-default.jpg');
   titleEl.textContent = title;
   const descEl = document.querySelector('[data-article-desc]');
   if (descEl) descEl.setAttribute('content', desc);
@@ -677,12 +695,12 @@ function escapeHtml(s) {
     image: [img],
     datePublished: a.dateIso || a.date,
     dateModified: a.updatedAt || a.dateIso || a.date,
-    author: { '@type': 'Organization', name: 'ФБРК', url: 'https://fbrk.qdev.run/' },
+    author: { '@type': 'Organization', name: 'ФБРК', url: base + '/' },
     publisher: {
       '@type': 'NewsMediaOrganization',
       name: 'ФБРК',
       legalName: 'Фонд-бюро расследования коррупции',
-      logo: { '@type': 'ImageObject', url: 'https://fbrk.qdev.run/img/brand/logo-brand-256.png', width: 256, height: 256 },
+      logo: { '@type': 'ImageObject', url: absSiteUrl('/img/brand/logo-brand-256.png'), width: 256, height: 256 },
     },
     articleSection: a.categoryLabel || 'Новости',
     inLanguage: 'ru',
@@ -699,8 +717,8 @@ function escapeHtml(s) {
     '@context': 'https://schema.org',
     '@type': 'BreadcrumbList',
     itemListElement: [
-      { '@type': 'ListItem', position: 1, name: 'Главная', item: 'https://fbrk.qdev.run/' },
-      { '@type': 'ListItem', position: 2, name: a.categoryLabel || 'Новости', item: 'https://fbrk.qdev.run/archive.html?cat=' + (a.category || 'news') },
+      { '@type': 'ListItem', position: 1, name: 'Главная', item: base + '/' },
+      { '@type': 'ListItem', position: 2, name: a.categoryLabel || 'Новости', item: base + '/archive.html?cat=' + (a.category || 'news') },
       { '@type': 'ListItem', position: 3, name: a.title, item: url },
     ],
   });
