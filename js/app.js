@@ -54,6 +54,39 @@ function articleHref(a) {
   return articleUrl(a.slug || a.id);
 }
 
+// Align static SEO tags with runtime public origin in split-hosting mode.
+(function normalizeStaticSeoHost() {
+  const base = siteOrigin();
+  const isDefault = base === 'https://fbrk.qdev.run';
+  if (isDefault) return;
+  const path = (location && location.pathname) ? location.pathname : '/';
+  const href = (path === '/' || path === '/index.html') ? '/' : path;
+  const canonical = document.querySelector('link[rel="canonical"]');
+  if (canonical) canonical.setAttribute('href', absSiteUrl(href));
+  const ogUrl = document.querySelector('meta[property="og:url"]');
+  if (ogUrl) ogUrl.setAttribute('content', absSiteUrl(href));
+  const hreflangs = document.querySelectorAll('link[rel="alternate"][hreflang]');
+  hreflangs.forEach((el) => el.setAttribute('href', absSiteUrl('/')));
+  const imgMeta = document.querySelectorAll('meta[property="og:image"],meta[name="twitter:image"]');
+  imgMeta.forEach((el) => {
+    const content = (el.getAttribute('content') || '').trim();
+    if (!content) return;
+    if (content.startsWith('/')) {
+      el.setAttribute('content', absSiteUrl(content));
+      return;
+    }
+    if (content.includes('fbrk.qdev.run')) {
+      el.setAttribute('content', content.replace('https://fbrk.qdev.run', base));
+    }
+  });
+  const ldScripts = document.querySelectorAll('script[type="application/ld+json"]');
+  ldScripts.forEach((script) => {
+    const raw = script.textContent || '';
+    if (!raw.includes('fbrk.qdev.run')) return;
+    script.textContent = raw.replace(/https:\/\/fbrk\.qdev\.run/g, base);
+  });
+})();
+
 // ---------- date formatting (used everywhere; defined first) ----------
 // Genitive month names («22 апреля» / «22 апр»)
 var _RU_MONTHS_FULL = ['января','февраля','марта','апреля','мая','июня','июля','августа','сентября','октября','ноября','декабря'];
