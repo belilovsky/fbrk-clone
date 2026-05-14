@@ -83,6 +83,7 @@ Interpretation: current production code path is split between GitHub and manual 
    - Enable `nginx-new-fbrk.conf`.
    - Run smoke matrix on both hosts (`fbrk.qdev.run` and `new.fbrk.kz`).
 4. Only after stable smoke, decide canonical/SEO host policy for the new frontend domain.
+5. Execute cutover only by checklist: `docs/audit/NEW_FBRK_CUTOVER_RUNBOOK.md`.
 
 ## Evidence (Key Commands)
 
