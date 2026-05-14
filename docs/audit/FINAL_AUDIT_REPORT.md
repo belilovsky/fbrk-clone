@@ -1,5 +1,7 @@
 # ФБРК — финальный пост-Codex аудит
 
+> Update (2026-05-14): infra and branch reality changed after this report. See `docs/audit/NEW_FBRK_STATUS_2026-05-14.md` for the current state.
+
 **Дата:** 29 апреля 2026
 **Среда:** prod (`https://fbrk.qdev.run`, VPS 62.72.32.112)
 **Состояние БД:** 4547 статей, 4464 news / 83 investigation
