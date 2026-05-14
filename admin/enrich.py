@@ -40,6 +40,7 @@ from app.meta_schema import ensure_meta_schema
 
 
 DEFAULT_MODEL = os.environ.get("FBRK_ENRICH_MODEL", "gemini-2.0-flash")
+FALLBACK_MODEL = os.environ.get("FBRK_ENRICH_FALLBACK_MODEL", "gpt-4o-mini")
 OPENAI_API_KEY = os.environ.get("OPENAI_API_KEY", "")
 OPENAI_BASE = os.environ.get("OPENAI_BASE_URL", "https://api.openai.com/v1")
 GEMINI_API_KEY = os.environ.get("GEMINI_API_KEY", "")
@@ -192,6 +193,26 @@ def _call_model(text: str, model: str) -> dict:
     if m.startswith("gemini"):
         return _call_gemini(text, model)
     return _call_openai(text, model)
+
+
+def _should_fallback_from_gemini(model: str, error_msg: str) -> bool:
+    """Retry with OpenAI when Gemini is unavailable/quota-blocked."""
+    if not OPENAI_API_KEY:
+        return False
+    if not (model or "").lower().startswith("gemini"):
+        return False
+    em = (error_msg or "").lower()
+    triggers = (
+        "gemini 403",
+        "gemini 429",
+        "gemini 503",
+        "denied access",
+        "quota",
+        "resource_exhausted",
+        "unavailable",
+        "high demand",
+    )
+    return any(t in em for t in triggers)
 
 
 def _sanitize_result(raw: dict) -> dict:
@@ -357,8 +378,27 @@ def run(limit: int | None = None, only_id: str | None = None,
             _upsert_meta(a["id"], result, model=model, input_chars=len(text))
             ok += 1
         except Exception as e:
+            primary_msg = f"{type(e).__name__}: {e}"[:500]
+            if _should_fallback_from_gemini(model, primary_msg):
+                try:
+                    print(
+                        f"[enrich] RETRY {a['id']}: {model} failed, fallback={FALLBACK_MODEL}",
+                        flush=True,
+                    )
+                    raw = _call_model(text, FALLBACK_MODEL)
+                    result = _sanitize_result(raw)
+                    _upsert_meta(a["id"], result, model=FALLBACK_MODEL, input_chars=len(text))
+                    ok += 1
+                    continue
+                except Exception as e2:
+                    fallback_msg = f"{type(e2).__name__}: {e2}"[:300]
+                    msg = (
+                        f"primary[{model}]: {primary_msg}; "
+                        f"fallback[{FALLBACK_MODEL}]: {fallback_msg}"
+                    )[:500]
+            else:
+                msg = primary_msg
             err += 1
-            msg = f"{type(e).__name__}: {e}"[:500]
             print(f"[enrich] FAIL {a['id']}: {msg}", flush=True)
             # Write a stub row so we don't reprocess forever
             _upsert_meta(a["id"], {
