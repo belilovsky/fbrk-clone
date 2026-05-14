@@ -166,3 +166,31 @@ Safety snapshot created (2026-05-14):
   - set `js/runtime-config.js` on KZ host:
     - `window.FBRK_PUBLIC_ORIGIN = 'https://new.fbrk.kz'`
     - `window.FBRK_BACKEND_ORIGIN = 'https://fbrk.qdev.run'`
+
+## Repo/Prod Reconciliation Update (2026-05-14)
+
+### What was reconciled
+
+- Live webroot on `148.230.117.131` still had dirty tracked files after rollout:
+  - `about.html`, `archive.html`, `article.html`, `index.html`, `js/app.js`, `js/data.js`, `js/data-archive.js`, `style.css`.
+- Snapshot copy of live files was pulled to local audit storage:
+  - `.audit-tools/prod-sync-20260514/`.
+- Comparison showed:
+  - HTML + `js/app.js` + `js/runtime-config.js` already match current branch.
+  - `js/data.js` in repo was stale vs live auto-generated feed.
+- `js/data.js` was updated from live webroot into branch to preserve source-of-truth alignment.
+
+### Post-sync checks
+
+- `js/data.js` parses as valid JSON payload (`const FBRK_DATA = {...}`):
+  - `articles = 200`
+  - `totalCount = 4652`
+- `js/data-archive.js` payload shape is valid (`window.ARTICLES_ARCHIVE = {...}`):
+  - `articles = 4652`
+
+### Access constraints still active
+
+- Plesk API on `https://new.fbrk.kz:8443/enterprise/control/agent.php` is reachable, but authentication with currently available credentials fails:
+  - API error: `errcode=1001`, `Неверное имя пользователя или пароль`.
+- SSH to KZ host `195.210.46.10:22` still times out from both local path and VPS #2:
+  - cannot apply Plesk directives or runtime-config directly on KZ host without additional access path.
