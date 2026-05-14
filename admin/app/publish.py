@@ -95,6 +95,22 @@ def _public_shape(a: dict) -> dict:
     return shape
 
 
+def _article_full_shape(a: dict) -> dict:
+    """Public article-page payload for split static hosting.
+
+    This intentionally keeps only public article fields and rendered sections:
+    no admin body_json, no author names, no private editor metadata.
+    """
+    shape = _public_shape(a)
+    shape["sections"] = a.get("sections") or []
+    if a.get("updatedAt"):
+        shape["updatedAt"] = a["updatedAt"]
+    source = (a.get("source") or "").strip()
+    if source and "fbrk.kz" not in source:
+        shape["source"] = source
+    return shape
+
+
 def _write_sitemap(articles: list[dict], web_root: Path) -> None:
     """Generate sitemap.xml with static pages + every article."""
     now = datetime.now(timezone.utc).strftime("%Y-%m-%d")
@@ -208,7 +224,8 @@ def regenerate_data_js() -> dict:
     out = Path(settings.data_js_path)
     lock_file = str(out.with_suffix(out.suffix + ".lock"))
     with _PUBLISH_LOCK, _file_lock(lock_file):
-        articles = [_public_shape(a) for a in _load_articles()]
+        source_articles = _load_articles()
+        articles = [_public_shape(a) for a in source_articles]
 
         # Tier 1: data.js — homepage (last N articles). Fast initial load.
         # N is tunable via FBRK_HOME_LATEST_LIMIT env var (default 200).
@@ -224,6 +241,18 @@ def regenerate_data_js() -> dict:
         archive_data = {"articles": articles}
         archive_body = "/* ФБРК archive — auto-generated. */\nwindow.ARTICLES_ARCHIVE = " + json.dumps(archive_data, ensure_ascii=False) + ";\n"
         _atomic_write(archive_out, archive_body)
+
+        # Tier 3: article-full.js — full public body for static /a/<slug>
+        # fallback on split hosting. Loaded only by article.html.
+        article_full_out = out.parent / "article-full.js"
+        article_full_data = {"articles": [_article_full_shape(a) for a in source_articles]}
+        article_full_body = (
+            "/* ФБРК full article bodies — auto-generated. */\n"
+            "window.ARTICLE_FULL = "
+            + json.dumps(article_full_data, ensure_ascii=False, separators=(",", ":"))
+            + ";\n"
+        )
+        _atomic_write(article_full_out, article_full_body)
 
         # Note: sitemap.xml, feed.xml, feed/ia.xml and robots.txt are now served
         # dynamically by FastAPI (app.seo). Legacy static writers removed so stale

@@ -78,6 +78,35 @@ print(slug)
   echo "$slug"
 }
 
+extract_article_full_count() {
+  local origin="$1"
+  local value
+  value="$(
+    curl -fsS "${origin}/js/article-full.js" \
+      | python3 -c '
+import json, sys
+origin = sys.argv[1]
+text = sys.stdin.read().strip()
+marker = "window.ARTICLE_FULL ="
+idx = text.find(marker)
+if idx < 0:
+    sys.stderr.write(f"ERROR: bad article-full.js payload from {origin}\n")
+    sys.exit(2)
+payload = text[idx + len(marker):].strip()
+if payload.endswith(";"):
+    payload = payload[:-1]
+obj = json.loads(payload)
+arts = obj.get("articles") or []
+print(len(arts))
+' "$origin"
+  )"
+  if [ -z "$value" ]; then
+    echo "ERROR: failed to parse article-full.js from ${origin}" >&2
+    return 1
+  fi
+  echo "$value"
+}
+
 extract_canonical() {
   local url="$1"
   local canon
@@ -94,6 +123,8 @@ ts="$(date -u +%Y-%m-%dT%H:%M:%SZ)"
 new_total="$(extract_total_count "$NEW_ORIGIN")"
 backend_total="$(extract_total_count "$BACKEND_ORIGIN")"
 delta=$((backend_total - new_total))
+new_article_full_total="$(extract_article_full_count "$NEW_ORIGIN")"
+backend_article_full_total="$(extract_article_full_count "$BACKEND_ORIGIN")"
 
 first_slug="$(extract_first_slug "$BACKEND_ORIGIN")"
 
@@ -112,6 +143,8 @@ echo "BACKEND_ORIGIN=${BACKEND_ORIGIN}"
 echo "BACKEND_TOTAL=${backend_total}"
 echo "NEW_TOTAL=${new_total}"
 echo "DELTA_BACKEND_MINUS_NEW=${delta}"
+echo "BACKEND_ARTICLE_FULL_TOTAL=${backend_article_full_total}"
+echo "NEW_ARTICLE_FULL_TOTAL=${new_article_full_total}"
 echo "FIRST_BACKEND_SLUG=${first_slug}"
 echo "HTTP_NEW_HOME=${new_home_code}"
 echo "HTTP_NEW_ARCHIVE=${new_archive_code}"
@@ -132,6 +165,10 @@ if [ "$STRICT" = "--strict" ]; then
   fi
   if [ "$delta" -ne 0 ]; then
     echo "FAIL: new/front data.js is stale (delta=${delta})" >&2
+    fail=1
+  fi
+  if [ "$backend_article_full_total" -ne "$backend_total" ] || [ "$new_article_full_total" -ne "$backend_total" ]; then
+    echo "FAIL: article-full.js is missing or stale" >&2
     fail=1
   fi
   case "$new_canonical_home" in

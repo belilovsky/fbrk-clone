@@ -120,8 +120,43 @@ Live smoke после синхронизации:
 - `/a/kanal-k-30-v-turkestanskoy-oblasti-namereny-rekonstruirovat-v-2026-godu`
   -> остаётся на `new.fbrk.kz`, но показывает только fallback-текст из `dek`.
 
-Остаточный блокер: без Plesk split-proxy или отдельного full-static article
-payload новые статьи не гарантируют полный body на `new.fbrk.kz/a/<slug>`.
-Это не баг CSS/дизайна, а ограничение текущей split-схемы: публичный `data.js`
-и `data-archive.js` специально содержат listing-card payload, а полный текст
-живёт в backend SSR/DB.
+Следующий вечерний фикс: добавлен отдельный `article-full.js` для полного
+статического body на `/a/<slug>`, чтобы новые статьи на `new.fbrk.kz` не
+зависели от компактного listing-поля `dek`.
+
+---
+
+## Article body static payload (2026-05-14, 15:40Z)
+
+Закрыт остаточный дефект статических статей на `new.fbrk.kz`:
+
+1. Backend publish теперь генерирует `/js/article-full.js`:
+   - `ARTICLE_FULL_ARTICLES=4659`;
+   - файл содержит только публичные поля карточки + `sections`;
+   - не содержит `body_json`, admin-полей, авторских имён.
+2. `article.html` на static-хосте грузит `/js/article-full.js` вместо
+   `/js/data-archive.js` для полной article-page отрисовки.
+3. `js/app.js` для body сохраняет разрешённое inline-форматирование:
+   `<b>`, `<strong>`, `<i>`, `<em>`, `<a>`, `<br>`, `<img>`, но санитайзит
+   произвольный HTML перед вставкой в DOM.
+4. `admin/scripts/check_split_linkage.sh --strict` теперь проверяет не только
+   `data.js`, но и наличие/актуальность `article-full.js`.
+
+Safety gates перед deploy на активный VPS `148.230.117.131`:
+
+- DB backup: `/opt/fbrk-admin/backups/fbrk-20260514T152734Z-pre-article-full.db`
+  (`72M`, non-zero).
+- Web snapshot: `/opt/fbrk-admin/web-snapshots/20260514T152734Z/` (`2.3G`).
+- Plesk HTTP snapshot: `fbrk_audit/plesk-backups/20260514T153809Z/`.
+
+Live verification:
+
+- `https://new.fbrk.kz/js/article-full.js` -> `200`, `ARTICLE_FULL_ARTICLES=4659`;
+- strict linkage -> `DELTA_BACKEND_MINUS_NEW=0`;
+- headless Chrome на свежей статье
+  `/a/kanal-k-30-v-turkestanskoy-oblasti-namereny-rekonstruirovat-v-2026-godu`:
+  `p_count=12`, `b_count=32`, `a_count=1`, `img_count=1`.
+
+Long-term: Plesk split-proxy всё ещё предпочтительнее, потому что отдаёт SSR
+без тяжёлого static payload, но на конец дня `new.fbrk.kz/a/<slug>` уже не
+теряет полный текст свежих статей.

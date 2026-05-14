@@ -320,8 +320,26 @@ All three now render:
 - HTTP/HTML smoke passed for home, archive, about, one old full article, and
   one latest article route staying on `new.fbrk.kz`.
 
-Residual limitation remains until Plesk role/admin applies split-proxy:
-new/latest article pages can render only listing fallback text if the article
-body is not present in client-side archive data. Full canonical article body
-on `new.fbrk.kz/a/<slug>` still requires either Plesk proxying to backend SSR
-or an approved full-static article payload design.
+Follow-up evening fix: `article-full.js` was added as a full-static public
+article payload for `new.fbrk.kz/a/<slug>`. This closes the latest-article body
+gap without Plesk proxy rights. Split-proxy is still the preferred long-term
+shape because it avoids shipping a heavier article payload to static hosting.
+
+### Article body static payload live evidence
+
+- Active VPS safety gates:
+  - `/opt/fbrk-admin/backups/fbrk-20260514T152734Z-pre-article-full.db`
+  - `/opt/fbrk-admin/web-snapshots/20260514T152734Z/`
+- Plesk pre-upload HTTP snapshot:
+  - `fbrk_audit/plesk-backups/20260514T153809Z/`
+- Live `new.fbrk.kz/js/article-full.js`:
+  - HTTP `200`
+  - raw size `27201342`
+  - gzip estimate `6263658`
+  - `ARTICLE_FULL_ARTICLES=4659`
+- Headless Chrome rendered latest article on `new.fbrk.kz`:
+  - `body_len=4602`
+  - `p_count=12`
+  - `b_count=32`
+  - `a_count=1`
+  - `img_count=1`

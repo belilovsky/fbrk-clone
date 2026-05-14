@@ -35,6 +35,7 @@ EOF
 
 curl -fsSL "${BACKEND_ORIGIN}/js/data.js" -o "${OUT_DIR}/js/data.js"
 curl -fsSL "${BACKEND_ORIGIN}/js/data-archive.js" -o "${OUT_DIR}/js/data-archive.js"
+curl -fsSL "${BACKEND_ORIGIN}/js/article-full.js" -o "${OUT_DIR}/js/article-full.js"
 curl -fsSL "${BACKEND_ORIGIN}/robots.txt" | rewrite_host > "${OUT_DIR}/robots.txt"
 curl -fsSL "${BACKEND_ORIGIN}/sitemap.xml" | rewrite_host > "${OUT_DIR}/sitemap.xml"
 curl -fsSL "${BACKEND_ORIGIN}/feed.xml" | rewrite_host > "${OUT_DIR}/feed.xml"
@@ -58,9 +59,11 @@ def parse_js(path: pathlib.Path, marker: str) -> dict:
 
 data = parse_js(out / "js" / "data.js", "const FBRK_DATA =")
 archive = parse_js(out / "js" / "data-archive.js", "window.ARTICLES_ARCHIVE =")
+article_full = parse_js(out / "js" / "article-full.js", "window.ARTICLE_FULL =")
 
 print(f"OUT_DIR={out}")
 print(f"DATA_JS_ARTICLES={len(data.get('articles') or [])}")
 print(f"DATA_JS_TOTAL={data.get('totalCount')}")
 print(f"ARCHIVE_ARTICLES={len(archive.get('articles') or [])}")
+print(f"ARTICLE_FULL_ARTICLES={len(article_full.get('articles') or [])}")
 PY

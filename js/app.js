@@ -618,11 +618,18 @@ function liveBadgeHtml(a) {
   const primary = (typeof FBRK_DATA !== 'undefined' && Array.isArray(FBRK_DATA.articles))
     ? FBRK_DATA.articles
     : [];
+  const fullArticles = (typeof ARTICLE_FULL !== 'undefined' && Array.isArray(ARTICLE_FULL.articles))
+    ? ARTICLE_FULL.articles
+    : [];
   const archive = (typeof ARTICLES_ARCHIVE !== 'undefined' && Array.isArray(ARTICLES_ARCHIVE.articles))
     ? ARTICLES_ARCHIVE.articles
     : [];
   const findById = (list) => list.find((x) => x && (x.id === id || x.slug === id));
-  const a = findById(primary) || findById(archive);
+  const compactArticle = findById(primary) || findById(archive);
+  const fullArticle = findById(fullArticles);
+  const a = fullArticle
+    ? { ...(compactArticle || {}), ...fullArticle }
+    : compactArticle;
 
   // If article is not present in local static data, fallback to backend canonical.
   const redirectToBackend = backendOrigin() !== siteOrigin();
@@ -685,8 +692,8 @@ function liveBadgeHtml(a) {
         ${bodySections.map((s) => {
           const h = String((s && s.h) || '').trim();
           const p = String((s && s.p) || '').trim();
-          const hHtml = h ? `<h2>${escapeHtml(h).replace(/^(.)(.*)/,(_,f,r)=>f+r.toLowerCase())}</h2>` : '';
-          const pHtml = p ? `<p>${escapeHtml(p)}</p>` : '';
+          const hHtml = h ? `<h2>${escapeHtml(h)}</h2>` : '';
+          const pHtml = p ? renderArticleParagraphs(p) : '';
           return hHtml + pHtml;
         }).join('')}
       </div>
@@ -745,6 +752,57 @@ function escapeHtml(s) {
   return String(s).replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
 }
 
+function safeArticleUrl(raw) {
+  const value = String(raw || '').trim();
+  if (!value) return '';
+  try {
+    const url = new URL(value, location.origin);
+    if (url.protocol === 'http:' || url.protocol === 'https:' || url.protocol === 'mailto:') {
+      return url.href;
+    }
+  } catch (_) {}
+  return '';
+}
+
+function sanitizeArticleInlineHtml(raw) {
+  const template = document.createElement('template');
+  template.innerHTML = String(raw || '');
+  const allowedTextTags = new Set(['b', 'strong', 'i', 'em', 'u', 's', 'sub', 'sup', 'code']);
+
+  function clean(node) {
+    if (node.nodeType === Node.TEXT_NODE) return escapeHtml(node.textContent || '');
+    if (node.nodeType !== Node.ELEMENT_NODE) return '';
+    const tag = node.tagName.toLowerCase();
+    const children = Array.from(node.childNodes).map(clean).join('');
+    if (allowedTextTags.has(tag)) return `<${tag}>${children}</${tag}>`;
+    if (tag === 'br') return '<br>';
+    if (tag === 'a') {
+      const href = safeArticleUrl(node.getAttribute('href'));
+      if (!href) return children;
+      return `<a href="${escapeHtml(href)}" target="_blank" rel="noopener">${children}</a>`;
+    }
+    if (tag === 'img') {
+      const src = safeArticleUrl(node.getAttribute('src'));
+      if (!src) return '';
+      const alt = escapeHtml(node.getAttribute('alt') || '');
+      return `<img src="${escapeHtml(src)}" alt="${alt}" loading="lazy" decoding="async">`;
+    }
+    return children;
+  }
+
+  return Array.from(template.content.childNodes).map(clean).join('');
+}
+
+function renderArticleParagraphs(raw) {
+  return String(raw || '')
+    .replace(/\r\n/g, '\n')
+    .split(/\n{2,}/)
+    .map((part) => part.trim())
+    .filter(Boolean)
+    .map((part) => `<p>${sanitizeArticleInlineHtml(part).replace(/\n/g, '<br>')}</p>`)
+    .join('');
+}
+
 // ---------- Article page SEO (meta tags from article data) ----------
 (function () {
   const titleEl = document.querySelector('[data-article-title]');
@@ -753,11 +811,18 @@ function escapeHtml(s) {
   const pathMatch = (location.pathname || '').match(/^\/a\/([^/?#]+)/);
   const id = params.get('id') || (pathMatch ? decodeURIComponent(pathMatch[1]) : '');
   const primary = Array.isArray(FBRK_DATA.articles) ? FBRK_DATA.articles : [];
+  const fullArticles = (typeof ARTICLE_FULL !== 'undefined' && Array.isArray(ARTICLE_FULL.articles))
+    ? ARTICLE_FULL.articles
+    : [];
   const archive = (typeof ARTICLES_ARCHIVE !== 'undefined' && Array.isArray(ARTICLES_ARCHIVE.articles))
     ? ARTICLES_ARCHIVE.articles
     : [];
-  const a = primary.find((x) => x.id === id || x.slug === id)
+  const compactArticle = primary.find((x) => x.id === id || x.slug === id)
     || archive.find((x) => x.id === id || x.slug === id);
+  const fullArticle = fullArticles.find((x) => x.id === id || x.slug === id);
+  const a = fullArticle
+    ? { ...(compactArticle || {}), ...fullArticle }
+    : compactArticle;
   if (!a) return;
   const base = siteOrigin();
   const title = `${a.title} — ФБРК`;

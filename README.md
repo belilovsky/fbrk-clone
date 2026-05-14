@@ -32,7 +32,8 @@ fbrk/
 │   ├── app.js            — рендереры + ⌘K-поиск + listing
 │   ├── runtime-config.js — runtime overrides (split-hosting mode)
 │   ├── data.js           — 80 свежих статей (генерируется)
-│   └── data-archive.js   — полный архив (генерируется)
+│   ├── data-archive.js   — полный архив карточек (генерируется)
+│   └── article-full.js   — полные публичные тела статей для static `/a/*` (генерируется)
 ├── img/                  — обложки, бренд
 ├── admin/                — mirror backend-кода (FastAPI; на VPS `/opt/fbrk-admin`)
 └── data/                 — DB-снепшоты (gitignored)
