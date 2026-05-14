@@ -305,3 +305,23 @@ All three now render:
 
 - `<aside class="article__tldr">` present
 - `<div class="entity-chips">` present
+
+## New Frontend Static Sync Update (2026-05-14, 14:50Z)
+
+- `new.fbrk.kz` was updated through Plesk File Manager with a static delta
+  package. No DB/backend/systemd mutation was performed.
+- `new.fbrk.kz/js/data.js` and backend `fbrk.qdev.run/js/data.js` now both
+  report `totalCount=4659`.
+- Static SEO files on `new.fbrk.kz` now use `https://new.fbrk.kz`:
+  `index.html` raw canonical/OG/hreflang, `robots.txt`, `sitemap.xml`,
+  and `feed.xml`.
+- A reproducible package builder was added:
+  `admin/scripts/build_new_frontend_static_package.sh`.
+- HTTP/HTML smoke passed for home, archive, about, one old full article, and
+  one latest article route staying on `new.fbrk.kz`.
+
+Residual limitation remains until Plesk role/admin applies split-proxy:
+new/latest article pages can render only listing fallback text if the article
+body is not present in client-side archive data. Full canonical article body
+on `new.fbrk.kz/a/<slug>` still requires either Plesk proxying to backend SSR
+or an approved full-static article payload design.

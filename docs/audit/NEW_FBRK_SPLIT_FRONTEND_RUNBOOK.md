@@ -23,6 +23,12 @@
    - sitemap/feed ссылки на статьи формируются как `/a/<slug>`.
 4. `admin/deploy/plesk-new-fbrk-split-proxy.conf`
    - готовый шаблон `Additional nginx directives` для Plesk.
+5. `admin/scripts/build_new_frontend_static_package.sh`
+   - собирает delta-пакет для ручной загрузки через Plesk File Manager:
+     HTML, `app.js`, `runtime-config.js`, свежие `data.js`/`data-archive.js`,
+     `robots.txt`, `sitemap.xml`, `feed.xml`;
+   - переписывает публичные SEO-ссылки с `fbrk.qdev.run` на `new.fbrk.kz`
+     внутри пакета, не меняя основной qdev-compatible source.
 
 ---
 
@@ -62,6 +68,20 @@ rsync -a /var/www/fbrk.qdev.run/ "/opt/fbrk-admin/web-snapshots/${TS}/"
 2. Вставить содержимое:
    - `admin/deploy/plesk-new-fbrk-split-proxy.conf`.
 3. Применить конфиг и проверить, что nginx прошёл валидацию.
+
+Если роли для `Additional nginx directives` ещё нет, можно обновить только
+статику через File Manager:
+
+```bash
+admin/scripts/build_new_frontend_static_package.sh
+```
+
+После этого загрузить файлы из выведенного `OUT_DIR` в корень `new.fbrk.kz`
+и подпапку `js/`. Это держит главную, архив, поиск, SEO-файлы и статический
+fallback `/a/<slug>` в актуальном состоянии. Ограничение такого режима:
+для новых статей без полного текста в клиентском архиве страница статьи может
+показать только заголовок/лид. Полные SSR-тексты требуют split-прокси или
+отдельного согласованного full-static article payload.
 
 ---
 
@@ -116,4 +136,3 @@ FBRK_SITE_URL=https://new.fbrk.kz
 ```
 
 и перегенерируйте публикационные артефакты (`/api/publish`), чтобы sitemap/feed consistently указывали на `new.fbrk.kz`.
-

@@ -85,3 +85,43 @@ Smoke после выкладки:
 - `https://new.fbrk.kz/a/latifundisty-kazakhstana-glava-7-yug` рендерится полностью из локального архива.
 
 Важно: это рабочий hotfix маршрутизации и UI. Для 100% канонической схемы split-proxy всё ещё нужен доступ Plesk Admin к `Additional nginx directives`.
+
+---
+
+## Static sync (2026-05-14, 14:50Z)
+
+После hotfix-а выполнена дополнительная безопасная синхронизация статики через
+Plesk File Manager, без изменения БД/backend/systemd:
+
+1. Обновлены на `new.fbrk.kz`:
+   - `index.html`, `archive.html`, `about.html`, `article.html`, `404.html`;
+   - `js/app.js`, `js/runtime-config.js`, `js/data.js`, `js/data-archive.js`;
+   - `robots.txt`, `sitemap.xml`, `feed.xml`.
+2. Данные догнаны до backend:
+   - `https://new.fbrk.kz/js/data.js` -> `totalCount=4659`;
+   - `https://fbrk.qdev.run/js/data.js` -> `totalCount=4659`;
+   - `DELTA_BACKEND_MINUS_NEW=0`.
+3. Raw SEO-файлы на KZ-хосте переписаны на `new.fbrk.kz`:
+   - home canonical / OG / hreflang -> `https://new.fbrk.kz/...`;
+   - `sitemap.xml` loc -> `https://new.fbrk.kz/...`;
+   - `feed.xml` links/guid -> `https://new.fbrk.kz/...`;
+   - `robots.txt` sitemap -> `https://new.fbrk.kz/sitemap.xml`.
+4. Cache-busting обновлен до `v=202605141448` для HTML entrypoints.
+
+Пакет сборки зафиксирован как воспроизводимый скрипт:
+`admin/scripts/build_new_frontend_static_package.sh`.
+
+Live smoke после синхронизации:
+
+- `/`, `/archive.html`, `/about.html` -> `200`, без горизонтального скролла,
+  без ссылок на `fbrk.qdev.run` в rendered DOM;
+- `/a/latifundisty-kazakhstana-glava-7-yug` -> остаётся на `new.fbrk.kz`,
+  полный текст рендерится из локального архива;
+- `/a/kanal-k-30-v-turkestanskoy-oblasti-namereny-rekonstruirovat-v-2026-godu`
+  -> остаётся на `new.fbrk.kz`, но показывает только fallback-текст из `dek`.
+
+Остаточный блокер: без Plesk split-proxy или отдельного full-static article
+payload новые статьи не гарантируют полный body на `new.fbrk.kz/a/<slug>`.
+Это не баг CSS/дизайна, а ограничение текущей split-схемы: публичный `data.js`
+и `data-archive.js` специально содержат listing-card payload, а полный текст
+живёт в backend SSR/DB.

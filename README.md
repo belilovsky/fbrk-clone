@@ -53,6 +53,8 @@ systemctl restart fbrk-admin
 Для split-схемы (`new.fbrk.kz` = статика, `fbrk.qdev.run` = backend/DB):
 - `docs/audit/NEW_FBRK_SPLIT_FRONTEND_RUNBOOK.md`
 - `admin/deploy/plesk-new-fbrk-split-proxy.conf`
+- `admin/scripts/build_new_frontend_static_package.sh` — delta-пакет для ручной
+  синхронизации Plesk-статики, пока split-proxy недоступен по правам роли.
 
 ## ENV (через `/etc/fbrk-admin/fbrk-admin.env`)
 
