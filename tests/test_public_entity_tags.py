@@ -69,6 +69,17 @@ class PublicEntityTagsTest(unittest.TestCase):
             ["БНР", "мясопотребление", "статистика"],
         )
 
+    def test_auto_topics_are_not_rendered_as_manual_tags(self) -> None:
+        article = _article(
+            tags=["БНР", "мясопотребление", "Казахстан", "Расследование"],
+            _meta_entities_json=json.dumps([], ensure_ascii=False),
+            _meta_tags_auto=json.dumps(["БНР", "мясопотребление", "Казахстан"], ensure_ascii=False),
+        )
+
+        shape = _article_full_shape(article)
+
+        self.assertEqual(shape["tags"], ["Расследование"])
+
 
 if __name__ == "__main__":
     unittest.main()

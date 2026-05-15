@@ -70,6 +70,22 @@ def _unique_strings(*groups: list, limit: int = 16) -> list[str]:
     return out
 
 
+def _manual_public_tags(raw: list, auto_raw: list, limit: int = 16) -> list[str]:
+    auto_names = {str(item or "").strip().casefold() for item in auto_raw or [] if str(item or "").strip()}
+    out: list[str] = []
+    seen: set[str] = set()
+    for item in raw or []:
+        value = str(item or "").strip()
+        key = value.casefold()
+        if not value or key in seen or key in auto_names:
+            continue
+        out.append(value[:64])
+        seen.add(key)
+        if len(out) >= limit:
+            break
+    return out
+
+
 PUBLIC_ENTITY_TYPES = {"person", "org", "gov", "place", "law", "case", "money"}
 
 
@@ -167,7 +183,11 @@ def _article_full_shape(a: dict) -> dict:
     """
     shape = _public_shape(a)
     shape["sections"] = a.get("sections") or []
-    manual_tags = _unique_strings(shape.get("tags") or [], limit=16)
+    manual_tags = _manual_public_tags(
+        shape.get("tags") or [],
+        _json_list(a.get("_meta_tags_auto")),
+        limit=16,
+    )
     entities = _public_entities(
         _json_list(a.get("_meta_entities_json")),
         limit=32,

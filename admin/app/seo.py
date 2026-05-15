@@ -236,6 +236,24 @@ def _visible_entities(raw: list, exclude_names: set[str] | None = None, limit: i
     return out
 
 
+def _visible_tags(raw: list, auto_raw: list, exclude_names: set[str] | None = None, limit: int = 16) -> list[str]:
+    """Return manually curated tags only; auto topics are kept for metadata, not chips."""
+    auto_names = {str(item or "").strip().casefold() for item in auto_raw or [] if str(item or "").strip()}
+    excluded = {str(item or "").strip().casefold() for item in (exclude_names or set()) if str(item or "").strip()}
+    out: list[str] = []
+    seen: set[str] = set()
+    for item in raw or []:
+        value = str(item or "").strip()
+        key = value.casefold()
+        if not value or key in seen or key in auto_names or key in excluded:
+            continue
+        out.append(value[:64])
+        seen.add(key)
+        if len(out) >= limit:
+            break
+    return out
+
+
 def _load_recent_articles(limit: int | None = None) -> list[dict]:
     with db() as conn:
         q = "SELECT * FROM articles WHERE published=1 ORDER BY date_iso DESC, created_at DESC"
@@ -290,14 +308,6 @@ def ssr_article(slug: str, request: Request):
         if value and key not in seen_tags:
             tags.append(value)
             seen_tags.add(key)
-    manual_tags = []
-    seen_manual_tags = set()
-    for item in a.get("tags") or []:
-        value = str(item or "").strip()
-        key = value.casefold()
-        if value and key not in seen_manual_tags:
-            manual_tags.append(value)
-            seen_manual_tags.add(key)
     visible_entities = _visible_entities(meta.get("entities") or [])
     meta = {**meta, "entities": visible_entities}
     entity_names = {
@@ -305,7 +315,7 @@ def ssr_article(slug: str, request: Request):
         for item in visible_entities
         if isinstance(item, dict) and str(item.get("name") or "").strip()
     }
-    visible_tags = [tag for tag in manual_tags if tag.casefold() not in entity_names]
+    visible_tags = _visible_tags(a.get("tags") or [], meta.get("tags_auto") or [], exclude_names=entity_names)
 
     # --- JSON-LD NewsArticle ---
     news_article_ld = {
