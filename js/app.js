@@ -672,6 +672,9 @@ function liveBadgeHtml(a) {
     <span class="article__share__label">Поделиться:</span>
     ${shareTargets.map((t) => `<a class="article__share__btn" href="${t.href}" ${t.copy ? 'data-copy' : 'target="_blank" rel="noopener"'} aria-label="${t.label}">${t.icon}</a>`).join('')}
   </div>`;
+  const tldrHtml = renderArticleTldr(a);
+  const entitiesHtml = renderArticleEntities(a.entities);
+  const tagsHtml = renderArticleTags(articleTags(a));
 
   root.innerHTML = `
     <article class="article container">
@@ -688,6 +691,7 @@ function liveBadgeHtml(a) {
       <div class="article__cover">
         <img src="${fullCover(a)}" alt="${escapeHtml(a.title)}" width="1440" height="810" loading="eager"/>
       </div>
+      ${tldrHtml}
       <div class="article__body">
         ${bodySections.map((s) => {
           const h = String((s && s.h) || '').trim();
@@ -697,6 +701,8 @@ function liveBadgeHtml(a) {
           return hHtml + pHtml;
         }).join('')}
       </div>
+      ${entitiesHtml}
+      ${tagsHtml}
                 ${a.source && !a.source.includes('fbrk.kz') ? `<div class="article_source">Источник: <a href="${a.source}" target="_blank" rel="noopener">${new URL(a.source).hostname}</a></div>` : ''}
 
           <div class="ad-block ad-block--article" data-ad-slot="article-bottom"></div>
@@ -801,6 +807,67 @@ function renderArticleParagraphs(raw) {
     .filter(Boolean)
     .map((part) => `<p>${sanitizeArticleInlineHtml(part).replace(/\n/g, '<br>')}</p>`)
     .join('');
+}
+
+function articleTags(a) {
+  const seen = new Set();
+  const tags = [];
+  ((a && a.tags) || []).forEach((item) => {
+    const value = String(item || '').trim();
+    const key = value.toLowerCase();
+    if (!value || seen.has(key)) return;
+    tags.push(value);
+    seen.add(key);
+  });
+  return tags.slice(0, 16);
+}
+
+function renderArticleTldr(a) {
+  const summary = String((a && a.summaryShort) || '').trim();
+  const points = Array.isArray(a && a.keyPoints)
+    ? a.keyPoints.map((x) => String(x || '').trim()).filter(Boolean).slice(0, 5)
+    : [];
+  if (!summary && !points.length) return '';
+  return `
+    <aside class="article__tldr" aria-label="Кратко">
+      ${summary ? `<p class="article__lead">${escapeHtml(summary)}</p>` : ''}
+      ${points.length ? `<ul class="article__tldr-list">${points.map((p) => `<li>${escapeHtml(p)}</li>`).join('')}</ul>` : ''}
+    </aside>
+  `;
+}
+
+function renderArticleEntities(entities) {
+  if (!Array.isArray(entities) || !entities.length) return '';
+  const seen = new Set();
+  const items = [];
+  entities.forEach((entity) => {
+    if (!entity || typeof entity !== 'object') return;
+    const name = String(entity.name || '').trim();
+    if (!name) return;
+    const type = String(entity.type || 'other').toLowerCase().replace(/[^a-z0-9_-]/g, '') || 'other';
+    const key = `${type}:${name.toLowerCase()}`;
+    if (seen.has(key)) return;
+    seen.add(key);
+    items.push({ name, type });
+  });
+  if (!items.length) return '';
+  return `
+    <div class="entity-chips" aria-label="Упомянуты в тексте">
+      <h3 class="entity-chips__title">Упоминания</h3>
+      <div class="entity-chips__row">
+        ${items.slice(0, 32).map((e) => `<span class="entity-chip entity-chip--${escapeHtml(e.type)}">${escapeHtml(e.name)}</span>`).join('')}
+      </div>
+    </div>
+  `;
+}
+
+function renderArticleTags(tags) {
+  if (!Array.isArray(tags) || !tags.length) return '';
+  return `
+    <div class="article__tags" aria-label="Теги">
+      ${tags.map((tag) => `<a class="tag-chip" href="/archive.html?q=${encodeURIComponent(tag)}">${escapeHtml(tag)}</a>`).join('')}
+    </div>
+  `;
 }
 
 // ---------- Article page SEO (meta tags from article data) ----------

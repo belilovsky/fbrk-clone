@@ -13,7 +13,7 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 REPO_ROOT="$(cd "${SCRIPT_DIR}/../.." && pwd)"
 OUT_DIR="${1:-${REPO_ROOT}/../fbrk_audit/new-fbrk-deploy-${STAMP}}"
 
-mkdir -p "${OUT_DIR}/js"
+mkdir -p "${OUT_DIR}/css" "${OUT_DIR}/js"
 
 rewrite_host() {
   sed "s#https://fbrk.qdev.run#${PUBLIC_ORIGIN}#g"
@@ -26,6 +26,7 @@ for file in index.html archive.html about.html article.html 404.html; do
 done
 
 cp js/app.js "${OUT_DIR}/js/app.js"
+cp css/style.css "${OUT_DIR}/css/style.css"
 
 cat > "${OUT_DIR}/js/runtime-config.js" <<EOF
 // Runtime overrides for split hosting.

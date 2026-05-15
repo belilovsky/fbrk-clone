@@ -75,7 +75,7 @@ __╱╲╲╲╲╲╲╲╲╲╲╲╲╲╲╲__╱╲╲╲╲╲╲╲╲�
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link href="https://fonts.googleapis.com/css2?family=Onest:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
     <link rel="stylesheet" href="/css/av-ds/tokens.css?v=202605050020" />
-    <link rel="stylesheet" href="/css/style.css?v=31" />
+    <link rel="stylesheet" href="/css/style.css?v=202605151005" />
     <link rel="alternate" type="application/rss+xml" title="{{ org_name }} — RSS" href="/feed.xml" />
 
     <!-- Schema.org NewsArticle -->
@@ -182,11 +182,14 @@ __╱╲╲╲╲╲╲╲╲╲╲╲╲╲╲╲__╱╲╲╲╲╲╲╲╲�
         </div>
         {% endif %}
 
-        {% if meta.key_points %}
+        {% if meta.summary_short or meta.key_points %}
         <aside class="article__tldr" aria-label="Кратко">
+          {% if meta.summary_short %}<p class="article__lead">{{ meta.summary_short|e }}</p>{% endif %}
+          {% if meta.key_points %}
           <ul class="article__tldr-list">
             {% for kp in meta.key_points %}<li>{{ kp|e }}</li>{% endfor %}
           </ul>
+          {% endif %}
         </aside>
         {% endif %}
 
@@ -202,6 +205,14 @@ __╱╲╲╲╲╲╲╲╲╲╲╲╲╲╲╲__╱╲╲╲╲╲╲╲╲�
             <span class="entity-chip entity-chip--{{ e.type }}">{{ e.name|e }}</span>
             {% endfor %}
           </div>
+        </div>
+        {% endif %}
+
+        {% if tags %}
+        <div class="article__tags" aria-label="Теги">
+          {% for t in tags[:16] %}
+          <a class="tag-chip" href="/archive.html?q={{ t|urlencode }}">{{ t|e }}</a>
+          {% endfor %}
         </div>
         {% endif %}
 
@@ -304,7 +315,7 @@ __╱╲╲╲╲╲╲╲╲╲╲╲╲╲╲╲__╱╲╲╲╲╲╲╲╲�
       </div>
     </footer>
 
-    <script src="/js/app.js?v=14"></script>
+    <script src="/js/app.js?v=202605151005"></script>
     <script src="/js/mobile-menu-fix.js?v=3"></script>
 
     <!-- Organization + WebSite JSON-LD (global) -->

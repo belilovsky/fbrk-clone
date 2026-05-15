@@ -255,10 +255,14 @@ def ssr_article(slug: str, request: Request):
     published_iso = _iso8601(date_iso)
     modified_iso = _iso8601((a.get("updatedAt") or date_iso)[:10])
     category_label = a.get("categoryLabel") or "Новости"
-    tags = a.get("tags") or []
-    # Fall back to AI-generated tags if no manual ones — boosts keywords coverage
-    if not tags:
-        tags = list(meta.get("tags_auto") or [])
+    tags = []
+    seen_tags = set()
+    for item in list(a.get("tags") or []) + list(meta.get("tags_auto") or []):
+        value = str(item or "").strip()
+        key = value.casefold()
+        if value and key not in seen_tags:
+            tags.append(value)
+            seen_tags.add(key)
 
     # --- JSON-LD NewsArticle ---
     news_article_ld = {

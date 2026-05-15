@@ -321,3 +321,68 @@ Maintenance note:
 - вместо него создан узкий code snapshot тех же timestamp/path с размером
   `684K`, без рекурсивного копирования `backups/`, `web-snapshots/` и
   `admin-snapshots/`.
+
+---
+
+## Article enrichment UI recovery (2026-05-15, 08:20Z)
+
+После split-static выноса на `new.fbrk.kz` пропал старый публичный слой
+обогащения на страницах материалов: summary/тезисы, сущности и видимые теги.
+
+Root cause:
+
+- `article_meta` в БД был заполнен (`4654` meta rows, `4651` материалов с
+  сущностями, `4654` с key points), но `article-full.js` сериализовал только
+  карточные поля и `sections`;
+- static article renderer на `new.fbrk.kz` не рендерил tag chips/entities под
+  текстом;
+- SSR на `fbrk.qdev.run/a/...` рендерил сущности, но видимые теги и
+  `summary_short` в блоке «Кратко» не выводились.
+
+Fix:
+
+- `article-full.js` теперь получает публичные поля:
+  `summaryShort`, `keyPoints`, `entities`, объединённые manual/auto tags;
+- `js/app.js` рендерит блок «Кратко», «Упоминания» и tag chips на static
+  `/a/<slug>`;
+- SSR template `article_ssr.html` тоже выводит `summary_short` и tag chips;
+- cache-busting для `style.css`, `app.js`, `article-full.js` обновлён до
+  `202605151005`;
+- Plesk package builder теперь включает `css/style.css`, чтобы CSS не
+  отставал от HTML/JS.
+
+Safety gates перед deploy на активный VPS `148.230.117.131`:
+
+- DB backup:
+  `/opt/fbrk-admin/backups/fbrk-20260515T081328Z-pre-article-enrichment-ui.db`
+  (`73M`, non-zero).
+- Web snapshot: `/opt/fbrk-admin/web-snapshots/20260515T081328Z/` (`2.3G`).
+- Admin snapshot:
+  `/opt/fbrk-admin/admin-snapshots/20260515T081328Z/` (`684K`).
+- Plesk HTTP snapshot:
+  `fbrk_audit/plesk-backups/20260515T0814-enrichment/`.
+
+Deploy:
+
+- backend: `/opt/fbrk-admin/app/publish.py`, `/opt/fbrk-admin/app/seo.py`,
+  `/opt/fbrk-admin/templates/article_ssr.html`;
+- web-root: HTML entrypoints, `/css/style.css`, `/js/app.js`;
+- generated payload regenerated as `www-data`;
+- Plesk `new.fbrk.kz` updated via File Manager API:
+  HTML, CSS, JS, `robots.txt`, `sitemap.xml`, `feed.xml`.
+
+Live verification:
+
+- strict linkage:
+  `BACKEND_TOTAL=4664`, `NEW_TOTAL=4664`,
+  `BACKEND_ARTICLE_FULL_TOTAL=4664`, `NEW_ARTICLE_FULL_TOTAL=4664`,
+  SHA256 совпадает для `data.js`, `data-archive.js`, `article-full.js`;
+- Playwright on
+  `/a/policeyskiy-nasmert-sbil-polutoragodovalogo-rebenka-v-aktau`:
+  - `new.fbrk.kz`: lead summary `true`, key points `5`, entities `8`,
+    tags `5`, horizontal overflow `false`, rendered links to qdev `0`;
+  - `fbrk.qdev.run`: lead summary `true`, key points `5`, entities `8`,
+    tags `5`, horizontal overflow `false`;
+- `https://fbrk.qdev.run/admin/healthz` -> `200`;
+- `journalctl -u fbrk-admin --since "2026-05-15 08:13:00 UTC"` без
+  `PermissionError`, `UndefinedError`, `Traceback`, `ERROR`.

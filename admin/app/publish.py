@@ -46,10 +46,64 @@ SITE_META = {
 }
 
 
+def _json_list(raw: object) -> list:
+    try:
+        value = json.loads(str(raw or "[]"))
+    except (TypeError, ValueError, json.JSONDecodeError):
+        return []
+    return value if isinstance(value, list) else []
+
+
+def _unique_strings(*groups: list, limit: int = 16) -> list[str]:
+    out: list[str] = []
+    seen: set[str] = set()
+    for group in groups:
+        for item in group or []:
+            value = str(item or "").strip()
+            key = value.casefold()
+            if not value or key in seen:
+                continue
+            out.append(value[:64])
+            seen.add(key)
+            if len(out) >= limit:
+                return out
+    return out
+
+
+def _public_entities(raw: list, limit: int = 32) -> list[dict]:
+    allowed_types = {"person", "org", "gov", "place", "law", "case", "money", "other"}
+    out: list[dict] = []
+    seen: set[str] = set()
+    for item in raw or []:
+        if not isinstance(item, dict):
+            continue
+        name = str(item.get("name") or "").strip()
+        if not name:
+            continue
+        kind = str(item.get("type") or "other").strip().lower()
+        if kind not in allowed_types:
+            kind = "other"
+        key = f"{kind}:{name.casefold()}"
+        if key in seen:
+            continue
+        out.append({"name": name[:80], "type": kind})
+        seen.add(key)
+        if len(out) >= limit:
+            break
+    return out
+
+
 def _load_articles() -> list[dict]:
     with db() as conn:
         rows = conn.execute(
-            "SELECT a.*, m.importance AS _meta_importance, m.sentiment AS _meta_sentiment, m.region AS _meta_region "
+            "SELECT a.*, "
+            "m.importance AS _meta_importance, "
+            "m.sentiment AS _meta_sentiment, "
+            "m.region AS _meta_region, "
+            "m.summary_short AS _meta_summary_short, "
+            "m.key_points AS _meta_key_points, "
+            "m.entities_json AS _meta_entities_json, "
+            "m.tags_auto AS _meta_tags_auto "
             "FROM articles a LEFT JOIN article_meta m ON m.article_id=a.id "
             "WHERE a.published=1 ORDER BY a.date_iso DESC, a.created_at DESC"
         ).fetchall()
@@ -61,6 +115,10 @@ def _load_articles() -> list[dict]:
             art["_meta_importance"] = r["_meta_importance"]
             art["_meta_sentiment"] = r["_meta_sentiment"]
             art["_meta_region"] = r["_meta_region"]
+            art["_meta_summary_short"] = r["_meta_summary_short"]
+            art["_meta_key_points"] = r["_meta_key_points"]
+            art["_meta_entities_json"] = r["_meta_entities_json"]
+            art["_meta_tags_auto"] = r["_meta_tags_auto"]
         except Exception:
             pass
         out.append(art)
@@ -104,6 +162,17 @@ def _article_full_shape(a: dict) -> dict:
     """
     shape = _public_shape(a)
     shape["sections"] = a.get("sections") or []
+    tags_auto = _unique_strings(_json_list(a.get("_meta_tags_auto")), limit=12)
+    shape["tags"] = _unique_strings(shape.get("tags") or [], tags_auto, limit=16)
+    summary_short = str(a.get("_meta_summary_short") or "").strip()
+    if summary_short:
+        shape["summaryShort"] = summary_short[:240]
+    key_points = _unique_strings(_json_list(a.get("_meta_key_points")), limit=5)
+    if key_points:
+        shape["keyPoints"] = key_points
+    entities = _public_entities(_json_list(a.get("_meta_entities_json")), limit=32)
+    if entities:
+        shape["entities"] = entities
     if a.get("updatedAt"):
         shape["updatedAt"] = a["updatedAt"]
     source = (a.get("source") or "").strip()

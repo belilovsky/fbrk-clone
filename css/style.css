@@ -2263,6 +2263,7 @@ button:focus-visible, a:focus-visible { outline-offset: 3px; }
 .entity-chip--law    { border-color: rgba(201, 54, 54, 0.35); }
 .entity-chip--case   { border-color: rgba(201, 54, 54, 0.45); color: #a72a2a; }
 .entity-chip--money  { border-color: rgba(26, 128, 76, 0.4); color: #1a804c; }
+.entity-chip--other  { border-color: var(--color-divider); color: var(--color-text-muted); }
 
 .breadcrumbs {
   max-width: var(--content-narrow);
