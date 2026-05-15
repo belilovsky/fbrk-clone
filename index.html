@@ -72,7 +72,8 @@
       href="https://fonts.googleapis.com/css2?family=Onest:wght@400;500;600;700;800&display=swap"
       rel="stylesheet"
     />
-    <link rel="stylesheet" href="css/style.css?v=202605041615" />
+    <link rel="stylesheet" href="/css/av-ds/tokens.css?v=202605050020" />
+    <link rel="stylesheet" href="/css/style.css?v=202605050030" />
     <link rel="alternate" type="application/rss+xml" title="ФБРК — RSS" href="/feed.xml" />
   </head>
   <body>
@@ -115,11 +116,27 @@
       </div>
     </header>
 
-<main id="main">
+<main id="main" class="home-main">
       <!-- Lead / hero story -->
       <section class="lead" aria-label="Главный материал">
         <div class="container">
-          <div class="lead__grid" data-lead></div>
+          <div class="lead__grid" data-lead>
+            <a class="lead__media" href="/archive.html" aria-label="Открыть архив материалов ФБРК">
+              <img src="/img/brand/logo-on-brand-640.png" alt="ФБРК" width="640" height="640" loading="eager" />
+            </a>
+            <div class="lead__body">
+              <div class="kicker">ФБРК</div>
+              <h1 class="lead__title">
+                <a href="/archive.html">Журналистские расследования о коррупции в Казахстане</a>
+              </h1>
+              <p class="lead__dek">
+                Независимое издание о госзакупках, конфликтах интересов и публичной ответственности.
+              </p>
+              <div class="lead__meta">
+                <span>Архив материалов</span>
+              </div>
+            </div>
+          </div>
         </div>
       </section>
 
@@ -128,7 +145,10 @@
         <div class="container">
           <header class="section__header">
             <h2 class="section__title" id="sec-inv">Расследования</h2>
-            <a class="section__link" href="archive.html?cat=investigation">Все расследования →</a>
+            <a class="section__link" href="archive.html?cat=investigation">
+              Все расследования
+              <svg viewBox="0 0 20 20" aria-hidden="true"><path d="M7 4l6 6-6 6" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>
+            </a>
           </header>
           <div class="card-grid" data-investigations></div>
         </div>
@@ -142,7 +162,10 @@
               <div class="section__eyebrow">Видео</div>
               <h2 class="section__title" id="sec-videos">Смотрите на YouTube</h2>
             </div>
-            <a class="section__link" href="https://www.youtube.com/@fbrk_news" target="_blank" rel="noopener">На канал →</a>
+            <a class="section__link" href="https://www.youtube.com/@fbrk_news" target="_blank" rel="noopener">
+              На канал
+              <svg viewBox="0 0 20 20" aria-hidden="true"><path d="M7 4l6 6-6 6" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>
+            </a>
           </header>
           <div class="video-grid" data-videos></div>
         </div>
@@ -153,7 +176,10 @@
         <div class="container">
           <header class="section__header">
             <h2 class="section__title" id="sec-latest">Последнее</h2>
-            <a class="section__link" href="archive.html">Весь архив →</a>
+            <a class="section__link" href="archive.html">
+              Весь архив
+              <svg viewBox="0 0 20 20" aria-hidden="true"><path d="M7 4l6 6-6 6" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>
+            </a>
           </header>
           <div class="latest">
             <ul class="latest__list" role="list" data-latest></ul>
@@ -165,7 +191,8 @@
                   Анонимный Telegram-бот редакции ФБРК. Мы защищаем источники и проверяем каждый сигнал.
                 </p>
                 <a class="widget__btn" href="https://t.me/fund_kz_bot" target="_blank" rel="noopener">
-                  Открыть @fund_kz_bot →
+                  Открыть @fund_kz_bot
+                  <svg viewBox="0 0 20 20" aria-hidden="true"><path d="M7 4l6 6-6 6" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>
                 </a>
               </div>
               <div class="widget">
@@ -258,6 +285,6 @@
     </div>
 
     <script src="js/data.js?v=202605041615"></script>
-    <script src="js/app.js?v=202605041615"></script>
+    <script src="js/app.js?v=202605050125"></script>
   </body>
 </html>

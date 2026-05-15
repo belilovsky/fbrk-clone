@@ -182,8 +182,7 @@ function fbrkToast(message, ms = 2400) {
       return hay.includes(q);
     }).slice(0, 50);
     if (!matches.length) {
-      results.innerHTML =
-        '<div style="color:var(--color-text-muted); padding: var(--space-5) 0; font-size: var(--text-sm);">Ничего не найдено. Попробуйте другой запрос.</div>';
+      results.innerHTML = '<div class="search-empty" role="status">Ничего не найдено. Попробуйте другой запрос.</div>';
       return;
     }
     results.innerHTML = matches.map(toResultHtml).join('');
@@ -279,8 +278,15 @@ function liveBadgeHtml(a) {
         <a href="/a/${featured.slug || featured.id}">${escapeHtml(featured.title)}</a>
       </h1>
       <p class="lead__dek">${escapeHtml(featured.dek)}</p>
-      <div class="lead__meta">
-        <span>${fmtDateLong(featured.dateIso) || featured.date}</span>
+      <div class="lead__footer">
+        <a class="lead__button" href="/a/${featured.slug || featured.id}">
+          Читать материал
+          <svg viewBox="0 0 20 20" aria-hidden="true"><path d="M7 4l6 6-6 6" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>
+        </a>
+        <div class="lead__meta">
+          <span>${fmtDateLong(featured.dateIso) || featured.date}</span>
+          ${importanceBadgeHtml(featured)}${liveBadgeHtml(featured)}
+        </div>
       </div>
     </div>
   `;
@@ -358,7 +364,7 @@ function liveBadgeHtml(a) {
         // Пул свежих новостей кончился — показываем CTA в архив,
         // чтобы пользователь не упирался в пустоту.
         moreBtn.classList.add('latest__more--archive');
-        moreBtn.textContent = 'Открыть весь архив →';
+        moreBtn.textContent = 'Открыть весь архив';
         moreBtn.onclick = () => { window.location.href = '/archive.html'; };
       } else {
         moreBtn.textContent = `Показать ещё (осталось ${pool.length - rendered})`;
@@ -537,8 +543,10 @@ function liveBadgeHtml(a) {
     return;
   }
   if (typeof FBRK_DATA === 'undefined') return;
-  const a = FBRK_DATA.articles.find((x) => x.id === id) || FBRK_DATA.articles[0];
-  if (!a) return;
+  const a = id
+    ? FBRK_DATA.articles.find((x) => x.id === id || x.slug === id)
+    : null;
+  if (!a || !Array.isArray(a.sections)) return;
 
   document.title = `${a.title} — ФБРК`;
 
@@ -621,7 +629,7 @@ function liveBadgeHtml(a) {
     e.preventDefault();
     navigator.clipboard?.writeText(location.href).then(() => {
       const prev = btn.innerHTML;
-      btn.innerHTML = '<span style="font-size:.85em">Скопировано</span>';
+      btn.innerHTML = '<span class="article__share-feedback">Скопировано</span>';
       setTimeout(() => { btn.innerHTML = prev; }, 1600);
     });
   });
@@ -637,7 +645,7 @@ function escapeHtml(s) {
   const titleEl = document.querySelector('[data-article-title]');
   if (!titleEl || typeof FBRK_DATA === 'undefined') return;
   const id = new URLSearchParams(location.search).get('id');
-  const a = FBRK_DATA.articles.find((x) => x.id === id) || FBRK_DATA.articles[0];
+  const a = id ? FBRK_DATA.articles.find((x) => x.id === id || x.slug === id) : null;
   if (!a) return;
   const title = `${a.title} — ФБРК`;
   const desc = (a.dek || '').slice(0, 200);
