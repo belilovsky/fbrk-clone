@@ -208,9 +208,9 @@ __╱╲╲╲╲╲╲╲╲╲╲╲╲╲╲╲__╱╲╲╲╲╲╲╲╲�
         </div>
         {% endif %}
 
-        {% if tags %}
+        {% if visible_tags %}
         <div class="article__tags" aria-label="Теги">
-          {% for t in tags[:16] %}
+          {% for t in visible_tags[:16] %}
           <a class="tag-chip" href="/archive.html?q={{ t|urlencode }}">{{ t|e }}</a>
           {% endfor %}
         </div>

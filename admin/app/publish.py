@@ -162,15 +162,19 @@ def _article_full_shape(a: dict) -> dict:
     """
     shape = _public_shape(a)
     shape["sections"] = a.get("sections") or []
+    entities = _public_entities(_json_list(a.get("_meta_entities_json")), limit=32)
     tags_auto = _unique_strings(_json_list(a.get("_meta_tags_auto")), limit=12)
-    shape["tags"] = _unique_strings(shape.get("tags") or [], tags_auto, limit=16)
+    entity_names = {str(e.get("name") or "").casefold() for e in entities}
+    shape["tags"] = [
+        tag for tag in _unique_strings(shape.get("tags") or [], tags_auto, limit=16)
+        if tag.casefold() not in entity_names
+    ]
     summary_short = str(a.get("_meta_summary_short") or "").strip()
     if summary_short:
         shape["summaryShort"] = summary_short[:240]
     key_points = _unique_strings(_json_list(a.get("_meta_key_points")), limit=5)
     if key_points:
         shape["keyPoints"] = key_points
-    entities = _public_entities(_json_list(a.get("_meta_entities_json")), limit=32)
     if entities:
         shape["entities"] = entities
     if a.get("updatedAt"):

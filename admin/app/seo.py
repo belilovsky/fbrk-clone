@@ -263,6 +263,12 @@ def ssr_article(slug: str, request: Request):
         if value and key not in seen_tags:
             tags.append(value)
             seen_tags.add(key)
+    entity_names = {
+        str(item.get("name") or "").strip().casefold()
+        for item in meta.get("entities") or []
+        if isinstance(item, dict) and str(item.get("name") or "").strip()
+    }
+    visible_tags = [tag for tag in tags if tag.casefold() not in entity_names]
 
     # --- JSON-LD NewsArticle ---
     news_article_ld = {
@@ -339,6 +345,7 @@ def ssr_article(slug: str, request: Request):
         "modified_iso": modified_iso,
         "category_label": category_label,
         "tags": tags,
+        "visible_tags": visible_tags,
         "news_article_ld": json.dumps(news_article_ld, ensure_ascii=False),
         "breadcrumb_ld": json.dumps(breadcrumb_ld, ensure_ascii=False),
         "site_url": site_url,
