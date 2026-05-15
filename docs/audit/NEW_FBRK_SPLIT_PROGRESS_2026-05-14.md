@@ -370,6 +370,9 @@ Deploy:
 - generated payload regenerated as `www-data`;
 - Plesk `new.fbrk.kz` updated via File Manager API:
   HTML, CSS, JS, `robots.txt`, `sitemap.xml`, `feed.xml`.
+- после очередного cron/update без изменения количества статей был повторно
+  досинхронизирован только `/js/article-full.js`:
+  `fbrk_audit/generated-sync-20260515T0824-article-full-resync/`.
 
 Live verification:
 
