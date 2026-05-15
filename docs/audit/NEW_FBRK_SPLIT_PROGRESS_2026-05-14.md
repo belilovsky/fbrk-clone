@@ -389,3 +389,94 @@ Live verification:
 - `https://fbrk.qdev.run/admin/healthz` -> `200`;
 - `journalctl -u fbrk-admin --since "2026-05-15 08:13:00 UTC"` без
   `PermissionError`, `UndefinedError`, `Traceback`, `ERROR`.
+
+## Article-full parity resync (2026-05-15, 10:05Z)
+
+Follow-up check found `new.fbrk.kz/js/article-full.js` drifting from backend
+again while `data.js` and `data-archive.js` still matched. The visible symptom
+on the sample slug was stale static payload on `new.fbrk.kz`: old `other`
+entities could reappear as `Упоминания`, while backend SSR already filtered
+them.
+
+Action:
+
+- saved Plesk HTTP snapshot:
+  `fbrk_audit/plesk-backups/20260515T100229Z-article-full-drift/`;
+- copied fresh backend payload into:
+  `fbrk_audit/generated-sync-20260515T100229Z-article-full-resync/`;
+- uploaded only `/new.fbrk.kz/js/article-full.js` via Plesk File Manager API.
+
+Verification:
+
+- `BACKEND_TOTAL=4664`, `NEW_TOTAL=4664`;
+- `DELTA_BACKEND_MINUS_NEW=0`;
+- `BACKEND_ARTICLE_FULL_TOTAL=4664`, `NEW_ARTICLE_FULL_TOTAL=4664`;
+- SHA256 matches for `data.js`, `data-archive.js`, `article-full.js`;
+- sample slug
+  `trekhkratnyi-razryv-potrebleniia-miasa-fiksiruetsia-u-kazakhstantsev-s-raznym-dostatkom`
+  now has identical `tags` and no `entities` in both backend and `new`
+  `article-full.js` payloads.
+
+## Stable article-full payload (2026-05-15, 10:27Z)
+
+Follow-up strict linkage still drifted after the 10-minute RSS cycle. This was
+not a content mismatch: JSON diff showed only `updatedAt` changing for 10 fresh
+articles, while `sections`, `tags`, `entities`, summaries and counts stayed the
+same.
+
+Root cause:
+
+- `article-full.js` included `updatedAt`;
+- `ingest_fbrk.py rss` can touch `updated_at` for recent unchanged materials;
+- `new.fbrk.kz` is static on Plesk, so every volatile backend rebuild caused a
+  SHA mismatch until the next manual Plesk sync.
+
+Fix:
+
+- removed `updatedAt` from `_article_full_shape()` in `admin/app/publish.py`;
+- added regression test
+  `test_article_full_payload_omits_volatile_updated_at`;
+- `js/app.js` already falls back from `updatedAt` to `dateIso` for JSON-LD
+  `dateModified`, so public rendering remains stable.
+
+Safety gates on active VPS `148.230.117.131`:
+
+- DB backup:
+  `/opt/fbrk-admin/backups/fbrk-20260515T102356Z-pre-stable-article-full.db`
+  (`73M`, non-zero);
+- web snapshot: `/opt/fbrk-admin/web-snapshots/20260515T102356Z/` (`2.3G`);
+- admin snapshot: `/opt/fbrk-admin/admin-snapshots/20260515T102356Z/` (`24K`);
+- Plesk HTTP snapshot:
+  `fbrk_audit/plesk-backups/20260515T102447Z-stable-article-full/`;
+- fresh Plesk sync source:
+  `fbrk_audit/generated-sync-20260515T102447Z-stable-article-full/`.
+
+Deploy:
+
+- copied `/opt/fbrk-admin/app/publish.py`;
+- `chown www-data:www-data /opt/fbrk-admin/app/publish.py`;
+- `/opt/fbrk-admin/.venv/bin/python3 -m py_compile app/publish.py`;
+- `systemctl restart fbrk-admin`;
+- regenerated `data.js`, `data-archive.js`, `article-full.js` as `www-data`;
+- uploaded only `/new.fbrk.kz/js/article-full.js` via Plesk File Manager API.
+
+Verification:
+
+- local:
+  `../.audit-tools/venv/bin/python -m unittest tests/test_public_entity_tags.py`
+  -> `OK`, 4 tests;
+- local: `node --test tests/article_js_filters.test.mjs` -> `pass`;
+- backend triple fetch of `article-full.js` stable at
+  `0e35b4e83ee7150321326404e299558750325a5cd0b69d616361a82516892756`;
+- after forced backend `regenerate_data_js()`, SHA stayed
+  `0e35b4e83ee7150321326404e299558750325a5cd0b69d616361a82516892756`;
+- strict linkage:
+  `BACKEND_TOTAL=4664`, `NEW_TOTAL=4664`,
+  `DELTA_BACKEND_MINUS_NEW=0`,
+  `BACKEND_ARTICLE_FULL_TOTAL=4664`,
+  `NEW_ARTICLE_FULL_TOTAL=4664`,
+  SHA256 matches for `data.js`, `data-archive.js`, `article-full.js`;
+- strict linkage after the next cron window at `2026-05-15T10:30:16Z`
+  stayed green with the same `article-full.js` SHA256;
+- `journalctl -u fbrk-admin --since "2026-05-15 10:23:00 UTC"` without
+  `error`, `traceback`, `permission`, `undefined`.
