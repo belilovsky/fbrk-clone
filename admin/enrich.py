@@ -312,20 +312,6 @@ def _fallback_result(a: dict) -> dict:
 
     entities: list[dict] = []
     seen: set[str] = set()
-    for t in a.get("tags") or []:
-        if not isinstance(t, str):
-            continue
-        name = t.strip()[:120]
-        if not name:
-            continue
-        lk = name.lower()
-        if lk in seen:
-            continue
-        seen.add(lk)
-        entities.append({"name": name, "type": "other", "wikidata": None, "wiki_url": None})
-        if len(entities) >= 12:
-            break
-
     blob = " ".join(x for x in [title, dek] if x)
     for m in re.finditer(
         r"\b[A-ZА-ЯЁ][A-Za-zА-Яа-яЁё0-9-]{2,}(?:\s+[A-ZА-ЯЁ][A-Za-zА-Яа-яЁё0-9-]{2,}){0,2}\b",

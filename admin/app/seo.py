@@ -209,6 +209,33 @@ def _load_article_meta(article_id: str) -> dict | None:
     }
 
 
+PUBLIC_ENTITY_TYPES = {"person", "org", "gov", "place", "law", "case", "money"}
+
+
+def _visible_entities(raw: list, exclude_names: set[str] | None = None, limit: int = 32) -> list[dict]:
+    """Return public-facing named entities, excluding topic tags and fallback noise."""
+    excluded = {str(x or "").strip().casefold() for x in (exclude_names or set()) if str(x or "").strip()}
+    out: list[dict] = []
+    seen: set[str] = set()
+    for item in raw or []:
+        if not isinstance(item, dict):
+            continue
+        name = str(item.get("name") or "").strip()
+        kind = str(item.get("type") or "other").strip().lower()
+        if not name or kind not in PUBLIC_ENTITY_TYPES:
+            continue
+        if name.casefold() in excluded:
+            continue
+        key = f"{kind}:{name.casefold()}"
+        if key in seen:
+            continue
+        out.append({"name": name[:80], "type": kind})
+        seen.add(key)
+        if len(out) >= limit:
+            break
+    return out
+
+
 def _load_recent_articles(limit: int | None = None) -> list[dict]:
     with db() as conn:
         q = "SELECT * FROM articles WHERE published=1 ORDER BY date_iso DESC, created_at DESC"
@@ -263,12 +290,22 @@ def ssr_article(slug: str, request: Request):
         if value and key not in seen_tags:
             tags.append(value)
             seen_tags.add(key)
+    manual_tags = []
+    seen_manual_tags = set()
+    for item in a.get("tags") or []:
+        value = str(item or "").strip()
+        key = value.casefold()
+        if value and key not in seen_manual_tags:
+            manual_tags.append(value)
+            seen_manual_tags.add(key)
+    visible_entities = _visible_entities(meta.get("entities") or [])
+    meta = {**meta, "entities": visible_entities}
     entity_names = {
         str(item.get("name") or "").strip().casefold()
-        for item in meta.get("entities") or []
+        for item in visible_entities
         if isinstance(item, dict) and str(item.get("name") or "").strip()
     }
-    visible_tags = [tag for tag in tags if tag.casefold() not in entity_names]
+    visible_tags = [tag for tag in manual_tags if tag.casefold() not in entity_names]
 
     # --- JSON-LD NewsArticle ---
     news_article_ld = {

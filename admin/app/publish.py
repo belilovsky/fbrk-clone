@@ -70,8 +70,11 @@ def _unique_strings(*groups: list, limit: int = 16) -> list[str]:
     return out
 
 
-def _public_entities(raw: list, limit: int = 32) -> list[dict]:
-    allowed_types = {"person", "org", "gov", "place", "law", "case", "money", "other"}
+PUBLIC_ENTITY_TYPES = {"person", "org", "gov", "place", "law", "case", "money"}
+
+
+def _public_entities(raw: list, limit: int = 32, exclude_names: set[str] | None = None) -> list[dict]:
+    excluded = {str(x or "").strip().casefold() for x in (exclude_names or set()) if str(x or "").strip()}
     out: list[dict] = []
     seen: set[str] = set()
     for item in raw or []:
@@ -81,8 +84,10 @@ def _public_entities(raw: list, limit: int = 32) -> list[dict]:
         if not name:
             continue
         kind = str(item.get("type") or "other").strip().lower()
-        if kind not in allowed_types:
-            kind = "other"
+        if kind not in PUBLIC_ENTITY_TYPES:
+            continue
+        if name.casefold() in excluded:
+            continue
         key = f"{kind}:{name.casefold()}"
         if key in seen:
             continue
@@ -162,11 +167,14 @@ def _article_full_shape(a: dict) -> dict:
     """
     shape = _public_shape(a)
     shape["sections"] = a.get("sections") or []
-    entities = _public_entities(_json_list(a.get("_meta_entities_json")), limit=32)
-    tags_auto = _unique_strings(_json_list(a.get("_meta_tags_auto")), limit=12)
+    manual_tags = _unique_strings(shape.get("tags") or [], limit=16)
+    entities = _public_entities(
+        _json_list(a.get("_meta_entities_json")),
+        limit=32,
+    )
     entity_names = {str(e.get("name") or "").casefold() for e in entities}
     shape["tags"] = [
-        tag for tag in _unique_strings(shape.get("tags") or [], tags_auto, limit=16)
+        tag for tag in manual_tags
         if tag.casefold() not in entity_names
     ]
     summary_short = str(a.get("_meta_summary_short") or "").strip()

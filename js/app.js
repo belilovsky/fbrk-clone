@@ -672,9 +672,11 @@ function liveBadgeHtml(a) {
     <span class="article__share__label">Поделиться:</span>
     ${shareTargets.map((t) => `<a class="article__share__btn" href="${t.href}" ${t.copy ? 'data-copy' : 'target="_blank" rel="noopener"'} aria-label="${t.label}">${t.icon}</a>`).join('')}
   </div>`;
+  const rawTags = articleTags(a);
+  const visibleEntities = articleEntities(a.entities, rawTags);
   const tldrHtml = renderArticleTldr(a);
-  const entitiesHtml = renderArticleEntities(a.entities);
-  const tagsHtml = renderArticleTags(articleTags(a));
+  const entitiesHtml = renderArticleEntities(visibleEntities);
+  const tagsHtml = renderArticleTags(articleTags(a, visibleEntities.map((e) => e.name)));
 
   root.innerHTML = `
     <article class="article container">
@@ -809,17 +811,42 @@ function renderArticleParagraphs(raw) {
     .join('');
 }
 
-function articleTags(a) {
+function articleTags(a, excludedNames = []) {
+  const excluded = new Set((excludedNames || []).map(normalizeEntityName).filter(Boolean));
   const seen = new Set();
   const tags = [];
   ((a && a.tags) || []).forEach((item) => {
     const value = String(item || '').trim();
-    const key = value.toLowerCase();
-    if (!value || seen.has(key)) return;
+    const key = normalizeEntityName(value);
+    if (!value || !key || excluded.has(key) || seen.has(key)) return;
     tags.push(value);
     seen.add(key);
   });
   return tags.slice(0, 16);
+}
+
+function normalizeEntityName(value) {
+  return String(value || '').trim().toLocaleLowerCase('ru-RU');
+}
+
+function articleEntities(entities, excludedNames = []) {
+  if (!Array.isArray(entities) || !entities.length) return [];
+  const publicTypes = new Set(['person', 'org', 'gov', 'place', 'law', 'case', 'money']);
+  const excluded = new Set((excludedNames || []).map(normalizeEntityName).filter(Boolean));
+  const seen = new Set();
+  const items = [];
+  entities.forEach((entity) => {
+    if (!entity || typeof entity !== 'object') return;
+    const name = String(entity.name || '').trim();
+    const normalizedName = normalizeEntityName(name);
+    const type = String(entity.type || 'other').toLowerCase().replace(/[^a-z0-9_-]/g, '') || 'other';
+    if (!name || !normalizedName || !publicTypes.has(type) || excluded.has(normalizedName)) return;
+    const key = `${type}:${normalizedName}`;
+    if (seen.has(key)) return;
+    seen.add(key);
+    items.push({ name, type });
+  });
+  return items.slice(0, 32);
 }
 
 function renderArticleTldr(a) {
@@ -838,24 +865,11 @@ function renderArticleTldr(a) {
 
 function renderArticleEntities(entities) {
   if (!Array.isArray(entities) || !entities.length) return '';
-  const seen = new Set();
-  const items = [];
-  entities.forEach((entity) => {
-    if (!entity || typeof entity !== 'object') return;
-    const name = String(entity.name || '').trim();
-    if (!name) return;
-    const type = String(entity.type || 'other').toLowerCase().replace(/[^a-z0-9_-]/g, '') || 'other';
-    const key = `${type}:${name.toLowerCase()}`;
-    if (seen.has(key)) return;
-    seen.add(key);
-    items.push({ name, type });
-  });
-  if (!items.length) return '';
   return `
     <div class="entity-chips" aria-label="Упомянуты в тексте">
       <h3 class="entity-chips__title">Упоминания</h3>
       <div class="entity-chips__row">
-        ${items.slice(0, 32).map((e) => `<span class="entity-chip entity-chip--${escapeHtml(e.type)}">${escapeHtml(e.name)}</span>`).join('')}
+        ${entities.slice(0, 32).map((e) => `<span class="entity-chip entity-chip--${escapeHtml(e.type)}">${escapeHtml(e.name)}</span>`).join('')}
       </div>
     </div>
   `;
