@@ -87,6 +87,13 @@ class PublicEntityTagsTest(unittest.TestCase):
 
         self.assertEqual(shape["tags"], ["Расследование"])
 
+    def test_article_full_payload_omits_volatile_updated_at(self) -> None:
+        shape = _article_full_shape(
+            _article(updatedAt="2026-05-15 10:20:02")
+        )
+
+        self.assertNotIn("updatedAt", shape)
+
 
 if __name__ == "__main__":
     unittest.main()

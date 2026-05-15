@@ -225,8 +225,6 @@ def _article_full_shape(a: dict) -> dict:
         shape["keyPoints"] = key_points
     if entities:
         shape["entities"] = entities
-    if a.get("updatedAt"):
-        shape["updatedAt"] = a["updatedAt"]
     source = (a.get("source") or "").strip()
     if source and "fbrk.kz" not in source:
         shape["source"] = source
