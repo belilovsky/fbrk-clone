@@ -70,14 +70,20 @@ def _unique_strings(*groups: list, limit: int = 16) -> list[str]:
     return out
 
 
-def _manual_public_tags(raw: list, auto_raw: list, limit: int = 16) -> list[str]:
+def _manual_public_tags(
+    raw: list,
+    auto_raw: list,
+    limit: int = 16,
+    exclude_names: set[str] | None = None,
+) -> list[str]:
     auto_names = {str(item or "").strip().casefold() for item in auto_raw or [] if str(item or "").strip()}
+    excluded = {str(item or "").strip().casefold() for item in (exclude_names or set()) if str(item or "").strip()}
     out: list[str] = []
     seen: set[str] = set()
     for item in raw or []:
         value = str(item or "").strip()
         key = value.casefold()
-        if not value or key in seen or key in auto_names:
+        if not value or key in seen or key in auto_names or key in excluded:
             continue
         out.append(value[:64])
         seen.add(key)
@@ -87,6 +93,18 @@ def _manual_public_tags(raw: list, auto_raw: list, limit: int = 16) -> list[str]
 
 
 PUBLIC_ENTITY_TYPES = {"person", "org", "gov", "place", "law", "case", "money"}
+
+
+def _hidden_entity_names(raw: list) -> set[str]:
+    out: set[str] = set()
+    for item in raw or []:
+        if not isinstance(item, dict):
+            continue
+        name = str(item.get("name") or "").strip()
+        kind = str(item.get("type") or "other").strip().lower()
+        if name and kind not in PUBLIC_ENTITY_TYPES:
+            out.add(name.casefold())
+    return out
 
 
 def _public_entities(raw: list, limit: int = 32, exclude_names: set[str] | None = None) -> list[dict]:
@@ -183,13 +201,15 @@ def _article_full_shape(a: dict) -> dict:
     """
     shape = _public_shape(a)
     shape["sections"] = a.get("sections") or []
+    raw_entities = _json_list(a.get("_meta_entities_json"))
     manual_tags = _manual_public_tags(
         shape.get("tags") or [],
         _json_list(a.get("_meta_tags_auto")),
         limit=16,
+        exclude_names=_hidden_entity_names(raw_entities),
     )
     entities = _public_entities(
-        _json_list(a.get("_meta_entities_json")),
+        raw_entities,
         limit=32,
     )
     entity_names = {str(e.get("name") or "").casefold() for e in entities}

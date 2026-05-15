@@ -212,6 +212,18 @@ def _load_article_meta(article_id: str) -> dict | None:
 PUBLIC_ENTITY_TYPES = {"person", "org", "gov", "place", "law", "case", "money"}
 
 
+def _hidden_entity_names(raw: list) -> set[str]:
+    out: set[str] = set()
+    for item in raw or []:
+        if not isinstance(item, dict):
+            continue
+        name = str(item.get("name") or "").strip()
+        kind = str(item.get("type") or "other").strip().lower()
+        if name and kind not in PUBLIC_ENTITY_TYPES:
+            out.add(name.casefold())
+    return out
+
+
 def _visible_entities(raw: list, exclude_names: set[str] | None = None, limit: int = 32) -> list[dict]:
     """Return public-facing named entities, excluding topic tags and fallback noise."""
     excluded = {str(x or "").strip().casefold() for x in (exclude_names or set()) if str(x or "").strip()}
@@ -308,14 +320,19 @@ def ssr_article(slug: str, request: Request):
         if value and key not in seen_tags:
             tags.append(value)
             seen_tags.add(key)
-    visible_entities = _visible_entities(meta.get("entities") or [])
+    raw_entities = meta.get("entities") or []
+    visible_entities = _visible_entities(raw_entities)
     meta = {**meta, "entities": visible_entities}
     entity_names = {
         str(item.get("name") or "").strip().casefold()
         for item in visible_entities
         if isinstance(item, dict) and str(item.get("name") or "").strip()
     }
-    visible_tags = _visible_tags(a.get("tags") or [], meta.get("tags_auto") or [], exclude_names=entity_names)
+    visible_tags = _visible_tags(
+        a.get("tags") or [],
+        meta.get("tags_auto") or [],
+        exclude_names=entity_names | _hidden_entity_names(raw_entities),
+    )
 
     # --- JSON-LD NewsArticle ---
     news_article_ld = {
