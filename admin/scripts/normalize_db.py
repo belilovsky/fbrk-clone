@@ -4,10 +4,10 @@ FBRK DB normalization (replaces Codex-blocked steps).
 
 Run on VPS:
   cd /opt/fbrk-admin && set -a && . /etc/fbrk-admin/fbrk-admin.env && set +a \
-    && python3 /tmp/normalize_db.py [--apply]
+    && python3 /opt/fbrk-admin/scripts/normalize_db.py [--apply --confirm-apply]
 
 Without --apply: dry-run, prints what would change.
-With --apply: makes a backup first, then applies, then regenerates data.js.
+With --apply --confirm-apply: makes a backup first, then applies, then regenerates data.js.
 
 Steps:
   1. Remove duplicate "ocherednoe-massovoe-otravlenie-...-0" (suffix duplicate)
@@ -29,11 +29,15 @@ import os
 import re
 import sqlite3
 import sys
-import time
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
+from urllib.error import HTTPError, URLError
+from urllib.request import Request, urlopen
 
-DB_PATH = os.environ.get("FBRK_DB") or os.environ.get("FBRK_DB_PATH") or "/opt/fbrk-admin/fbrk.db"
+DB_PATH = os.environ.get("FBRK_DB_PATH") or os.environ.get("FBRK_DB") or "/opt/fbrk-admin/fbrk.db"
+ADMIN_DIR = Path(__file__).resolve().parents[1]
+SOURCE_TIMEOUT = 8
+SOURCE_UA = "Mozilla/5.0 (compatible; FBRK-clone-normalize/1.0; +https://fbrk.qdev.run/about)"
 
 # STRICT patterns — auto-promote regardless of length (these slugs are exclusively
 # used by long-form investigations on fbrk.kz; even 1-3 block summaries belong to
@@ -133,22 +137,56 @@ def step_promote_investigations(con, apply: bool) -> dict:
     return {"count": len(candidates), "samples": candidates[:8]}
 
 
+def _source_candidates(slug: str) -> list[str]:
+    return [
+        f"https://fbrk.kz/articles/{slug}",
+        f"https://fbrk.kz/news/{slug}",
+    ]
+
+
+def _request_status(url: str, method: str) -> int:
+    req = Request(url, method=method, headers={"User-Agent": SOURCE_UA})
+    try:
+        with urlopen(req, timeout=SOURCE_TIMEOUT) as resp:
+            return int(resp.status)
+    except HTTPError as e:
+        return int(e.code)
+    except (OSError, URLError):
+        return 0
+
+
+def _url_exists(url: str) -> bool:
+    status = _request_status(url, "HEAD")
+    if status in {0, 403, 405}:
+        status = _request_status(url, "GET")
+    return 200 <= status < 400
+
+
+def _guess_source_url(slug: str) -> str | None:
+    for url in _source_candidates(slug):
+        if _url_exists(url):
+            return url
+    return None
+
+
 def step_normalize_source(con, apply: bool) -> dict:
     """
     For source = 'fbrk.kz' or empty: guess full URL from slug.
-    fbrk.kz uses /articles/<slug> for everything.
+    Try /articles/<slug> first, then /news/<slug>; do not write unresolved URLs.
     """
     rows = con.execute("""
         SELECT slug FROM articles
         WHERE source = 'fbrk.kz' OR source IS NULL OR source = ''
     """).fetchall()
     fixes = []
+    unresolved = []
     for r in rows:
         slug = r["slug"]
-        # Strip a -0/-1 numeric suffix that Drupal adds for slug collisions.
-        # We'll leave them as-is — site URL is canonical with suffix.
-        guessed = f"https://fbrk.kz/articles/{slug}"
-        fixes.append({"slug": slug, "new_source": guessed})
+        guessed = _guess_source_url(slug)
+        if guessed:
+            fixes.append({"slug": slug, "new_source": guessed})
+        else:
+            unresolved.append({"slug": slug})
     if apply and fixes:
         for f in fixes:
             con.execute(
@@ -156,7 +194,7 @@ def step_normalize_source(con, apply: bool) -> dict:
                 (f["new_source"], f["slug"]),
             )
         con.commit()
-    return {"count": len(fixes), "samples": fixes[:5]}
+    return {"count": len(fixes), "samples": fixes[:5], "unresolved": unresolved[:10]}
 
 
 def step_regen_sections(con, apply: bool) -> dict:
@@ -164,6 +202,7 @@ def step_regen_sections(con, apply: bool) -> dict:
     Regenerate sections_json from body_json using the same logic as ingester.
     Only updates rows where the regenerated version differs.
     """
+    sys.path.insert(0, str(ADMIN_DIR))
     sys.path.insert(0, "/opt/fbrk-admin")
     try:
         from app.editorjs import editorjs_to_sections
@@ -204,17 +243,27 @@ def step_regen_sections(con, apply: bool) -> dict:
 def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--apply", action="store_true", help="actually modify DB")
+    ap.add_argument("--confirm-apply", action="store_true",
+                    help="required with --apply; confirms owner-approved DB mutations")
     ap.add_argument("--steps", default="dup,inv,src,sec",
                     help="comma-separated subset of: dup,inv,src,sec")
     args = ap.parse_args()
 
+    if args.apply and not args.confirm_apply:
+        ap.error("--apply requires --confirm-apply after owner approval and a reviewed plan")
+
     if args.apply:
         ts = datetime.now(timezone.utc).strftime("%Y%m%dT%H%M%SZ")
-        bak = f"/opt/fbrk-admin/backups/fbrk-{ts}-pre-normalize.db"
+        backup_dir = Path("/opt/fbrk-admin/backups")
+        backup_dir.mkdir(parents=True, exist_ok=True)
+        bak = backup_dir / f"fbrk-{ts}-pre-normalize.db"
         print(f"[backup] {bak}")
         with sqlite3.connect(DB_PATH) as src:
-            src.execute(f"VACUUM INTO ?", (bak,))
-        print(f"[backup] OK ({Path(bak).stat().st_size / (1024*1024):.1f} MB)")
+            src.execute("VACUUM INTO ?", (str(bak),))
+        size = bak.stat().st_size if bak.exists() else 0
+        if size <= 0:
+            raise RuntimeError(f"backup failed or empty: {bak}")
+        print(f"[backup] OK ({size / (1024*1024):.1f} MB)")
 
     con = get_con()
     steps = set(args.steps.split(","))
@@ -240,6 +289,8 @@ def main():
         print(f"  -> {out['sources']['count']} to fix")
         for s in out["sources"]["samples"]:
             print(f"     - {s['slug']} -> {s['new_source']}")
+        for s in out["sources"]["unresolved"]:
+            print(f"     ! unresolved: {s['slug']}")
 
     if "sec" in steps:
         print("\n[step] regenerate sections_json (idempotent)")
@@ -254,6 +305,7 @@ def main():
 
     if args.apply:
         print("[next] regenerate data.js")
+        sys.path.insert(0, str(ADMIN_DIR))
         sys.path.insert(0, "/opt/fbrk-admin")
         from app.publish import regenerate_data_js
         result = regenerate_data_js()

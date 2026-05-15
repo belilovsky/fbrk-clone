@@ -252,7 +252,7 @@ function todayAlmatyString() {
   }
 }
 
-// Live badge — pulse dot for fresh articles (published within last 6 hours).
+// Live badge — pulse dot for articles published today in editorial time.
 // Inspired by AV DS LiveBadge.
 function liveBadgeHtml(a) {
   if (!a || !a.dateIso) return '';
