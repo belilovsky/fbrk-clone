@@ -254,3 +254,70 @@ Live verification:
 - `https://new.fbrk.kz/` -> `200`;
 - в свежем `journalctl` после финального restart нет `PermissionError`,
   `UndefinedError`, `Traceback`, `ERROR`.
+
+---
+
+## Publish lock hardening (2026-05-15, 04:35Z)
+
+После восстановления сохранения найден более глубокий root cause: RSS cron
+запускается от `root` и при появлении новых материалов тоже вызывает
+`regenerate_data_js()`. Из-за этого `/var/www/fbrk.qdev.run/js/*.js` и старый
+web-root lock могли снова становиться root-owned, а следующий save из FastAPI
+под `www-data` падал на lock-файле.
+
+Fix:
+
+- publish lock перенесён из web-root в `/tmp/fbrk-publish-<hash>.lock`;
+- lock-файл выставляется в `0666`, чтобы root-cron и backend `www-data`
+  могли безопасно сериализовать одну и ту же публикацию;
+- `check_split_linkage.sh --strict` дополнительно сравнивает SHA256 для
+  `/js/data.js`, `/js/data-archive.js`, `/js/article-full.js`, а не только
+  количество статей.
+
+Safety gates перед deploy на активный VPS `148.230.117.131`:
+
+- DB backup:
+  `/opt/fbrk-admin/backups/fbrk-20260515T043307Z-pre-publish-lock.db`
+  (`72M`, non-zero).
+- Web snapshot: `/opt/fbrk-admin/web-snapshots/20260515T043307Z/` (`2.3G`).
+- Admin snapshot:
+  `/opt/fbrk-admin/admin-snapshots/20260515T043307Z/` (`488K`).
+
+Live verification:
+
+- `python3 -m py_compile /opt/fbrk-admin/app/publish.py` -> OK;
+- `systemctl restart fbrk-admin` -> сервис `active`;
+- root-run `regenerate_data_js()` -> OK, generated JS root-owned, lock
+  `/tmp/fbrk-publish-aefcfb66460cc07e.lock` имеет mode `0666`;
+- после root-run реальный authenticated `PUT /api/articles/...` из админки
+  -> `200 OK`, generated JS снова успешно перезаписаны backend-процессом;
+- `journalctl -u fbrk-admin` после проверки не содержит `PermissionError`,
+  `Traceback` или `ERROR`.
+
+Plesk static sync:
+
+- перед синхронизацией `check_split_linkage.sh --strict` поймал stale-статику:
+  `DELTA_BACKEND_MINUS_NEW=0`, но SHA256 отличались для всех трёх generated
+  payload-файлов;
+- во время первого sync RSS cron добавил ещё один материал, backend стал
+  `4660`, поэтому payload был переснят и выгружен повторно;
+- HTTP snapshot старой Plesk-статики:
+  `fbrk_audit/plesk-backups/20260515T045254Z/`;
+- свежий sync-пакет:
+  `fbrk_audit/generated-sync-20260515T045254Z/`;
+- через Plesk File Manager API обновлены:
+  `/new.fbrk.kz/js/data.js`,
+  `/new.fbrk.kz/js/data-archive.js`,
+  `/new.fbrk.kz/js/article-full.js`;
+- финальный strict smoke на VPS:
+  `BACKEND_TOTAL=4660`, `NEW_TOTAL=4660`,
+  `BACKEND_ARTICLE_FULL_TOTAL=4660`, `NEW_ARTICLE_FULL_TOTAL=4660`,
+  SHA256 всех трёх generated files совпадают, ключевые страницы `200`.
+
+Maintenance note:
+
+- ошибочно широкий admin snapshot `20260515T044346Z` был остановлен и удалён
+  только внутри `/opt/fbrk-admin/admin-snapshots/`;
+- вместо него создан узкий code snapshot тех же timestamp/path с размером
+  `684K`, без рекурсивного копирования `backups/`, `web-snapshots/` и
+  `admin-snapshots/`.

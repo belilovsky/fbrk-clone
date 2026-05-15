@@ -107,6 +107,12 @@ print(len(arts))
   echo "$value"
 }
 
+sha256_url() {
+  local url="$1"
+  curl -fsS "$url" \
+    | python3 -c 'import hashlib, sys; print(hashlib.sha256(sys.stdin.buffer.read()).hexdigest())'
+}
+
 extract_canonical() {
   local url="$1"
   local canon
@@ -125,6 +131,13 @@ backend_total="$(extract_total_count "$BACKEND_ORIGIN")"
 delta=$((backend_total - new_total))
 new_article_full_total="$(extract_article_full_count "$NEW_ORIGIN")"
 backend_article_full_total="$(extract_article_full_count "$BACKEND_ORIGIN")"
+
+backend_data_sha="$(sha256_url "${BACKEND_ORIGIN}/js/data.js")"
+new_data_sha="$(sha256_url "${NEW_ORIGIN}/js/data.js")"
+backend_archive_sha="$(sha256_url "${BACKEND_ORIGIN}/js/data-archive.js")"
+new_archive_sha="$(sha256_url "${NEW_ORIGIN}/js/data-archive.js")"
+backend_article_full_sha="$(sha256_url "${BACKEND_ORIGIN}/js/article-full.js")"
+new_article_full_sha="$(sha256_url "${NEW_ORIGIN}/js/article-full.js")"
 
 first_slug="$(extract_first_slug "$BACKEND_ORIGIN")"
 
@@ -145,6 +158,12 @@ echo "NEW_TOTAL=${new_total}"
 echo "DELTA_BACKEND_MINUS_NEW=${delta}"
 echo "BACKEND_ARTICLE_FULL_TOTAL=${backend_article_full_total}"
 echo "NEW_ARTICLE_FULL_TOTAL=${new_article_full_total}"
+echo "BACKEND_DATA_SHA256=${backend_data_sha}"
+echo "NEW_DATA_SHA256=${new_data_sha}"
+echo "BACKEND_ARCHIVE_SHA256=${backend_archive_sha}"
+echo "NEW_ARCHIVE_SHA256=${new_archive_sha}"
+echo "BACKEND_ARTICLE_FULL_SHA256=${backend_article_full_sha}"
+echo "NEW_ARTICLE_FULL_SHA256=${new_article_full_sha}"
 echo "FIRST_BACKEND_SLUG=${first_slug}"
 echo "HTTP_NEW_HOME=${new_home_code}"
 echo "HTTP_NEW_ARCHIVE=${new_archive_code}"
@@ -169,6 +188,18 @@ if [ "$STRICT" = "--strict" ]; then
   fi
   if [ "$backend_article_full_total" -ne "$backend_total" ] || [ "$new_article_full_total" -ne "$backend_total" ]; then
     echo "FAIL: article-full.js is missing or stale" >&2
+    fail=1
+  fi
+  if [ "$backend_data_sha" != "$new_data_sha" ]; then
+    echo "FAIL: new data.js hash differs from backend" >&2
+    fail=1
+  fi
+  if [ "$backend_archive_sha" != "$new_archive_sha" ]; then
+    echo "FAIL: new data-archive.js hash differs from backend" >&2
+    fail=1
+  fi
+  if [ "$backend_article_full_sha" != "$new_article_full_sha" ]; then
+    echo "FAIL: new article-full.js hash differs from backend" >&2
     fail=1
   fi
   case "$new_canonical_home" in

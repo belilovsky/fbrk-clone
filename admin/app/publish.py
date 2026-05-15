@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 import html
+import hashlib
 import json
 import os
 from datetime import datetime, timezone
@@ -212,6 +213,10 @@ def _file_lock(lock_path: str):
     Path(lock_path).parent.mkdir(parents=True, exist_ok=True)
     fd = os.open(lock_path, os.O_RDWR | os.O_CREAT, 0o644)
     try:
+        try:
+            os.chmod(lock_path, 0o666)
+        except OSError:
+            pass
         fcntl.flock(fd, fcntl.LOCK_EX)
         yield
     finally:
@@ -222,7 +227,8 @@ def _file_lock(lock_path: str):
 
 def regenerate_data_js() -> dict:
     out = Path(settings.data_js_path)
-    lock_file = str(out.with_suffix(out.suffix + ".lock"))
+    lock_key = hashlib.sha256(str(out.resolve()).encode("utf-8")).hexdigest()[:16]
+    lock_file = str(Path(tempfile.gettempdir()) / f"fbrk-publish-{lock_key}.lock")
     with _PUBLISH_LOCK, _file_lock(lock_file):
         source_articles = _load_articles()
         articles = [_public_shape(a) for a in source_articles]
