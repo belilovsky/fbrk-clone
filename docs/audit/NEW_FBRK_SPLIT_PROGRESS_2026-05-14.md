@@ -480,3 +480,75 @@ Verification:
   stayed green with the same `article-full.js` SHA256;
 - `journalctl -u fbrk-admin --since "2026-05-15 10:23:00 UTC"` without
   `error`, `traceback`, `permission`, `undefined`.
+
+## AV DS static resync (2026-05-16, 13:30Z)
+
+Follow-up visual audit found `new.fbrk.kz` drifting back to the old public
+shell while `fbrk.qdev.run` already had the current AV DS static layer.
+
+Symptoms:
+
+- `new.fbrk.kz` still loaded Google Fonts and old cache-busts
+  `v=202605151005` / `v=202605141448`;
+- `new.fbrk.kz/fonts/avds/avds-fonts.css` returned `404`;
+- `new.fbrk.kz/js/app.js`, `data.js`, `data-archive.js`, `article-full.js`
+  were stale:
+  `BACKEND_TOTAL=4670`, `NEW_TOTAL=4664`, delta `6`;
+- direct missing URLs showed the default Plesk 404 page instead of the AV DS
+  FBRK 404 page.
+
+Fix:
+
+- public static entrypoints and `admin/templates/article_ssr.html` now load
+  `/fonts/avds/avds-fonts.css?v=202605161250`;
+- removed Google Fonts references from public shells;
+- bumped public static cache-busts to `v=202605161250`;
+- `admin/scripts/build_new_frontend_static_package.sh` now includes:
+  `.htaccess`, `/fonts/avds/avds-fonts.css`, all referenced AV DS `.woff2`
+  files, CSS, JS and generated public payloads;
+- added repo-tracked `.htaccess` for Plesk with:
+  `/a/<slug>` internal rewrite and `ErrorDocument 404 /404.html`.
+
+Safety gates:
+
+- active VPS DB backup:
+  `/opt/fbrk-admin/backups/fbrk-20260516T1250Z-pre-avds-resync.db`
+  (`73M`, non-zero);
+- active VPS web snapshot:
+  `/opt/fbrk-admin/web-snapshots/20260516T1250Z-avds-resync/` (`2.3G`);
+- active VPS template snapshot:
+  `/opt/fbrk-admin/template-snapshots/20260516T1250Z-avds-resync/article_ssr.html`;
+- Plesk HTTP snapshot:
+  `fbrk_audit/plesk-http-snapshots/20260516T1322-avds-resync/`;
+- reproducible Plesk packages:
+  `fbrk_audit/new-fbrk-deploy-20260516T1250-avds-resync/` and
+  `fbrk_audit/new-fbrk-deploy-20260516T1335-avds-resync-htaccess/`.
+
+Deploy:
+
+- updated on `fbrk.qdev.run`:
+  `index.html`, `archive.html`, `article.html`, `about.html`, `404.html`,
+  `admin/templates/article_ssr.html`;
+- applied `chown www-data:www-data` to changed prod files;
+- restarted `fbrk-admin`; health check returned `{"ok":true,...}`;
+- uploaded to Plesk `new.fbrk.kz` via File Manager API:
+  `.htaccess`, HTML entrypoints, `css/style.css`, all `js/*`, `robots.txt`,
+  `sitemap.xml`, `feed.xml`, `fonts/avds/*`.
+
+Verification:
+
+- strict linkage:
+  `BACKEND_TOTAL=4670`, `NEW_TOTAL=4670`,
+  `DELTA_BACKEND_MINUS_NEW=0`,
+  `BACKEND_ARTICLE_FULL_TOTAL=4670`,
+  `NEW_ARTICLE_FULL_TOTAL=4670`;
+- SHA256 matches for `data.js`, `data-archive.js`, `article-full.js`;
+- `https://new.fbrk.kz/fonts/avds/avds-fonts.css` -> `200`;
+- `https://new.fbrk.kz/fonts/avds/onest-057.woff2` -> `200`;
+- public HTML pages no longer contain `fonts.googleapis.com`,
+  `fonts.gstatic.com` or `fbrk.qdev.run` host references;
+- Browser smoke on `new.fbrk.kz`:
+  home, archive, article, article body scroll, about, 404 all render with
+  current AV DS shell and no page console errors;
+- `https://new.fbrk.kz/no-such-page-20260516` now returns HTTP `404` with the
+  FBRK AV DS 404 page, not the default Plesk page.

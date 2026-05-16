@@ -1,0 +1,21 @@
+# Pretty article URLs: /a/<slug> -> /article.html?id=<slug>&spa=1
+RewriteEngine On
+RewriteBase /
+
+# Use the AV DS 404 page instead of the default Plesk error document.
+ErrorDocument 404 /404.html
+
+# Skip if request is for an existing file or directory.
+RewriteCond %{REQUEST_FILENAME} -f [OR]
+RewriteCond %{REQUEST_FILENAME} -d
+RewriteRule ^ - [L]
+
+# /a/<slug> -> internal article.html
+RewriteRule ^a/([A-Za-z0-9_\-]+)/?$ /article.html?id=$1&spa=1 [L,QSA]
+
+# Cache static assets without freezing HTML/data entrypoints.
+<IfModule mod_headers.c>
+  <FilesMatch "\.(css|js|svg|png|jpg|jpeg|webp|woff2)$">
+    Header set Cache-Control "public, max-age=86400"
+  </FilesMatch>
+</IfModule>

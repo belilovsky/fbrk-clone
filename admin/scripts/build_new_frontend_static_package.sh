@@ -13,7 +13,7 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 REPO_ROOT="$(cd "${SCRIPT_DIR}/../.." && pwd)"
 OUT_DIR="${1:-${REPO_ROOT}/../fbrk_audit/new-fbrk-deploy-${STAMP}}"
 
-mkdir -p "${OUT_DIR}/css" "${OUT_DIR}/js"
+mkdir -p "${OUT_DIR}/css" "${OUT_DIR}/js" "${OUT_DIR}/fonts/avds"
 
 rewrite_host() {
   sed "s#https://fbrk.qdev.run#${PUBLIC_ORIGIN}#g"
@@ -21,12 +21,44 @@ rewrite_host() {
 
 cd "${REPO_ROOT}"
 
-for file in index.html archive.html about.html article.html 404.html; do
+for file in index.html archive.html about.html article.html 404.html .htaccess; do
   rewrite_host < "${file}" > "${OUT_DIR}/${file}"
 done
 
 cp js/app.js "${OUT_DIR}/js/app.js"
 cp css/style.css "${OUT_DIR}/css/style.css"
+
+curl -fsSL "${BACKEND_ORIGIN}/fonts/avds/avds-fonts.css" -o "${OUT_DIR}/fonts/avds/avds-fonts.css"
+python3 - "${OUT_DIR}/fonts/avds/avds-fonts.css" "${BACKEND_ORIGIN}" "${OUT_DIR}/fonts/avds" <<'PY'
+import pathlib
+import re
+import sys
+import urllib.request
+from urllib.parse import urljoin
+
+css_path = pathlib.Path(sys.argv[1])
+backend_origin = sys.argv[2].rstrip("/") + "/"
+fonts_dir = pathlib.Path(sys.argv[3])
+
+css = css_path.read_text(encoding="utf-8")
+urls = sorted(set(re.findall(r"url\(['\"]?([^)'\"\s]+)['\"]?\)", css)))
+base = urljoin(backend_origin, "fonts/avds/")
+
+for raw in urls:
+    if raw.startswith("data:"):
+        continue
+    url = raw if raw.startswith(("http://", "https://")) else urljoin(base, raw)
+    name = pathlib.PurePosixPath(raw.split("?", 1)[0]).name
+    if not name:
+        raise SystemExit(f"cannot resolve font url: {raw}")
+    target = fonts_dir / name
+    with urllib.request.urlopen(url, timeout=30) as response:
+        target.write_bytes(response.read())
+    if target.stat().st_size == 0:
+        raise SystemExit(f"empty font downloaded: {target}")
+
+print(f"AVDS_FONT_FILES={len([p for p in fonts_dir.iterdir() if p.suffix == '.woff2'])}")
+PY
 
 cat > "${OUT_DIR}/js/runtime-config.js" <<EOF
 // Runtime overrides for split hosting.

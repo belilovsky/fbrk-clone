@@ -25,7 +25,8 @@
    - готовый шаблон `Additional nginx directives` для Plesk.
 5. `admin/scripts/build_new_frontend_static_package.sh`
    - собирает delta-пакет для ручной загрузки через Plesk File Manager:
-     HTML, `app.js`, `runtime-config.js`, свежие `data.js`/`data-archive.js`,
+     HTML, `.htaccess`, AV DS fonts, `style.css`, `app.js`,
+     `runtime-config.js`, свежие `data.js`/`data-archive.js`,
      `article-full.js`, `robots.txt`, `sitemap.xml`, `feed.xml`;
    - переписывает публичные SEO-ссылки с `fbrk.qdev.run` на `new.fbrk.kz`
      внутри пакета, не меняя основной qdev-compatible source.
@@ -77,11 +78,17 @@ admin/scripts/build_new_frontend_static_package.sh
 ```
 
 После этого загрузить файлы из выведенного `OUT_DIR` в корень `new.fbrk.kz`
-и подпапку `js/`. Это держит главную, архив, поиск, SEO-файлы и статический
-fallback `/a/<slug>` в актуальном состоянии. В этом режиме `article-full.js`
-даёт статическим страницам полный публичный body. Это тяжелее, чем SSR через
-split-прокси, поэтому после получения Plesk-роли лучше включить nginx proxy
-и вернуться к backend SSR как каноническому источнику.
+и соответствующие подпапки `css/`, `js/`, `fonts/avds/`. Это держит главную,
+архив, поиск, SEO-файлы, AV DS-оформление и статический fallback `/a/<slug>`
+в актуальном состоянии. В этом режиме `article-full.js` даёт статическим
+страницам полный публичный body. Это тяжелее, чем SSR через split-прокси,
+поэтому после получения Plesk-роли лучше включить nginx proxy и вернуться к
+backend SSR как каноническому источнику.
+
+В корне `new.fbrk.kz` должен лежать `.htaccess` из пакета. Он отвечает за:
+- internal rewrite `/a/<slug>` -> `/article.html?id=<slug>&spa=1`;
+- `ErrorDocument 404 /404.html`, чтобы не показывать дефолтную Plesk-404;
+- короткий cache-control для static assets.
 
 ---
 
@@ -95,7 +102,8 @@ window.FBRK_BACKEND_ORIGIN = 'https://fbrk.qdev.run';
 ```
 
 Это нужно, чтобы:
-- карточки/поиск/листинги вели на canonical SSR-статьи через backend;
+- карточки/поиск/листинги вели на public article URLs `new.fbrk.kz/a/<slug>`;
+- backend использовался как API/админ-источник и fallback для отсутствующей статьи;
 - не было привязки к старому домену в runtime.
 
 ---
