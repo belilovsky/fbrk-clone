@@ -29,7 +29,9 @@
      `runtime-config.js`, свежие `data.js`/`data-archive.js`,
      `article-full.js`, `robots.txt`, `sitemap.xml`, `feed.xml`;
    - переписывает публичные SEO-ссылки с `fbrk.qdev.run` на `new.fbrk.kz`
-     внутри пакета, не меняя основной qdev-compatible source.
+     внутри пакета, не меняя основной qdev-compatible source;
+   - переписывает `?v=<timestamp>` на свежий `ASSET_VERSION`, чтобы браузеры
+     не держали старые generated payloads после ручного sync.
 
 ---
 
@@ -74,7 +76,8 @@ rsync -a /var/www/fbrk.qdev.run/ "/opt/fbrk-admin/web-snapshots/${TS}/"
 статику через File Manager:
 
 ```bash
-admin/scripts/build_new_frontend_static_package.sh
+ASSET_VERSION="$(date -u +%Y%m%d%H%M)" \
+  admin/scripts/build_new_frontend_static_package.sh
 ```
 
 После этого загрузить файлы из выведенного `OUT_DIR` в корень `new.fbrk.kz`
@@ -85,10 +88,18 @@ admin/scripts/build_new_frontend_static_package.sh
 поэтому после получения Plesk-роли лучше включить nginx proxy и вернуться к
 backend SSR как каноническому источнику.
 
+Не используйте старый sync-пакет повторно. Plesk может отдавать
+`/js/data.js`, `/js/data-archive.js` и `/js/article-full.js` с очень длинным
+cache-control, поэтому каждый ручной sync должен выпускать новый
+`ASSET_VERSION`.
+
 В корне `new.fbrk.kz` должен лежать `.htaccess` из пакета. Он отвечает за:
 - internal rewrite `/a/<slug>` -> `/article.html?id=<slug>&spa=1`;
 - `ErrorDocument 404 /404.html`, чтобы не показывать дефолтную Plesk-404;
-- короткий cache-control для static assets.
+- короткий cache-control для static assets, если запрос проходит через Apache.
+  Если Plesk nginx отдаёт static напрямую, примените Additional nginx
+  directives из `admin/deploy/plesk-new-fbrk-split-proxy.conf`, чтобы generated
+  payloads не замораживались в браузере.
 
 ---
 
@@ -99,6 +110,7 @@ backend SSR как каноническому источнику.
 ```js
 window.FBRK_PUBLIC_ORIGIN = 'https://new.fbrk.kz';
 window.FBRK_BACKEND_ORIGIN = 'https://fbrk.qdev.run';
+window.__FBRK_V = '<asset-version>';
 ```
 
 Это нужно, чтобы:

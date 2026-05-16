@@ -646,3 +646,91 @@ Verification:
   home renders, investigation cards are title-only, mobile menu opens and
   contains `Архив` / `О нас`, article page has one `h1` and 14 body
   paragraphs, 404 page renders AV DS shell, page console has no app errors.
+
+## Cache freshness follow-up (2026-05-16, 19:25Z)
+
+Follow-up live audit found a real freshness risk in the split frontend:
+
+- `new.fbrk.kz` serves static JS from Plesk with
+  `Cache-Control: max-age=315360000`;
+- public HTML still pointed at `?v=202605161750`;
+- after backend RSS/admin regeneration, a browser that had already cached
+  `/js/data.js?v=202605161750` could keep stale public data even though
+  backend and Plesk files had matching SHA256.
+
+Fix:
+
+- bumped public static cache-busts to `v=202605161904`;
+- `admin/scripts/build_new_frontend_static_package.sh` now rewrites
+  `?v=<timestamp>` to a fresh `ASSET_VERSION` for every generated Plesk
+  package;
+- generated `js/runtime-config.js` now sets `window.__FBRK_V`, so lazy-loaded
+  archive payloads use the same package version;
+- repo `.htaccess` now marks `data.js`, `data-archive.js` and
+  `article-full.js` as `no-cache/no-store` for Apache-served static mode;
+- `admin/deploy/nginx-fbrk.conf` and `admin/deploy/nginx-new-fbrk.conf` now
+  keep generated public data files out of the long immutable cache while
+  leaving stable CSS/JS/images cacheable;
+- `admin/deploy/plesk-new-fbrk-split-proxy.conf` now includes `article-full.js`
+  and no-cache headers for all generated data proxy routes.
+
+Safety gates:
+
+- active VPS DB backup:
+  `/opt/fbrk-admin/backups/fbrk-20260516T191202Z-pre-cache-fresh.db`
+  (`73M`, non-zero);
+- active VPS web snapshot:
+  `/opt/fbrk-admin/web-snapshots/20260516T191202Z-cache-fresh`;
+- active VPS template snapshot:
+  `/opt/fbrk-admin/template-snapshots/20260516T191202Z-cache-fresh/article_ssr.html`;
+- Plesk HTTP snapshot:
+  `fbrk_audit/plesk-http-snapshots/20260516T1904-cache-fresh/`;
+- reproducible Plesk package:
+  `fbrk_audit/new-fbrk-deploy-20260516T1904-cache-fresh/`.
+
+Deploy:
+
+- updated on `fbrk.qdev.run`:
+  `index.html`, `archive.html`, `article.html`, `about.html`, `404.html`,
+  `admin/templates/article_ssr.html`, live nginx config for
+  `fbrk.qdev.run`;
+- applied `chown www-data:www-data` to changed public/template files;
+- `nginx -t` passed, nginx reloaded, `fbrk-admin` restarted and health check
+  returned `{"ok":true,...}`;
+- uploaded to Plesk via File Manager API from the generated static package:
+  `.htaccess`, HTML entrypoints, `robots.txt`, `sitemap.xml`, `feed.xml`,
+  `js/runtime-config.js`, `js/data.js`, `js/data-archive.js`,
+  `js/article-full.js`.
+
+Verification:
+
+- local checks passed:
+  `node --check js/app.js`,
+  `bash -n admin/scripts/build_new_frontend_static_package.sh`,
+  `bash -n admin/scripts/check_split_linkage.sh`,
+  `python3 -m unittest tests/test_public_entity_tags.py`,
+  `node --test tests/article_js_filters.test.mjs`;
+- final package:
+  `DATA_JS_TOTAL=4670`, `ARCHIVE_ARTICLES=4670`,
+  `ARTICLE_FULL_ARTICLES=4670`;
+- strict linkage:
+  `BACKEND_TOTAL=4670`, `NEW_TOTAL=4670`,
+  `DELTA_BACKEND_MINUS_NEW=0`,
+  SHA256 matches for `data.js`, `data-archive.js`, `article-full.js`;
+- `fbrk.qdev.run/js/data.js`, `data-archive.js`, `article-full.js` now return
+  `Cache-Control: no-cache, no-store, must-revalidate`;
+- `new.fbrk.kz` HTML now contains `v=202605161904` and no
+  `v=202605161750`;
+- `new.fbrk.kz/js/data.js?v=202605161904` has first slug
+  `tokaev-vydvinul-sem-iniciativ-na-neformalnom-sammite-otg-v-turkestane`;
+- Browser smoke on `new.fbrk.kz`:
+  home, archive, enriched article, and 404 render with `data.js?v=202605161904`
+  and no console errors; sample enriched article renders `7` entity chips.
+
+Remaining Plesk note:
+
+- Plesk still adds long cache headers to static JS when files are served
+  directly by its nginx layer. The fresh package version fixes current browser
+  staleness. The stronger long-term fix is still to apply the documented
+  Plesk Additional nginx directives so generated data files are proxied or
+  served with `no-cache` at the Plesk nginx layer.

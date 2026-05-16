@@ -8,6 +8,7 @@ set -euo pipefail
 PUBLIC_ORIGIN="${PUBLIC_ORIGIN:-https://new.fbrk.kz}"
 BACKEND_ORIGIN="${BACKEND_ORIGIN:-https://fbrk.qdev.run}"
 STAMP="${STAMP:-$(date -u +%Y%m%dT%H%M%SZ)}"
+ASSET_VERSION="${ASSET_VERSION:-$(date -u +%Y%m%d%H%M)}"
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 REPO_ROOT="$(cd "${SCRIPT_DIR}/../.." && pwd)"
@@ -15,14 +16,16 @@ OUT_DIR="${1:-${REPO_ROOT}/../fbrk_audit/new-fbrk-deploy-${STAMP}}"
 
 mkdir -p "${OUT_DIR}/css" "${OUT_DIR}/js" "${OUT_DIR}/fonts/avds"
 
-rewrite_host() {
-  sed "s#https://fbrk.qdev.run#${PUBLIC_ORIGIN}#g"
+rewrite_public_html() {
+  sed -E \
+    -e "s#https://fbrk.qdev.run#${PUBLIC_ORIGIN}#g" \
+    -e "s#\\?v=[0-9]{12}#?v=${ASSET_VERSION}#g"
 }
 
 cd "${REPO_ROOT}"
 
 for file in index.html archive.html about.html article.html 404.html .htaccess; do
-  rewrite_host < "${file}" > "${OUT_DIR}/${file}"
+  rewrite_public_html < "${file}" > "${OUT_DIR}/${file}"
 done
 
 cp js/app.js "${OUT_DIR}/js/app.js"
@@ -64,14 +67,15 @@ cat > "${OUT_DIR}/js/runtime-config.js" <<EOF
 // Runtime overrides for split hosting.
 window.FBRK_PUBLIC_ORIGIN = '${PUBLIC_ORIGIN}';
 window.FBRK_BACKEND_ORIGIN = '${BACKEND_ORIGIN}';
+window.__FBRK_V = '${ASSET_VERSION}';
 EOF
 
 curl -fsSL "${BACKEND_ORIGIN}/js/data.js" -o "${OUT_DIR}/js/data.js"
 curl -fsSL "${BACKEND_ORIGIN}/js/data-archive.js" -o "${OUT_DIR}/js/data-archive.js"
 curl -fsSL "${BACKEND_ORIGIN}/js/article-full.js" -o "${OUT_DIR}/js/article-full.js"
-curl -fsSL "${BACKEND_ORIGIN}/robots.txt" | rewrite_host > "${OUT_DIR}/robots.txt"
-curl -fsSL "${BACKEND_ORIGIN}/sitemap.xml" | rewrite_host > "${OUT_DIR}/sitemap.xml"
-curl -fsSL "${BACKEND_ORIGIN}/feed.xml" | rewrite_host > "${OUT_DIR}/feed.xml"
+curl -fsSL "${BACKEND_ORIGIN}/robots.txt" | rewrite_public_html > "${OUT_DIR}/robots.txt"
+curl -fsSL "${BACKEND_ORIGIN}/sitemap.xml" | rewrite_public_html > "${OUT_DIR}/sitemap.xml"
+curl -fsSL "${BACKEND_ORIGIN}/feed.xml" | rewrite_public_html > "${OUT_DIR}/feed.xml"
 
 python3 - "$OUT_DIR" <<'PY'
 import json
