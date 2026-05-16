@@ -97,7 +97,7 @@
   --color-text-faint: #61605a;
   --color-text-inverse: #0e1016;
 
-  --color-brand: #ffffff; /* in dark the header becomes white on deep ink */
+  --color-brand: #0C115F;
   --color-brand-deep: #05071f;
   --color-brand-hover: #c8d0f5;
 
@@ -123,7 +123,7 @@
     --color-text-muted: #9a988f;
     --color-text-faint: #61605a;
     --color-text-inverse: #0e1016;
-    --color-brand: #ffffff;
+    --color-brand: #0C115F;
     --color-brand-deep: #05071f;
     --color-brand-hover: #c8d0f5;
     --color-primary: #c8d0f5;
@@ -2683,7 +2683,7 @@ body:has(.site-footer) .footer {
 .lead__media::after,
 .card__media::after,
 .article__cover::after {
-  content: 'ИЛЛЮСТРАЦИЯ ФБРК · AI';
+  content: 'ИЛЛЮСТРАЦИЯ ФБРК · ИИ';
   position: absolute;
   right: 8px;
   bottom: 8px;
@@ -2731,7 +2731,7 @@ body:has(.site-footer) .footer {
   position: relative;
 }
 .card--no-image .card__media::before {
-  content: 'FBRK';
+  content: 'ФБРК';
   position: absolute;
   inset: 0;
   display: flex;
@@ -2761,7 +2761,7 @@ body:has(.site-footer) .footer {
   transition: filter 300ms ease;
 }
 
-/* Latest thumb fallback — small square, brand gradient + tiny "FBRK" */
+/* Latest thumb fallback — small square, brand gradient + tiny "ФБРК" */
 .latest__thumb--no-image {
   background: linear-gradient(135deg, #0c115f 0%, #1a2280 100%);
   display: flex;

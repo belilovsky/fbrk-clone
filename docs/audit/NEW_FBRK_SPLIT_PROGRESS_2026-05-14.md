@@ -552,3 +552,97 @@ Verification:
   current AV DS shell and no page console errors;
 - `https://new.fbrk.kz/no-such-page-20260516` now returns HTTP `404` with the
   FBRK AV DS 404 page, not the default Plesk page.
+
+## AV DS polish follow-up (2026-05-16, 17:50Z)
+
+Follow-up AV DS check after the static resync found several small but visible
+drifts:
+
+- dark theme temporarily overrode `--color-brand` with white instead of the
+  FBRK brand blue `#0C115F`;
+- AI illustration watermark used Latin `AI`;
+- no-image fallback text could still render Latin `FBRK`;
+- homepage investigation cards again showed `dek` text, which visually
+  crowded the card bottom on mobile.
+
+Fix:
+
+- restored original `--color-brand: #0C115F` in dark theme and
+  `prefers-color-scheme: dark`;
+- changed public watermark text to `ИЛЛЮСТРАЦИЯ ФБРК · ИИ`;
+- changed JS no-image fallback mark to `ФБРК`;
+- removed `card__dek` only from homepage investigation cards; archive cards,
+  search cards and related-material cards keep descriptions;
+- bumped static cache-busts to `v=202605161750`;
+- rebuilt Plesk package with
+  `PUBLIC_ORIGIN=https://new.fbrk.kz` and
+  `BACKEND_ORIGIN=https://fbrk.qdev.run`.
+
+Safety gates:
+
+- active VPS DB backups:
+  `/opt/fbrk-admin/backups/fbrk-20260516T1720Z-pre-avds-polish.db`,
+  `/opt/fbrk-admin/backups/fbrk-20260516T1735Z-pre-avds-card-polish.db`,
+  `/opt/fbrk-admin/backups/fbrk-20260516T1750Z-pre-avds-final-polish.db`
+  (`73M`, non-zero);
+- active VPS web snapshots:
+  `/opt/fbrk-admin/web-snapshots/20260516T1720Z-avds-polish`,
+  `/opt/fbrk-admin/web-snapshots/20260516T1735Z-avds-card-polish`,
+  `/opt/fbrk-admin/web-snapshots/20260516T1750Z-avds-final-polish`;
+- active VPS template snapshots:
+  `/opt/fbrk-admin/template-snapshots/20260516T1720Z-avds-polish/article_ssr.html`,
+  `/opt/fbrk-admin/template-snapshots/20260516T1735Z-avds-card-polish/article_ssr.html`,
+  `/opt/fbrk-admin/template-snapshots/20260516T1750Z-avds-final-polish/article_ssr.html`;
+- Plesk HTTP snapshots:
+  `fbrk_audit/plesk-http-snapshots/20260516T1725-avds-polish/`,
+  `fbrk_audit/plesk-http-snapshots/20260516T1738-avds-card-polish/`,
+  `fbrk_audit/plesk-http-snapshots/20260516T1758-avds-final-polish/`;
+- reproducible final Plesk package:
+  `fbrk_audit/new-fbrk-deploy-20260516T1750-avds-final-polish/`.
+
+Deploy:
+
+- updated on `fbrk.qdev.run`:
+  `index.html`, `archive.html`, `article.html`, `about.html`, `404.html`,
+  `css/style.css`, `js/app.js`, `admin/templates/article_ssr.html`;
+- applied `chown www-data:www-data` to changed prod files;
+- restarted `fbrk-admin`; health check returned `{"ok":true,...}`;
+- uploaded to Plesk via File Manager API from the generated static package:
+  `.htaccess`, HTML entrypoints, `css/style.css`,
+  `js/runtime-config.js`, `js/app.js`.
+
+Important operational note:
+
+- Plesk `new.fbrk.kz` must be synced from the generated package, not directly
+  from repo HTML files. Repo HTML is correct for `fbrk.qdev.run` canonical,
+  while package HTML is rewritten to `https://new.fbrk.kz/...`. Verification
+  caught one source/package mix-up during this pass; final upload re-applied
+  the package HTML and strict linkage turned green.
+
+Verification:
+
+- local syntax checks:
+  `node --check js/app.js` and
+  `bash -n admin/scripts/build_new_frontend_static_package.sh`;
+- final package:
+  `AVDS_FONT_FILES=57`, `DATA_JS_TOTAL=4670`,
+  `ARCHIVE_ARTICLES=4670`, `ARTICLE_FULL_ARTICLES=4670`;
+- strict linkage:
+  `BACKEND_TOTAL=4670`, `NEW_TOTAL=4670`,
+  `DELTA_BACKEND_MINUS_NEW=0`,
+  `BACKEND_ARTICLE_FULL_TOTAL=4670`,
+  `NEW_ARTICLE_FULL_TOTAL=4670`;
+- SHA256 matches for `data.js`, `data-archive.js`, `article-full.js`;
+- `NEW_CANONICAL_HOME=https://new.fbrk.kz/`;
+- `NEW_CANONICAL_ARTICLE=https://new.fbrk.kz/article.html`;
+- `new.fbrk.kz` public HTML contains AV DS fonts, no Google Fonts and no
+  `fbrk.qdev.run` references in SEO head;
+- `fbrk.qdev.run` public HTML keeps qdev canonical and AV DS fonts;
+- live CSS/JS checks:
+  no `--color-accent`, watermark is `ИЛЛЮСТРАЦИЯ ФБРК · ИИ`,
+  homepage investigations have `0` `.card__dek`,
+  latest no-image fallback uses `ФБРК`;
+- Browser smoke on `new.fbrk.kz`:
+  home renders, investigation cards are title-only, mobile menu opens and
+  contains `Архив` / `О нас`, article page has one `h1` and 14 body
+  paragraphs, 404 page renders AV DS shell, page console has no app errors.

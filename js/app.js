@@ -402,7 +402,6 @@ function liveBadgeHtml(a) {
           </div>
           <h3 class="card__title">${escapeHtml(a.title)}</h3>
         </a>
-        <p class="card__dek">${escapeHtml(a.dek)}</p>
       </article>`;
       })
       .join('');
@@ -419,7 +418,7 @@ function liveBadgeHtml(a) {
       const thumbCls = hasImg ? 'latest__thumb' : 'latest__thumb latest__thumb--no-image';
       const thumbInner = hasImg
         ? `<img src="${a.image}" alt="${escapeHtml(a.title)}" width="320" height="200" loading="lazy"/>`
-        : `<span class="latest__thumb-mark">FBRK</span>`;
+        : `<span class="latest__thumb-mark">ФБРК</span>`;
       return `
       <li class="latest__item">
         <a class="${thumbCls}" href="${articleHref(a)}">
