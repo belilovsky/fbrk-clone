@@ -41,7 +41,7 @@ from .db import db, init_db, row_to_article
 from .editorjs import editorjs_to_sections, sections_to_editorjs
 from .publish import regenerate_data_js
 from .security import (
-    COOKIE_NAME, current_user, hash_password, issue_token, require_auth,
+    COOKIE_NAME, api_key_matches, current_user, hash_password, issue_token, require_auth,
     verify_password,
 )
 from .seo import router as seo_router
@@ -192,6 +192,19 @@ async def require_admin_csrf(request: Request) -> None:
         token = str(form.get("csrf_token") or "")
     if not verify_csrf_token(token, secret=settings.jwt_secret, subject=user):
         raise HTTPException(status_code=403, detail="CSRF token missing or invalid")
+
+
+async def require_api_mutation_auth(request: Request) -> str:
+    """Accept API key automation, require CSRF for browser session mutations."""
+    if api_key_matches(request.headers.get("X-API-Key")):
+        return "api-key"
+    user = current_user(request)
+    if not user:
+        raise HTTPException(status_code=401, detail="Unauthorized")
+    token = request.headers.get("X-CSRF-Token", "")
+    if not verify_csrf_token(token, secret=settings.jwt_secret, subject=user):
+        raise HTTPException(status_code=403, detail="CSRF token missing or invalid")
+    return user
 
 
 def _table_exists(conn, table_name: str) -> bool:
@@ -489,7 +502,7 @@ def api_list(_: str = Depends(require_auth)):
 
 
 @app.post("/api/articles")
-async def api_create(request: Request, actor: str = Depends(require_auth)):
+async def api_create(request: Request, actor: str = Depends(require_api_mutation_auth)):
     payload = await request.json()
     art = _save_article(payload, actor=actor)
     regenerate_data_js()
@@ -497,7 +510,7 @@ async def api_create(request: Request, actor: str = Depends(require_auth)):
 
 
 @app.put("/api/articles/{article_id}")
-async def api_update(article_id: str, request: Request, actor: str = Depends(require_auth)):
+async def api_update(article_id: str, request: Request, actor: str = Depends(require_api_mutation_auth)):
     payload = await request.json()
     with db() as conn:
         if not conn.execute("SELECT 1 FROM articles WHERE id=?", (article_id,)).fetchone():
@@ -508,7 +521,7 @@ async def api_update(article_id: str, request: Request, actor: str = Depends(req
 
 
 @app.delete("/api/articles/{article_id}")
-def api_delete(article_id: str, actor: str = Depends(require_auth)):
+def api_delete(article_id: str, actor: str = Depends(require_api_mutation_auth)):
     with db() as conn:
         row = conn.execute("SELECT slug, title FROM articles WHERE id=?", (article_id,)).fetchone()
         conn.execute("DELETE FROM articles WHERE id=?", (article_id,))
@@ -525,7 +538,7 @@ def api_delete(article_id: str, actor: str = Depends(require_auth)):
 
 
 @app.post("/api/articles/{article_id}/publish")
-def api_toggle_publish(article_id: str, actor: str = Depends(require_auth)):
+def api_toggle_publish(article_id: str, actor: str = Depends(require_api_mutation_auth)):
     with db() as conn:
         row = conn.execute("SELECT published FROM articles WHERE id=?", (article_id,)).fetchone()
         if not row:
@@ -546,7 +559,7 @@ def api_toggle_publish(article_id: str, actor: str = Depends(require_auth)):
 
 
 @app.post("/api/articles/{article_id}/toggle-featured")
-def api_toggle_featured(article_id: str, actor: str = Depends(require_auth)):
+def api_toggle_featured(article_id: str, actor: str = Depends(require_api_mutation_auth)):
     with db() as conn:
         row = conn.execute("SELECT featured FROM articles WHERE id=?", (article_id,)).fetchone()
         if not row:
@@ -568,7 +581,7 @@ def api_toggle_featured(article_id: str, actor: str = Depends(require_auth)):
 
 
 @app.post("/api/publish")
-def api_publish(actor: str = Depends(require_auth)):
+def api_publish(actor: str = Depends(require_api_mutation_auth)):
     result = regenerate_data_js()
     with db() as conn:
         record_audit(
@@ -586,7 +599,7 @@ def api_publish(actor: str = Depends(require_auth)):
 # Image upload
 # -----------------------------------------------------------------------------
 @app.post("/api/upload")
-async def api_upload(file: UploadFile = File(...), actor: str = Depends(require_auth)):
+async def api_upload(file: UploadFile = File(...), actor: str = Depends(require_api_mutation_auth)):
     raw = await file.read()
     validation = validate_image_upload(raw, content_type=file.content_type)
     if not validation.ok:

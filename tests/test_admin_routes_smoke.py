@@ -3,6 +3,7 @@ from __future__ import annotations
 import os
 import re
 import sys
+import json
 from pathlib import Path
 
 from fastapi.testclient import TestClient
@@ -62,6 +63,32 @@ def _csrf_from(html: str) -> str:
     return match.group(1)
 
 
+def _article_payload(article_id: str = "codex-smoke") -> dict:
+    return {
+        "id": article_id,
+        "slug": article_id,
+        "title": "Codex smoke title",
+        "dek": "Проверка сохранения из админки и публикации во фронтовые данные.",
+        "dateIso": "2026-05-17",
+        "category": "news",
+        "categoryLabel": "Новости",
+        "author": "fbrk_news",
+        "image": "",
+        "tags": ["smoke"],
+        "source": "https://fbrk.kz/news/codex-smoke",
+        "body": {
+            "blocks": [
+                {
+                    "type": "paragraph",
+                    "data": {"text": "Тестовый абзац для проверки data.js."},
+                }
+            ]
+        },
+        "featured": False,
+        "published": True,
+    }
+
+
 def test_admin_login_and_protected_dashboard(tmp_path: Path) -> None:
     with _client(tmp_path) as client:
         login_page = client.get("/admin/login")
@@ -99,9 +126,55 @@ def test_admin_form_csrf_reject_and_accept(tmp_path: Path) -> None:
 def test_upload_policy_rejects_bad_image(tmp_path: Path) -> None:
     with _client(tmp_path) as client:
         _login(client)
+        token = _csrf_from(client.get("/admin/").text)
         response = client.post(
             "/api/upload",
             files={"file": ("bad.png", b"not-an-image", "image/png")},
+            headers={"X-CSRF-Token": token},
         )
         assert response.status_code == 400
         assert "signature" in response.text
+
+
+def test_session_api_mutation_requires_csrf_and_updates_frontend_data(tmp_path: Path) -> None:
+    with _client(tmp_path) as client:
+        _login(client)
+        rejected = client.post("/api/articles", json=_article_payload())
+        assert rejected.status_code == 403
+
+        token = _csrf_from(client.get("/admin/").text)
+        created = client.post(
+            "/api/articles",
+            json=_article_payload(),
+            headers={"X-CSRF-Token": token},
+        )
+        assert created.status_code == 200
+        assert created.json()["article"]["title"] == "Codex smoke title"
+
+        data_js = tmp_path / "public" / "js" / "data.js"
+        article_full = tmp_path / "public" / "js" / "article-full.js"
+        assert data_js.exists()
+        assert article_full.exists()
+        data_text = data_js.read_text(encoding="utf-8")
+        full_text = article_full.read_text(encoding="utf-8")
+        assert "Codex smoke title" in data_text
+        assert "codex-smoke" in data_text
+        assert "Тестовый абзац для проверки data.js." in full_text
+
+        # The homepage payload remains compact: full rendered sections live in
+        # article-full.js for split static article pages.
+        raw = data_text.split("const FBRK_DATA =", 1)[1].rsplit(";", 1)[0].strip()
+        data = json.loads(raw)
+        assert data["totalCount"] == 1
+        assert "sections" not in data["articles"][0]
+
+
+def test_api_key_mutation_keeps_working_without_csrf(tmp_path: Path) -> None:
+    with _client(tmp_path) as client:
+        response = client.post(
+            "/api/articles",
+            json=_article_payload("codex-api-key-smoke"),
+            headers={"X-API-Key": "test-api-key"},
+        )
+        assert response.status_code == 200
+        assert response.json()["article"]["id"] == "codex-api-key-smoke"

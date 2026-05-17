@@ -94,13 +94,17 @@ def require_auth(
     x_api_key: Optional[str] = Header(default=None, alias="X-API-Key"),
 ) -> str:
     """For API routes: accept either session cookie OR X-API-Key."""
-    if (
-        x_api_key
-        and settings.api_key
-        and hmac.compare_digest(x_api_key, settings.api_key)
-    ):
+    if api_key_matches(x_api_key):
         return "api-key"
     user = current_user(request)
     if user:
         return user
     raise HTTPException(status_code=401, detail="Unauthorized")
+
+
+def api_key_matches(x_api_key: Optional[str]) -> bool:
+    return bool(
+        x_api_key
+        and settings.api_key
+        and hmac.compare_digest(x_api_key, settings.api_key)
+    )

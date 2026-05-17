@@ -27,9 +27,9 @@
 - CSRF:
   - `/admin/*` form mutation routes теперь получают stateless HMAC token из
     общего admin shell и проверяют его на сервере;
-  - `/api/*` mutation endpoints пока остаются без обязательного CSRF, потому
-    что они совместимы с session cookie и `X-API-Key` automation; для них нужен
-    отдельный совместимый план, чтобы не сломать редактор/importer.
+  - `/api/*` mutation endpoints теперь разделяют режимы: `X-API-Key`
+    automation работает без CSRF, а browser session mutations требуют
+    `X-CSRF-Token`.
 - Audit:
   - таблица `audit_log` используется частично в ads/categories/settings;
   - upload, article CRUD, publish/feature toggles, public data regenerate,
@@ -53,9 +53,9 @@
 
 ## Риски
 
-1. **CSRF gap**: form/fetch mutation endpoints доступны с session cookie без
-   CSRF token. Частично закрыто для `/admin/*` form routes; остаётся совместимый
-   план для `/api/*` mutation endpoints.
+1. **CSRF gap**: closed for `/admin/*` form routes and browser-backed
+   `/api/*` mutation endpoints; explicit `X-API-Key` automation stays
+   compatible by design.
 2. **Hardcoded production DB path**: часть legacy routes не уважает
    `FBRK_DB_PATH`, что мешает тестам и staging.
 3. **Audit coverage gap**: основные mutation flows теперь идут через общий
@@ -96,9 +96,9 @@ build/deploy access to private registry is not guaranteed.
    mutation route.~~ Done as a wider safe pilot for `/admin/*` form routes:
    upload delete, ads toggle/update, categories add/delete, settings set and
    articles bulk now require the generated token.
-4. Design a compatible CSRF/API split for `/api/*` mutation fetches:
+4. ~~Design a compatible CSRF/API split for `/api/*` mutation fetches:~~
    browser session mutations should require `X-CSRF-Token`, while explicit
-   `X-API-Key` automation must keep working.
+   `X-API-Key` automation must keep working. Done and covered by smoke tests.
 5. ~~Add audit helper to article CRUD, uploads, bulk actions.~~ Done for API
    create/update/delete, publish/feature toggles, data regenerate, upload and
    `/admin/articles/bulk`.
@@ -112,21 +112,39 @@ build/deploy access to private registry is not guaranteed.
 
 Current status: **with caveats**.
 
-The admin is operational and now visually aligned with AV DS 3.7.1, but it is
-not yet fully production-hardened because `/api/*` mutation endpoints still need
-a compatible CSRF/API-key plan and article CRUD audit coverage is incomplete.
+The admin is operational, visually aligned with AV DS 3.7.1, and the main
+security primitives are now covered locally. Remaining caveats are mostly
+operational: production deployment needs the usual backup/snapshot gate, and
+the older FastAPI lifespan/template deprecation warnings can be cleaned in a
+separate low-risk refactor.
 
 ## Verification Log
 
-- `.venv/bin/python -m pytest tests/test_admin_platform_primitives.py tests/test_admin_routes_smoke.py` — OK, 9 tests.
-- `python3 -m py_compile admin/app/main.py admin/app/security.py admin/app/seo.py admin/app/admin_platform/*.py tests/test_admin_platform_primitives.py tests/test_admin_routes_smoke.py` — OK.
+- `.venv/bin/python -m pytest tests/test_admin_platform_primitives.py tests/test_admin_routes_smoke.py tests/test_public_entity_tags.py` — OK, 15 tests.
+- `python3 -m py_compile admin/app/main.py admin/app/security.py admin/app/seo.py admin/app/publish.py admin/app/admin_platform/*.py tests/test_admin_platform_primitives.py tests/test_admin_routes_smoke.py tests/test_public_entity_tags.py` — OK.
 - `node --check js/app.js` — OK.
+- `node tests/article_js_filters.test.mjs` — OK.
 - `git diff --check` — OK.
 - Active public/admin grep: no `v0.3`, `AV DS 2026`, `Fontshare`,
   `General Sans`, `Satoshi`, or `--color-accent` markers in active public/admin
   shell files.
 - Route smoke covers admin login render, unauth redirect, protected dashboard,
-  CSRF reject/accept for `/admin/articles/bulk`, and bad image upload rejection.
+  CSRF reject/accept for `/admin/articles/bulk`, bad image upload rejection,
+  session API mutation CSRF reject/accept, `X-API-Key` mutation compatibility,
+  and admin-save -> `data.js`/`article-full.js` frontend contract.
+- Live read-only smoke:
+  - `https://new.fbrk.kz/` — 200, AV DS 3.7.1 footer, rendered article links
+    point to `new.fbrk.kz/a/...`, no `fbrk.qdev.run/a/...` leak in rendered DOM.
+  - `https://new.fbrk.kz/archive.html` — 200, AV DS 3.7.1, no console errors in
+    browser check.
+  - `https://new.fbrk.kz/no-such-page-codex-readonly-20260517` — 404 with AV DS
+    shell.
+  - `https://fbrk.qdev.run/admin/login` — 200, local AV DS fonts,
+    `/admin/static/admin.css?v=8`, `AV DS 3.7.1`.
+  - `https://new.fbrk.kz/js/data.js` and `https://fbrk.qdev.run/js/data.js` —
+    both expose `totalCount=4671`, `embedded=200`, same current first article.
+  - `article-full.js` on both hosts exposes 4671 full article records with
+    rendered `sections`.
 
 ## Commits In This Pass
 
@@ -138,3 +156,4 @@ a compatible CSRF/API-key plan and article CRUD audit coverage is incomplete.
 - `26f2b0f refactor(admin): унифицировать audit helper`
 - `4d54c04 test(admin): добавить smoke проверки админки`
 - `b09a036 chore(admin): убрать старые av ds маркеры`
+- current pass: `fix(admin): требовать csrf для session api mutations`
