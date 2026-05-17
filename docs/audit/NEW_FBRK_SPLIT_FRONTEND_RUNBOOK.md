@@ -4,7 +4,12 @@
 
 - `new.fbrk.kz` (KZ-hosting) хранит и отдает frontend-статику.
 - backend + DB продолжают жить на `fbrk.qdev.run` (VPS).
-- Публичный пользователь работает через `new.fbrk.kz`, а динамические маршруты проксируются на VPS.
+- Публичный пользователь работает через `new.fbrk.kz`.
+- Предпочтительная целевая схема: динамические маршруты проксируются на VPS
+  через Plesk nginx.
+- Текущая рабочая схема до расширения Plesk-роли: Plesk отдаёт статический
+  frontend, а generated payloads синхронизируются из backend web-root
+  автоматическим File Manager sync.
 
 ---
 
@@ -32,6 +37,10 @@
      внутри пакета, не меняя основной qdev-compatible source;
    - переписывает `?v=<timestamp>` на свежий `ASSET_VERSION`, чтобы браузеры
      не держали старые generated payloads после ручного sync.
+6. `admin/scripts/sync_new_frontend_to_plesk.py`
+   - сравнивает SHA256 backend payloads и Plesk payloads;
+   - при drift собирает свежий пакет и загружает его через Plesk File Manager;
+   - после загрузки запускает `check_split_linkage.sh --strict`.
 
 ---
 
@@ -101,6 +110,60 @@ cache-control, поэтому каждый ручной sync должен вып
   directives из `admin/deploy/plesk-new-fbrk-split-proxy.conf`, чтобы generated
   payloads не замораживались в браузере.
 
+## 3a) Автоматический Plesk File Manager sync (текущий прод-режим)
+
+На активном VPS установлен безопасный fallback, который не требует права
+редактировать Plesk nginx:
+
+- script: `/opt/fbrk-admin/scripts/sync_new_frontend_to_plesk.py`
+- env: `/etc/fbrk-admin/plesk-sync.env` (`0600`, root-only; секреты не
+  коммитить и не копировать в PR)
+- log: `/var/log/fbrk/plesk-sync.log`
+- cron: `/etc/cron.d/fbrk-plesk-sync`
+
+Cron запускается каждые 10 минут вскоре после RSS poll:
+
+```cron
+4,14,24,34,44,54 * * * * root /usr/bin/python3 /opt/fbrk-admin/scripts/sync_new_frontend_to_plesk.py --env-file /etc/fbrk-admin/plesk-sync.env >> /var/log/fbrk/plesk-sync.log 2>&1
+```
+
+Ручной запуск без мутаций:
+
+```bash
+/usr/bin/python3 /opt/fbrk-admin/scripts/sync_new_frontend_to_plesk.py \
+  --env-file /etc/fbrk-admin/plesk-sync.env \
+  --dry-run --no-verify
+```
+
+Ручной принудительный sync:
+
+```bash
+/usr/bin/python3 /opt/fbrk-admin/scripts/sync_new_frontend_to_plesk.py \
+  --env-file /etc/fbrk-admin/plesk-sync.env \
+  --force
+```
+
+Перед изменением кода синка или backend-generated файлов всё равно делать
+safety gates: SQLite backup, web-root snapshot, затем проверка
+`check_split_linkage.sh --strict`.
+
+Что upload-ится в обычном режиме:
+
+- `.htaccess`, `index.html`, `archive.html`, `article.html`, `about.html`,
+  `videos.html`, `404.html`;
+- `robots.txt`, `sitemap.xml`, `feed.xml`;
+- `js/runtime-config.js`, `js/data.js`, `js/data-archive.js`,
+  `js/article-full.js`.
+
+Для полного восстановления shell/assets можно запустить sync с `--full`: тогда
+дополнительно уйдут `css/style.css`, `js/app.js` и AV DS fonts.
+
+Важно: Plesk сейчас всё ещё ставит длинный cache-control на static JS на
+nginx-слое. Автосинк компенсирует это fresh `?v=<UTC-timestamp>` в HTML и
+`window.__FBRK_V` в runtime-config. Более правильный долгосрочный вариант -
+дать роль для `Additional nginx directives` и включить
+`admin/deploy/plesk-new-fbrk-split-proxy.conf`.
+
 ---
 
 ## 4) Runtime config на `new.fbrk.kz`
@@ -123,6 +186,8 @@ window.__FBRK_V = '<asset-version>';
 ## 5) Smoke checks после включения
 
 ```bash
+admin/scripts/check_split_linkage.sh https://new.fbrk.kz https://fbrk.qdev.run --strict
+tail -n 40 /var/log/fbrk/plesk-sync.log
 curl -fsSI https://new.fbrk.kz/ | sed -n '1,20p'
 curl -fsSI https://new.fbrk.kz/archive.html | sed -n '1,20p'
 curl -fsSI https://new.fbrk.kz/a/<любой-валидный-slug> | sed -n '1,20p'

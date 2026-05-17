@@ -56,6 +56,10 @@ systemctl restart fbrk-admin
 - `admin/deploy/plesk-new-fbrk-split-proxy.conf`
 - `admin/scripts/build_new_frontend_static_package.sh` — delta-пакет для ручной
   синхронизации Plesk-статики, пока split-proxy недоступен по правам роли.
+- `admin/scripts/sync_new_frontend_to_plesk.py` — автоматический guarded sync
+  через Plesk File Manager; на проде запущен cron
+  `/etc/cron.d/fbrk-plesk-sync`, env-секреты лежат вне репо в
+  `/etc/fbrk-admin/plesk-sync.env`.
 
 ## ENV (через `/etc/fbrk-admin/fbrk-admin.env`)
 

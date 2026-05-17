@@ -11,7 +11,7 @@ STAMP="${STAMP:-$(date -u +%Y%m%dT%H%M%SZ)}"
 ASSET_VERSION="${ASSET_VERSION:-$(date -u +%Y%m%d%H%M)}"
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-REPO_ROOT="$(cd "${SCRIPT_DIR}/../.." && pwd)"
+REPO_ROOT="${REPO_ROOT:-$(cd "${SCRIPT_DIR}/../.." && pwd)}"
 OUT_DIR="${1:-${REPO_ROOT}/../fbrk_audit/new-fbrk-deploy-${STAMP}}"
 
 mkdir -p "${OUT_DIR}/css" "${OUT_DIR}/js" "${OUT_DIR}/fonts/avds"

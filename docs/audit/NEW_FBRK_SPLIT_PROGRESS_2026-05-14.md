@@ -734,3 +734,92 @@ Remaining Plesk note:
   staleness. The stronger long-term fix is still to apply the documented
   Plesk Additional nginx directives so generated data files are proxied or
   served with `no-cache` at the Plesk nginx layer.
+
+## Automated Plesk sync (2026-05-17, 07:24Z)
+
+Follow-up after the cache-freshness fix showed the same root class one more
+time: Plesk static payloads can drift after RSS/admin regeneration because
+`new.fbrk.kz` is not yet using the nginx split-proxy. Instead of relying on
+manual uploads, a guarded automatic File Manager sync is now installed.
+
+Repo changes:
+
+- added `admin/scripts/sync_new_frontend_to_plesk.py`;
+- `admin/scripts/build_new_frontend_static_package.sh` now supports
+  `REPO_ROOT=...` override for the deployed script;
+- updated split runbook with cron/env/manual recovery procedure.
+
+Production install:
+
+- script deployed to `/opt/fbrk-admin/scripts/sync_new_frontend_to_plesk.py`;
+- root-only env file: `/etc/fbrk-admin/plesk-sync.env`;
+- cron installed at `/etc/cron.d/fbrk-plesk-sync`;
+- log file: `/var/log/fbrk/plesk-sync.log`;
+- schedule: `4,14,24,34,44,54 * * * *`, intentionally shortly after the
+  10-minute RSS poll.
+
+Safety gates before mutation:
+
+- active VPS DB backup:
+  `/opt/fbrk-admin/backups/fbrk-20260517T071818Z-pre-plesk-auto-sync.db`
+  (`73M`, non-zero);
+- active VPS web snapshot:
+  `/opt/fbrk-admin/web-snapshots/20260517T071818Z-plesk-auto-sync`
+  (`2.3G`);
+- local Plesk HTTP snapshot:
+  `fbrk_audit/plesk-http-snapshots/20260517T071816Z-pre-auto-sync/`.
+
+Deploy:
+
+- verified Plesk File Manager upload/delete with a temporary smoke file before
+  touching production assets;
+- ran the sync once in normal mode and once with `--force` after fixing the
+  package version regex;
+- final forced package version: `20260517072436`;
+- uploaded 13 files in the normal sync path:
+  `.htaccess`, HTML entrypoints, `robots.txt`, `sitemap.xml`, `feed.xml`,
+  `js/runtime-config.js`, `js/data.js`, `js/data-archive.js`,
+  `js/article-full.js`.
+
+Verification:
+
+- local syntax checks:
+  `python3 -m py_compile admin/scripts/sync_new_frontend_to_plesk.py`,
+  `bash -n admin/scripts/build_new_frontend_static_package.sh`,
+  `bash -n admin/scripts/check_split_linkage.sh`;
+- remote syntax check:
+  `python3 -m py_compile /opt/fbrk-admin/scripts/sync_new_frontend_to_plesk.py`;
+- `check_split_linkage.sh --strict` after upload:
+  `BACKEND_TOTAL=4670`, `NEW_TOTAL=4670`,
+  `DELTA_BACKEND_MINUS_NEW=0`,
+  `BACKEND_ARTICLE_FULL_TOTAL=4670`,
+  `NEW_ARTICLE_FULL_TOTAL=4670`;
+- SHA256 matches for `data.js`, `data-archive.js`, `article-full.js`;
+- follow-up strict check at `2026-05-17T07:36:07Z` still matched all three
+  generated SHA256 values and kept `DELTA_BACKEND_MINUS_NEW=0`;
+- `https://new.fbrk.kz/` HTML contains `?v=20260517072436`;
+- `https://new.fbrk.kz/js/runtime-config.js` sets
+  `window.FBRK_PUBLIC_ORIGIN = 'https://new.fbrk.kz'`,
+  `window.FBRK_BACKEND_ORIGIN = 'https://fbrk.qdev.run'`,
+  `window.__FBRK_V = '20260517072436'`;
+- public HTML on `new.fbrk.kz` contains no `fbrk.qdev.run` references and no
+  Google Fonts;
+- cron service is active; manual no-drift run prints `STATUS=already-synced`;
+- cron ran at `07:24Z` and logged a strict green check.
+
+Browser smoke on `new.fbrk.kz`:
+
+- home: title correct, `6` cards, `1` h1, `0` console errors;
+- archive: title correct, `24` cards, `1` h1, `0` console errors;
+- latest article sample:
+  `/a/tokaev-vydvinul-sem-iniciativ-na-neformalnom-sammite-otg-v-turkestane`
+  renders `14` paragraphs, `1` h1, `0` console errors;
+- arbitrary missing page renders AV DS 404 with `0` console errors.
+
+Remaining Plesk note:
+
+- current role still cannot edit Additional nginx directives:
+  `features.additionalNginxSettings=false`;
+- the installed cron keeps the static split frontend current and usable, but
+  the cleaner long-term architecture remains the documented Plesk nginx
+  split-proxy.
