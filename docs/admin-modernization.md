@@ -1,7 +1,7 @@
 # FBRK Admin Modernization
 
 Дата старта: 2026-05-17  
-Статус: in progress, без production deploy в этом блоке.
+Статус: local/GitHub branch ready, без production deploy в этом блоке.
 
 ## Цель
 
@@ -120,6 +120,21 @@ a compatible CSRF/API-key plan and article CRUD audit coverage is incomplete.
 
 - `.venv/bin/python -m pytest tests/test_admin_platform_primitives.py tests/test_admin_routes_smoke.py` — OK, 9 tests.
 - `python3 -m py_compile admin/app/main.py admin/app/security.py admin/app/seo.py admin/app/admin_platform/*.py tests/test_admin_platform_primitives.py tests/test_admin_routes_smoke.py` — OK.
+- `node --check js/app.js` — OK.
 - `git diff --check` — OK.
+- Active public/admin grep: no `v0.3`, `AV DS 2026`, `Fontshare`,
+  `General Sans`, `Satoshi`, or `--color-accent` markers in active public/admin
+  shell files.
 - Route smoke covers admin login render, unauth redirect, protected dashboard,
   CSRF reject/accept for `/admin/articles/bulk`, and bad image upload rejection.
+
+## Commits In This Pass
+
+- `0619aff feat(admin): добавить локальный слой admin platform`
+- `768dce0 fix(admin): централизовать проверку загрузок`
+- `a592cbe refactor(admin): убрать жесткие пути к данным`
+- `90a2ce0 fix(admin): добавить csrf для admin form routes`
+- `45ce1ce fix(admin): расширить audit trail материалов`
+- `26f2b0f refactor(admin): унифицировать audit helper`
+- `4d54c04 test(admin): добавить smoke проверки админки`
+- `b09a036 chore(admin): убрать старые av ds маркеры`
