@@ -16,7 +16,8 @@
   v0.x routes всё ещё использует hardcoded путь вместо `settings.db_path`.
 - Auth/session:
   - cookie session `fbrk_admin` через JWT;
-  - password hash: stdlib `scrypt`;
+  - password hash: stdlib `scrypt`, with `pbkdf2_sha256` fallback for local
+    Python builds where `hashlib.scrypt` is unavailable;
   - API routes принимают session cookie или `X-API-Key`;
   - cookie flags: `HttpOnly`, `SameSite=Lax`, `Secure` через
     `FBRK_COOKIE_SECURE` (`True` по умолчанию).
@@ -103,7 +104,7 @@ build/deploy access to private registry is not guaranteed.
    `/admin/articles/bulk`.
 6. Add FastAPI smoke tests once test deps are available:
    unauth redirect, login render, protected access, CSRF reject, safe mutation,
-   upload policy.
+   upload policy. Done in local `.venv`.
 7. Only after security primitives are stable: CRUD polish and inline style
    cleanup.
 
@@ -117,8 +118,8 @@ a compatible CSRF/API-key plan and article CRUD audit coverage is incomplete.
 
 ## Verification Log
 
-- `python3 -m unittest tests/test_admin_platform_primitives.py` — OK, 6 tests.
-- `python3 -m py_compile admin/app/main.py admin/app/seo.py admin/app/admin_platform/*.py tests/test_admin_platform_primitives.py` — OK.
+- `.venv/bin/python -m pytest tests/test_admin_platform_primitives.py tests/test_admin_routes_smoke.py` — OK, 9 tests.
+- `python3 -m py_compile admin/app/main.py admin/app/security.py admin/app/seo.py admin/app/admin_platform/*.py tests/test_admin_platform_primitives.py tests/test_admin_routes_smoke.py` — OK.
 - `git diff --check` — OK.
-- FastAPI route-level smoke tests are still blocked locally by missing host
-  dependencies (`fastapi`, `starlette`, `PIL`, `jwt`, `slugify`, `pytest`).
+- Route smoke covers admin login render, unauth redirect, protected dashboard,
+  CSRF reject/accept for `/admin/articles/bulk`, and bad image upload rejection.

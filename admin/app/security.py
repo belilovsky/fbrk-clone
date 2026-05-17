@@ -16,22 +16,40 @@ COOKIE_NAME = "fbrk_admin"
 
 # scrypt-based password hashing (stdlib). Format: scrypt$n$r$p$salt_hex$hash_hex
 _SCRYPT_N, _SCRYPT_R, _SCRYPT_P = 2 ** 14, 8, 1
+_PBKDF2_ITERATIONS = 260_000
 
 
 def hash_password(raw: str) -> str:
     salt = os.urandom(16)
-    dk = hashlib.scrypt(raw.encode("utf-8"), salt=salt,
-                        n=_SCRYPT_N, r=_SCRYPT_R, p=_SCRYPT_P, dklen=32)
-    return f"scrypt${_SCRYPT_N}${_SCRYPT_R}${_SCRYPT_P}${salt.hex()}${dk.hex()}"
+    if hasattr(hashlib, "scrypt"):
+        dk = hashlib.scrypt(raw.encode("utf-8"), salt=salt,
+                            n=_SCRYPT_N, r=_SCRYPT_R, p=_SCRYPT_P, dklen=32)
+        return f"scrypt${_SCRYPT_N}${_SCRYPT_R}${_SCRYPT_P}${salt.hex()}${dk.hex()}"
+    dk = hashlib.pbkdf2_hmac("sha256", raw.encode("utf-8"), salt, _PBKDF2_ITERATIONS, dklen=32)
+    return f"pbkdf2_sha256${_PBKDF2_ITERATIONS}${salt.hex()}${dk.hex()}"
 
 
 def verify_password(raw: str, hashed: str) -> bool:
     try:
-        scheme, n, r, p, salt_hex, hash_hex = hashed.split("$")
-        if scheme != "scrypt":
+        parts = hashed.split("$")
+        scheme = parts[0]
+        if scheme == "scrypt":
+            if not hasattr(hashlib, "scrypt"):
+                return False
+            _scheme, n, r, p, salt_hex, hash_hex = parts
+            dk = hashlib.scrypt(raw.encode("utf-8"), salt=bytes.fromhex(salt_hex),
+                                n=int(n), r=int(r), p=int(p), dklen=len(hash_hex) // 2)
+        elif scheme == "pbkdf2_sha256":
+            _scheme, iterations, salt_hex, hash_hex = parts
+            dk = hashlib.pbkdf2_hmac(
+                "sha256",
+                raw.encode("utf-8"),
+                bytes.fromhex(salt_hex),
+                int(iterations),
+                dklen=len(hash_hex) // 2,
+            )
+        else:
             return False
-        dk = hashlib.scrypt(raw.encode("utf-8"), salt=bytes.fromhex(salt_hex),
-                            n=int(n), r=int(r), p=int(p), dklen=len(hash_hex) // 2)
         return hmac.compare_digest(dk.hex(), hash_hex)
     except Exception:
         return False
