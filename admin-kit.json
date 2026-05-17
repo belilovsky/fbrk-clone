@@ -1,0 +1,21 @@
+{
+  "adapter_status": "planned",
+  "adapter_version": "inventory-2026-05-17",
+  "admin_kit_version": "0.0.0",
+  "framework": "fastapi",
+  "last_checked_at": "2026-05-17T13:15:00Z",
+  "notes": [
+    "Read-only local inventory found 53 admin service route decorators.",
+    "SSR publish pipeline stays project-local during first adapter pass."
+  ],
+  "project": "fbrk",
+  "risk": "medium",
+  "routes": 53,
+  "smoke": {
+    "csrf_reject": "pending",
+    "login_render": "pending",
+    "protected_route": "pending",
+    "system_dashboard": "pending",
+    "unauth_redirect": "pending"
+  }
+}
