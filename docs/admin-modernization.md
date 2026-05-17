@@ -163,9 +163,13 @@ shared `AdminJinja2Templates` adapter.
     `/opt/fbrk-admin/web-snapshots/20260517T114006Z-admin-login-csrf` — 2.3G.
   - Admin snapshot before login-CSRF deploy:
     `/opt/fbrk-admin/admin-snapshots/20260517T114006Z-admin-login-csrf` — 880K.
+  - DB backup before deprecation-cleanup deploy:
+    `/opt/fbrk-admin/backups/fbrk-20260517T123357Z-pre-admin-deprecation-cleanup.db` — 73M.
+  - Admin snapshot before deprecation-cleanup deploy:
+    `/opt/fbrk-admin/admin-snapshots/20260517T123357Z-admin-deprecation-cleanup` — 608K.
   - Deploy scope: `admin/app/`, `admin/templates/`, `admin/static/`,
     `admin/scripts/` in first pass; `admin/app/`, `admin/templates/` in
-    login-CSRF pass.
+    login-CSRF pass; `admin/app/` in deprecation-cleanup pass.
   - Ownership after deploy: `chown -R www-data:www-data` applied to deployed
     admin paths.
   - Service: `systemctl restart fbrk-admin`, `systemctl is-active` -> `active`,
@@ -199,6 +203,13 @@ shared `AdminJinja2Templates` adapter.
     legacy `TemplateResponse(name, context)` calls to Starlette's current
     request-first API.
   - Verified with deprecation warnings treated as errors.
+  - Production deprecation-cleanup deploy: `fbrk-admin` restarted and active,
+    `/admin/healthz` -> 200, checked journal window has no
+    `traceback/error/exception/deprecat` lines.
+  - Post-cleanup linkage: totals still `4671/4671`, delta `0`; hashes still
+    match across `data.js`, `data-archive.js`, `article-full.js`.
+  - Post-cleanup browser smoke: `new.fbrk.kz/` and `/admin/login` both have
+    `consoleErrors=0`; login keeps CSRF input and AV DS 3.7.1 badge.
 
 ## Commits In This Pass
 
@@ -214,3 +225,4 @@ shared `AdminJinja2Templates` adapter.
 - `90b0a7f docs(admin): обновить hash финального csrf шага`
 - `3bac58a fix(admin): добавить csrf для входа`
 - `867e194 docs(admin): зафиксировать prod deploy финального прохода`
+- `e129919 refactor(admin): убрать deprecated startup и template api`
