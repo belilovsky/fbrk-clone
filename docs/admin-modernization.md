@@ -156,4 +156,4 @@ separate low-risk refactor.
 - `26f2b0f refactor(admin): унифицировать audit helper`
 - `4d54c04 test(admin): добавить smoke проверки админки`
 - `b09a036 chore(admin): убрать старые av ds маркеры`
-- current pass: `fix(admin): требовать csrf для session api mutations`
+- `1d176a1 fix(admin): требовать csrf для session api mutations`
