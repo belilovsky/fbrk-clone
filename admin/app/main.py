@@ -34,6 +34,7 @@ from slugify import slugify
 
 from .config import settings
 from .admin_platform.audit import record_audit
+from .admin_platform.csrf import make_csrf_token, verify_csrf_token
 from .admin_platform.paths import upload_url_to_public_path, uploads_dir as platform_uploads_dir
 from .admin_platform.uploads import validate_image_upload
 from .db import db, init_db, row_to_article
@@ -73,6 +74,16 @@ def admin_asset_url(value: str | None) -> str:
 
 
 templates.env.globals["admin_asset_url"] = admin_asset_url
+
+
+def csrf_token(request: Request) -> str:
+    user = current_user(request)
+    if not user:
+        return ""
+    return make_csrf_token(secret=settings.jwt_secret, subject=user)
+
+
+templates.env.globals["csrf_token"] = csrf_token
 
 # Public SEO/OG/IA routes — /a/{slug}, /sitemap.xml, /robots.txt, /feed.xml, /feed/ia.xml
 app.include_router(seo_router)
@@ -169,6 +180,18 @@ def _auth_or_redirect(request: Request):
             headers={"Location": "/admin/login"},
         )
     return user
+
+
+async def require_admin_csrf(request: Request) -> None:
+    user = current_user(request)
+    if not user:
+        raise HTTPException(status_code=401, detail="Not authenticated")
+    token = request.headers.get("X-CSRF-Token", "")
+    if not token:
+        form = await request.form()
+        token = str(form.get("csrf_token") or "")
+    if not verify_csrf_token(token, secret=settings.jwt_secret, subject=user):
+        raise HTTPException(status_code=403, detail="CSRF token missing or invalid")
 
 
 def _table_exists(conn, table_name: str) -> bool:
@@ -642,7 +665,7 @@ def _u_list(r:Request, q:str="", page:int=1):
     return _templates.TemplateResponse("media.html",{"request":r,"user":u,"items":[dict(x) for x in rows],"total":total,"page":page,"pages":pages,"q":q,"section":"uploads","title":"Медиа"})
 
 @app.post("/admin/uploads/{upload_id}/delete")
-def _u_delete(upload_id:int, r:Request):
+def _u_delete(upload_id:int, r:Request, _csrf: None = Depends(require_admin_csrf)):
     u=current_user(r)
     if not u: return _auth_or_redirect(r)
     import os
@@ -784,7 +807,7 @@ def _ads_edit(ad_id: int, request: Request):
     return _t2.TemplateResponse("ad_edit.html", {"request":request,"user":u,"item":item,"section":"ads","title":"Редактирование слота"})
 
 @app.post("/admin/ads/{ad_id}/toggle")
-def _ads_toggle(ad_id: int, request: Request):
+def _ads_toggle(ad_id: int, request: Request, _csrf: None = Depends(require_admin_csrf)):
     u = current_user(request)
     if not u: return _auth_or_redirect(request)
     db = _adb(); c = db.cursor()
@@ -865,7 +888,7 @@ def _validate_ad_image(url: str, ad_id: int | None = None):
     return True, u, None
 
 @app.post("/admin/ads/{ad_id}/update")
-def _ads_update(ad_id: int, request: Request, client_name: str = _Form(""), client_url: str = _Form(""), image_url: str = _Form(""), notes: str = _Form("")):
+def _ads_update(ad_id: int, request: Request, _csrf: None = Depends(require_admin_csrf), client_name: str = _Form(""), client_url: str = _Form(""), image_url: str = _Form(""), notes: str = _Form("")):
     u = current_user(request)
     if not u: return _auth_or_redirect(request)
     db = _adb(); c = db.cursor()
@@ -966,7 +989,7 @@ def _cats_list(request: Request):
     return _t2.TemplateResponse("categories.html",{"request":request,"user":u,"items":items,"section":"categories","title":"Категории"})
 
 @app.post("/admin/categories/add")
-def _cats_add(request: Request, slug: str=_Form(""), label: str=_Form(""), sort_order: int=_Form(0)):
+def _cats_add(request: Request, _csrf: None = Depends(require_admin_csrf), slug: str=_Form(""), label: str=_Form(""), sort_order: int=_Form(0)):
     u=current_user(request)
     if not u: return _auth_or_redirect(request)
     if slug.strip() and label.strip():
@@ -979,7 +1002,7 @@ def _cats_add(request: Request, slug: str=_Form(""), label: str=_Form(""), sort_
     return _RR(url="/admin/categories/list", status_code=303)
 
 @app.post("/admin/categories/{cid}/delete")
-def _cats_del(cid: int, request: Request):
+def _cats_del(cid: int, request: Request, _csrf: None = Depends(require_admin_csrf)):
     u=current_user(request)
     if not u: return _auth_or_redirect(request)
     db=_adb(); c=db.cursor()
@@ -1009,7 +1032,7 @@ def _s_list(r:Request):
     return _t2.TemplateResponse("settings.html",{"request":r,"user":u,"items":[dict(x) for x in rows],"section":"settings","title":"Settings"})
 
 @app.post("/admin/settings/set")
-def _s_set(r:Request, key:str=_Form(""), value:str=_Form("")):
+def _s_set(r:Request, _csrf: None = Depends(require_admin_csrf), key:str=_Form(""), value:str=_Form("")):
     u=current_user(r)
     if not u: return _auth_or_redirect(r)
     if key.strip():
@@ -1149,7 +1172,7 @@ def _articles_list_real(request: Request, q: str = "", page: int = 1, cat: str =
     return _templates.TemplateResponse("articles_list.html", {"request":request,"user":u,"title":"Материалы","section":"articles","items":items,"q":q,"cat":cat,"status":status,"featured":featured,"cats":cats,"page":page,"pages":pages,"total":total,"sort":sort,"dir":sort_dir.lower()})
 
 @app.post("/admin/articles/bulk")
-async def _articles_bulk(request: Request):
+async def _articles_bulk(request: Request, _csrf: None = Depends(require_admin_csrf)):
     u = current_user(request)
     if not u:
         return _RR(url="/admin/login", status_code=302)

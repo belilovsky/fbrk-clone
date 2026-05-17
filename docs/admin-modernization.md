@@ -24,8 +24,11 @@
   - отдельной ролевой модели нет;
   - любой валидный пользователь фактически получает admin-доступ.
 - CSRF:
-  - mutation routes пока не имеют централизованной CSRF-защиты;
-  - это главный blocker перед production-grade hardening.
+  - `/admin/*` form mutation routes теперь получают stateless HMAC token из
+    общего admin shell и проверяют его на сервере;
+  - `/api/*` mutation endpoints пока остаются без обязательного CSRF, потому
+    что они совместимы с session cookie и `X-API-Key` automation; для них нужен
+    отдельный совместимый план, чтобы не сломать редактор/importer.
 - Audit:
   - таблица `audit_log` используется частично в ads/categories/settings;
   - article CRUD и upload flows пока покрыты неполно.
@@ -48,7 +51,8 @@
 ## Риски
 
 1. **CSRF gap**: form/fetch mutation endpoints доступны с session cookie без
-   CSRF token.
+   CSRF token. Частично закрыто для `/admin/*` form routes; остаётся совместимый
+   план для `/api/*` mutation endpoints.
 2. **Hardcoded production DB path**: часть legacy routes не уважает
    `FBRK_DB_PATH`, что мешает тестам и staging.
 3. **Audit coverage gap**: не все изменения статей/медиа фиксируются в
@@ -84,9 +88,13 @@ build/deploy access to private registry is not guaranteed.
 2. ~~Replace hardcoded DB paths in legacy routes with `settings.db_path`.~~
    Done in this pass for admin v0.x routes, ads API helpers and SSR ad lookup.
    Media browser now uses `settings.uploads_dir` for thumb discovery.
-3. Add CSRF token emission to admin shell and enforce it first on one low-risk
-   mutation route.
-4. Expand CSRF to all `/admin/*` forms and `/api/*` mutation fetches.
+3. ~~Add CSRF token emission to admin shell and enforce it first on one low-risk
+   mutation route.~~ Done as a wider safe pilot for `/admin/*` form routes:
+   upload delete, ads toggle/update, categories add/delete, settings set and
+   articles bulk now require the generated token.
+4. Design a compatible CSRF/API split for `/api/*` mutation fetches:
+   browser session mutations should require `X-CSRF-Token`, while explicit
+   `X-API-Key` automation must keep working.
 5. Add audit helper to article CRUD, uploads, bulk actions.
 6. Add FastAPI smoke tests once test deps are available:
    unauth redirect, login render, protected access, CSRF reject, safe mutation,
@@ -99,5 +107,13 @@ build/deploy access to private registry is not guaranteed.
 Current status: **with caveats**.
 
 The admin is operational and now visually aligned with AV DS 3.7.1, but it is
-not yet fully production-hardened because CSRF is not enforced and several
-legacy routes still bypass the central DB/settings/audit layer.
+not yet fully production-hardened because `/api/*` mutation endpoints still need
+a compatible CSRF/API-key plan and article CRUD audit coverage is incomplete.
+
+## Verification Log
+
+- `python3 -m unittest tests/test_admin_platform_primitives.py` — OK, 6 tests.
+- `python3 -m py_compile admin/app/main.py admin/app/seo.py admin/app/admin_platform/*.py tests/test_admin_platform_primitives.py` — OK.
+- `git diff --check` — OK.
+- FastAPI route-level smoke tests are still blocked locally by missing host
+  dependencies (`fastapi`, `starlette`, `PIL`, `jwt`, `slugify`, `pytest`).

@@ -4,6 +4,7 @@
   <meta charset="utf-8"/>
   <meta name="viewport" content="width=device-width,initial-scale=1"/>
   <meta name="robots" content="noindex, nofollow"/>
+  <meta name="csrf-token" content="{{ csrf_token(request) if user else '' }}"/>
   <title>{% block title %}Админка ФБРК{% endblock %}</title>
   <link rel="icon" href="/admin/static/favicon.svg" type="image/svg+xml"/>
   <link rel="stylesheet" href="/fonts/avds/avds-fonts.css?v=20260517081342"/>
@@ -52,6 +53,36 @@
       var b=document.getElementById('a-burger'),s=document.getElementById('a-sidebar');
       if(b&&s){b.addEventListener('click',function(){s.classList.toggle('is-open');b.classList.toggle('is-open');});}
       try{var p=location.pathname;document.querySelectorAll('.a-side-link').forEach(function(a){var h=a.getAttribute('href');if(h&&p.indexOf(h)===0&&h!=='/'){a.classList.add('is-active');}if(h===p){a.classList.add('is-active');}});}catch(e){}
+      var csrf=document.querySelector('meta[name="csrf-token"]');
+      var token=csrf ? csrf.getAttribute('content') : '';
+      if(token){
+        document.querySelectorAll('form[method="post"],form[method="POST"]').forEach(function(form){
+          if(form.querySelector('input[name="csrf_token"]')) return;
+          var input=document.createElement('input');
+          input.type='hidden';
+          input.name='csrf_token';
+          input.value=token;
+          form.appendChild(input);
+        });
+        if(window.fetch){
+          var nativeFetch=window.fetch.bind(window);
+          window.fetch=function(input, init){
+            var opts=init ? Object.assign({}, init) : {};
+            var method=String(opts.method || (input && input.method) || 'GET').toUpperCase();
+            if(!/^(GET|HEAD|OPTIONS|TRACE)$/.test(method)){
+              var url=typeof input==='string' ? input : (input && input.url) || '';
+              var sameOrigin=!/^https?:\/\//i.test(url) || url.indexOf(location.origin)===0;
+              if(sameOrigin){
+                var headers=new Headers(opts.headers || (input && input.headers) || {});
+                if(!headers.has('X-CSRF-Token')) headers.set('X-CSRF-Token', token);
+                opts.headers=headers;
+                if(!opts.credentials) opts.credentials='same-origin';
+              }
+            }
+            return nativeFetch(input, opts);
+          };
+        }
+      }
     })();
   </script>
   {% block scripts %}{% endblock %}

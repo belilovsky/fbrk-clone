@@ -1,7 +1,7 @@
-"""Stateless CSRF token helpers.
+"""Stateless CSRF token helpers for admin mutation forms.
 
-The current FBRK admin has not wired CSRF enforcement yet. These helpers are
-kept framework-neutral so templates/routes can adopt them incrementally.
+These helpers are framework-neutral so FBRK can keep adopting the same contract
+later through `qaz-admin-kit` without binding route code to a private package.
 """
 from __future__ import annotations
 
@@ -62,4 +62,3 @@ def verify_csrf_token(
         return 0 <= current - ts <= ttl_seconds
     except Exception:
         return False
-
