@@ -145,6 +145,9 @@ shared `AdminJinja2Templates` adapter.
   безопасный escaping для `dek`;
 - public design tokens/logo/favicon очищены от старых чужих font fallback и
   приведены к Onest/system stack;
+- Plesk full-sync script теперь включает не только `style.css`/`app.js`, но и
+  `css/av-ds/tokens.css`, `img/brand/logo.svg`, `img/favicon.svg`, чтобы
+  `new.fbrk.kz` не оставался на старых asset-хвостах после split-sync;
 - regression smoke расширен проверками SSR: нет `data-lang="en"`, нет
   `/data/articles.json`, нет старого cache-token, related-блок содержит
   заголовок связанного материала и не выводит его описание.

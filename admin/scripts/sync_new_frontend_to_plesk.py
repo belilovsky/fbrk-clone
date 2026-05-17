@@ -185,7 +185,13 @@ def build_package(
         uploaded.append(target)
 
     if include_static:
-        for rel in ("css/style.css", "js/app.js"):
+        for rel in (
+            "css/style.css",
+            "css/av-ds/tokens.css",
+            "js/app.js",
+            "img/brand/logo.svg",
+            "img/favicon.svg",
+        ):
             source = web_root / rel
             if not source.exists():
                 raise SyncError(f"missing source static file: {source}")
