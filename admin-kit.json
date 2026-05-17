@@ -6,16 +6,17 @@
   "last_checked_at": "2026-05-17T13:15:00Z",
   "notes": [
     "Read-only local inventory found 53 admin service route decorators.",
-    "SSR publish pipeline stays project-local during first adapter pass."
+    "SSR publish pipeline stays project-local during first adapter pass.",
+    "Admin route smoke suite passed locally on 2026-05-17."
   ],
   "project": "fbrk",
   "risk": "medium",
   "routes": 53,
   "smoke": {
-    "csrf_reject": "pending",
-    "login_render": "pending",
-    "protected_route": "pending",
-    "system_dashboard": "pending",
-    "unauth_redirect": "pending"
+    "csrf_reject": "pass",
+    "login_render": "pass",
+    "protected_route": "pass",
+    "system_dashboard": "pass",
+    "unauth_redirect": "pass"
   }
 }

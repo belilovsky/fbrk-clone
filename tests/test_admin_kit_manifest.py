@@ -14,7 +14,7 @@ REQUIRED_SMOKE = {
 }
 
 
-def test_admin_kit_manifest_is_safe_and_pending():
+def test_admin_kit_manifest_is_safe_and_truthful():
     """Manifest should link the real admin to the central registry without secrets."""
     manifest = json.loads((ROOT / "admin-kit.json").read_text(encoding="utf-8"))
 
@@ -24,5 +24,5 @@ def test_admin_kit_manifest_is_safe_and_pending():
     assert manifest["risk"] == "medium"
     assert manifest["routes"] == 53
     assert set(manifest["smoke"]) == REQUIRED_SMOKE
-    assert set(manifest["smoke"].values()) == {"pending"}
+    assert set(manifest["smoke"].values()) == {"pass"}
     assert "secret" not in json.dumps(manifest, ensure_ascii=False).lower()
