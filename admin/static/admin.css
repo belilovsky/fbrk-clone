@@ -343,7 +343,7 @@ table { border-collapse: collapse; }
 }
 
 
-/* ===== v0.3 sidebar layout (appended) ===== */
+/* ===== AV DS sidebar layout ===== */
 :root{--a-side-w:248px;--a-side-bg:#0b1230;--a-side-fg:#dfe5ff;--a-side-muted:#8b94c4;--a-side-active:#3b5bff;--a-radius:10px;}
 html,body{margin:0;}
 .a-body{background:#f6f7fb;color:#0f1330;font-family:var(--font-body);min-height:100vh;}
