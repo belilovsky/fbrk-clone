@@ -920,3 +920,75 @@ Deploy / verification:
 
 Current conclusion: AV DS 3.7.1 is now applied across the FBRK public site,
 SSR article shell, split `new.fbrk.kz` static shell, and admin/login shell.
+
+## Admin/editor and upload asset sync night pass (2026-05-17, 20:42Z)
+
+Scope:
+
+- recover production admin access after password drift;
+- verify admin save flow and editor/front consistency;
+- fix remaining admin template/code regressions found during smoke;
+- repair missing split-frontend upload images on `new.fbrk.kz`.
+
+Fixes:
+
+- Reset production `admin` credential through the server-side hash helper; the
+  secret itself remains only in root-owned `/opt/fbrk-admin/.admin_creds`
+  (`0600`) and is not committed.
+- `admin/templates/articles_list.html`:
+  - moved publish/featured toggle JS out of the `<title>` block;
+  - added explicit CSRF hidden input to the bulk form.
+- `admin/app/main.py`:
+  - `/admin/edit/{id}` now loads `article_meta` for normal Editor.js articles,
+    so the editor side panel again shows NLP summary/entities/AI tags.
+- `admin/scripts/sync_new_frontend_to_plesk.py`:
+  - after fetching generated payloads, the sync package now includes only
+    referenced `/img/uploads/...` assets from the backend web-root;
+  - this avoids both stale 404 images on `new.fbrk.kz` and a full 745 MB uploads
+    copy.
+
+Safety:
+
+- DB backups:
+  - `/opt/fbrk-admin/backups/fbrk-20260517T193542Z-pre-admin-password-reset-2.db`
+  - `/opt/fbrk-admin/backups/fbrk-20260517T195512Z-pre-admin-list-template.db`
+  - `/opt/fbrk-admin/backups/fbrk-20260517T200600Z-pre-admin-meta-editor.db`
+  - `/opt/fbrk-admin/backups/fbrk-20260517T203332Z-pre-plesk-upload-assets-sync.db`
+- Web/admin snapshots:
+  - `/opt/fbrk-admin/web-snapshots/20260517T195512Z-admin-list-template`
+  - `/opt/fbrk-admin/admin-snapshots/20260517T195512Z-admin-list-template`
+  - `/opt/fbrk-admin/admin-snapshots/20260517T200600Z-admin-meta-editor`
+  - `/opt/fbrk-admin/admin-snapshots/20260517T203332Z-plesk-upload-assets-sync`
+- Old web snapshots were trimmed conservatively to recover disk headroom;
+  `/` is now 73% used (`54G` free).
+
+Verification:
+
+- Local checks:
+  - `.venv/bin/python -m pytest` -> 19 passed;
+  - `python3 -m py_compile ...` -> OK;
+  - `node --check js/app.js` and `node tests/article_js_filters.test.mjs` -> OK;
+  - `git diff --check` -> OK.
+- Production admin:
+  - `systemctl restart fbrk-admin`; service `active`;
+  - `/admin/healthz` -> 200;
+  - HTTPS session login works;
+  - `/admin/articles` title is clean, CSRF exists, bulk no-op POST accepted;
+  - `neftegaz-avarii` edit page shows `Метаданные NLP`;
+  - temporary unpublished article create/update/delete through session + CSRF
+    succeeded; DB residue `0`; published count unchanged.
+- Plesk/new frontend:
+  - upload sync dry-run planned 336 files, including 323 referenced upload
+    assets;
+  - live sync finished `STATUS=synced`;
+  - strict linkage at `2026-05-17T20:42:26Z`:
+    `BACKEND_TOTAL=4671`, `NEW_TOTAL=4671`, delta `0`; hashes match for
+    `data.js`, `data-archive.js`, `article-full.js`;
+  - four previously broken local upload thumbnails now return HTTP 200;
+  - random image HEAD/GET sample after sync: `30` checked, `0` bad.
+- Browser DOM smoke after sync:
+  - `new.fbrk.kz` home/archive/article/404 and `fbrk.qdev.run/admin/login`
+    render with AV DS 3.7.1, `lang="ru"`, no old font markers, no
+    `fbrk.qdev.run/a/` article-link leaks, no missing `alt`;
+  - article page renders `Упоминания` and `Материалы по теме`;
+  - page console errors: `0` for FBRK pages checked.

@@ -1,26 +1,5 @@
 {% extends "base.html" %}
-{% block title %}{{ title }} — Админка ФБРК
-<script>
-async function togglePub(e,id,el){e.preventDefault();e.stopPropagation();
-  const r=await fetch('/api/articles/'+id+'/publish',{method:'POST',credentials:'same-origin'});
-  if(!r.ok){alert('Ошибка');return;}
-  const j=await r.json();
-  el.innerHTML = j.published
-    ? '<span style="color:#1a7f37">• опубл.</span>'
-    : '<span style="color:#999">• черновик</span>';
-}
-async function toggleFeat(e,id,el){e.preventDefault();e.stopPropagation();
-  const r=await fetch('/api/articles/'+id+'/toggle-featured',{method:'POST',credentials:'same-origin'});
-  if(!r.ok){alert('Ошибка');return;}
-  const j=await r.json();
-  document.querySelectorAll('a[onclick^="toggleFeat"]').forEach(a=>{a.innerHTML='<span style="font-size:11px;color:#bbb">☆</span>';});
-  el.innerHTML = j.featured
-    ? '<span style="font-size:11px;padding:2px 6px;background:#fff3cd;border-radius:10px;color:#8a6d3b">★ featured</span>'
-    : '<span style="font-size:11px;color:#bbb">☆</span>';
-}
-</script>
-
-{% endblock %}
+{% block title %}{{ title }} — Админка ФБРК{% endblock %}
 {% block page_title %}{{ title }}{% endblock %}
 {% block content %}
 {% macro sort_link(key, label) -%}
@@ -55,6 +34,7 @@ async function toggleFeat(e,id,el){e.preventDefault();e.stopPropagation();
   <div class="muted" style="margin-bottom:10px">Всего: <b>{{ total }}</b>{% if q or cat or status or featured %} — фильтры:{% if q %} «{{ q|e }}»{% endif %}{% if cat %} категория={{ cat }}{% endif %}{% if status %} статус={{ status }}{% endif %}{% if featured %} featured={{ featured }}{% endif %}{% endif %}</div>
   {% if items %}
   <form method="post" action="/admin/articles/bulk" id="bulkForm" onsubmit="return bulkConfirm(this)">
+  <input type="hidden" name="csrf_token" value="{{ csrf_token(request) }}">
   <input type="hidden" name="back" value="/admin/articles?page={{ page }}{% if q %}&q={{ q|e }}{% endif %}{% if cat %}&cat={{ cat }}{% endif %}{% if status %}&status={{ status }}{% endif %}{% if featured %}&featured={{ featured }}{% endif %}&sort={{ sort }}&dir={{ dir }}">
   <div id="bulkBar" style="display:none;background:#eef4ff;border:1px solid #c7d6f5;border-radius:8px;padding:8px 12px;margin-bottom:10px;align-items:center;gap:8px;flex-wrap:wrap">
     <b id="bulkCount">0</b> выбрано —
@@ -112,6 +92,27 @@ async function toggleFeat(e,id,el){e.preventDefault();e.stopPropagation();
   {% endif %}
 </div>
 
+{% endblock %}
+{% block scripts %}
+<script>
+async function togglePub(e,id,el){e.preventDefault();e.stopPropagation();
+  const r=await fetch('/api/articles/'+id+'/publish',{method:'POST',credentials:'same-origin'});
+  if(!r.ok){alert('Ошибка');return;}
+  const j=await r.json();
+  el.innerHTML = j.published
+    ? '<span style="color:#1a7f37">• опубл.</span>'
+    : '<span style="color:#999">• черновик</span>';
+}
+async function toggleFeat(e,id,el){e.preventDefault();e.stopPropagation();
+  const r=await fetch('/api/articles/'+id+'/toggle-featured',{method:'POST',credentials:'same-origin'});
+  if(!r.ok){alert('Ошибка');return;}
+  const j=await r.json();
+  document.querySelectorAll('a[onclick^="toggleFeat"]').forEach(a=>{a.innerHTML='<span style="font-size:11px;color:#bbb">☆</span>';});
+  el.innerHTML = j.featured
+    ? '<span style="font-size:11px;padding:2px 6px;background:#fff3cd;border-radius:10px;color:#8a6d3b">★ featured</span>'
+    : '<span style="font-size:11px;color:#bbb">☆</span>';
+}
+</script>
 <script>
 function updateBulk(){
   var cbs=document.querySelectorAll('.rowCb:checked');
@@ -139,5 +140,4 @@ function bulkConfirm(f){
   return true;
 }
 </script>
-
 {% endblock %}

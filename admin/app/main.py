@@ -392,28 +392,35 @@ def edit_article_page(article_id: str, request: Request):
     if not user:
         return RedirectResponse(url="/admin/login", status_code=302)
     meta = {"entities": [], "tags_auto": [], "importance": None, "sentiment": None, "region": "", "summary_short": ""}
+    mrow = None
     with db() as conn:
         row = conn.execute(
             "SELECT * FROM articles WHERE id = ?", (article_id,)
         ).fetchone()
+        try:
+            mrow = conn.execute(
+                "SELECT entities_json, tags_auto, importance, sentiment, region, summary_short "
+                "FROM article_meta WHERE article_id = ?",
+                (article_id,),
+            ).fetchone()
+        except Exception:
+            mrow = None
     if not row:
         raise HTTPException(404, "Not found")
     article = row_to_article(row)
     # If body has no blocks but sections exist (legacy imports), hydrate
     if not article["body"].get("blocks") and article["sections"]:
         article["body"] = sections_to_editorjs(article["sections"])
-        # Stage 2: fetch enrichment meta
-        meta = {"entities": [], "tags_auto": [], "importance": None, "sentiment": None, "region": "", "summary_short": ""}
+    if mrow:
         try:
-            mrow = conn.execute("SELECT entities_json, tags_auto, importance, sentiment, region, summary_short FROM article_meta WHERE article_id = ?", (article_id,)).fetchone()
-            if mrow:
-                import json as _json
-                meta["entities"] = _json.loads(mrow["entities_json"] or "[]")
-                meta["tags_auto"] = _json.loads(mrow["tags_auto"] or "[]")
-                meta["importance"] = mrow["importance"]
-                meta["sentiment"] = mrow["sentiment"]
-                meta["region"] = mrow["region"] or ""
-                meta["summary_short"] = mrow["summary_short"] or ""
+            import json as _json
+
+            meta["entities"] = _json.loads(mrow["entities_json"] or "[]")
+            meta["tags_auto"] = _json.loads(mrow["tags_auto"] or "[]")
+            meta["importance"] = mrow["importance"]
+            meta["sentiment"] = mrow["sentiment"]
+            meta["region"] = mrow["region"] or ""
+            meta["summary_short"] = mrow["summary_short"] or ""
         except Exception:
             pass
     return templates.TemplateResponse(

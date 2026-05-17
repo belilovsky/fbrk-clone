@@ -136,6 +136,30 @@ def write_bytes(path: Path, data: bytes) -> None:
     path.write_bytes(data)
 
 
+def referenced_upload_assets(out_dir: Path, web_root: Path) -> list[Path]:
+    refs: set[str] = set()
+    for name in GENERATED_FILES:
+        payload = (out_dir / "js" / name).read_text(encoding="utf-8", errors="ignore")
+        for raw in re.findall(r"""["'](/?img/uploads/[^"']+)["']""", payload):
+            rel = urllib.parse.unquote(raw.replace("\\/", "/").split("?", 1)[0]).lstrip("/")
+            if rel.startswith("img/uploads/") and ".." not in Path(rel).parts:
+                refs.add(rel)
+
+    web_root_resolved = web_root.resolve()
+    assets: list[Path] = []
+    for rel in sorted(refs):
+        source = (web_root / rel).resolve()
+        if not str(source).startswith(f"{web_root_resolved}{os.sep}"):
+            raise SyncError(f"unsafe upload asset path: {rel}")
+        if not source.exists():
+            raise SyncError(f"referenced upload asset is missing in backend web-root: {source}")
+        if source.is_file():
+            target = out_dir / rel
+            write_bytes(target, source.read_bytes())
+            assets.append(target)
+    return assets
+
+
 def build_package(
     out_dir: Path,
     *,
@@ -177,6 +201,8 @@ def build_package(
         target = out_dir / "js" / name
         write_bytes(target, fetch_bytes(f"{backend_origin.rstrip('/')}/js/{name}", cache_bust=True))
         uploaded.append(target)
+
+    uploaded.extend(referenced_upload_assets(out_dir, web_root))
 
     for name in SEO_FILES:
         raw = fetch_bytes(f"{backend_origin.rstrip('/')}/{name}", cache_bust=True).decode("utf-8")

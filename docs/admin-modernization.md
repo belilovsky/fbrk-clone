@@ -315,3 +315,86 @@ shared `AdminJinja2Templates` adapter.
 - `e129919 refactor(admin): убрать deprecated startup и template api`
 - `7e64843 fix(public): убрать старые хвосты av ds и ssr статьи`
 - `ca1d419 fix(deploy): синхронизировать все av ds assets на new fbrk`
+
+## Night Follow-up 2026-05-17/18
+
+Additional pass after the admin password drift report and image-loading
+complaints.
+
+Fixes:
+
+- Rotated/recovered the production `admin` password without exposing it in git
+  or logs. The current credential is stored only in root-owned
+  `/opt/fbrk-admin/.admin_creds` (`0600`).
+- Fixed `admin/templates/articles_list.html`: inline publish/featured scripts
+  no longer render inside the `<title>` block, and the bulk action form now has
+  an explicit CSRF hidden field in addition to the shell auto-injection.
+- Fixed `admin/app/main.py`: `/admin/edit/{id}` now loads `article_meta`
+  summary/entities/AI tags for normal Editor.js articles, not only legacy
+  section-only articles.
+- Updated `admin/scripts/sync_new_frontend_to_plesk.py`: split sync now uploads
+  only the `/img/uploads/...` assets that are referenced by generated
+  `data.js`, `data-archive.js`, or `article-full.js`. This repaired missing
+  local upload images on `new.fbrk.kz` without uploading the whole 745 MB
+  uploads tree or deleting anything.
+- Maintenance cleanup: old web-root snapshots were trimmed to free disk space;
+  `/` moved from 95% used to 73% used, with recent snapshots retained.
+
+Safety gates:
+
+- DB backup before password reset:
+  `/opt/fbrk-admin/backups/fbrk-20260517T193542Z-pre-admin-password-reset-2.db`
+  (`73M`).
+- DB backup + web/admin snapshots before articles-list template deploy:
+  `/opt/fbrk-admin/backups/fbrk-20260517T195512Z-pre-admin-list-template.db`
+  (`73M`),
+  `/opt/fbrk-admin/web-snapshots/20260517T195512Z-admin-list-template`
+  (`2.3G`),
+  `/opt/fbrk-admin/admin-snapshots/20260517T195512Z-admin-list-template`
+  (`240K`).
+- DB backup + admin snapshot before metadata editor deploy:
+  `/opt/fbrk-admin/backups/fbrk-20260517T200600Z-pre-admin-meta-editor.db`
+  (`73M`),
+  `/opt/fbrk-admin/admin-snapshots/20260517T200600Z-admin-meta-editor`
+  (`852K`).
+- DB backup + scripts snapshot before Plesk upload-asset sync deploy:
+  `/opt/fbrk-admin/backups/fbrk-20260517T203332Z-pre-plesk-upload-assets-sync.db`
+  (`73M`),
+  `/opt/fbrk-admin/admin-snapshots/20260517T203332Z-plesk-upload-assets-sync`
+  (`96K`).
+
+Verification:
+
+- Local:
+  - `python3 -m py_compile admin/app/main.py admin/app/security.py admin/app/seo.py admin/app/publish.py admin/app/admin_platform/*.py admin/scripts/sync_new_frontend_to_plesk.py regen_covers.py tests/test_admin_kit_manifest.py tests/test_admin_platform_primitives.py tests/test_admin_routes_smoke.py tests/test_public_entity_tags.py` — OK.
+  - `.venv/bin/python -m pytest` — OK, 19 tests.
+  - `node --check js/app.js` and `node tests/article_js_filters.test.mjs` — OK.
+  - `git diff --check` — OK.
+  - `ruff` and `mypy` are not installed in the local venv/host.
+- Production admin:
+  - `fbrk-admin` restarted and stayed `active`; `/admin/healthz` -> 200.
+  - HTTPS login with the recovered credential works; dashboard and
+    `/admin/articles` return 200.
+  - `/admin/articles` title is clean, bulk form has CSRF, and inline toggle
+    script is present.
+  - Existing enriched article `neftegaz-avarii` shows `Метаданные NLP`.
+  - Temporary unpublished article create/update/delete through session + CSRF
+    succeeded; DB residue `0`, published total unchanged.
+- Split frontend:
+  - strict linkage after admin smoke and after Plesk upload sync:
+    `BACKEND_TOTAL=4671`, `NEW_TOTAL=4671`, delta `0`, generated SHA256 values
+    match for `data.js`, `data-archive.js`, and `article-full.js`.
+  - `sync_new_frontend_to_plesk.py --force --dry-run` planned 336 files,
+    including 323 referenced upload assets; live sync finished with
+    `STATUS=synced`.
+  - Previously broken upload URLs now return 200:
+    `/img/uploads/thumb/20260430-104625-8a0468.webp`,
+    `/img/uploads/thumb/20260423-193532-5fc0f1.webp`,
+    `/img/uploads/thumb/20260424-191456-ec47b6.webp`,
+    `/img/uploads/thumb/20260424-165748-9e72ed.webp`.
+  - Random image sample after sync: 30 checked, 0 bad.
+- Browser DOM smoke:
+  - `new.fbrk.kz` home/archive/article/404 and `fbrk.qdev.run/admin/login`
+    have `consoleErrors=0`, `lang="ru"`, `AV DS 3.7.1`, no old font markers,
+    no `fbrk.qdev.run/a/` article-link leaks, and no images without `alt`.
+  - Article page renders both `Упоминания` and `Материалы по теме`.

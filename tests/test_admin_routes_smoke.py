@@ -204,6 +204,64 @@ def test_session_api_mutation_requires_csrf_and_updates_frontend_data(tmp_path: 
         assert "Уникальное описание related" not in ssr.text
 
 
+def test_admin_articles_list_keeps_scripts_out_of_title_and_has_csrf(tmp_path: Path) -> None:
+    with _client(tmp_path) as client:
+        _login(client)
+        token = _csrf_from(client.get("/admin/").text)
+        created = client.post(
+            "/api/articles",
+            json=_article_payload("codex-list-smoke"),
+            headers={"X-CSRF-Token": token},
+        )
+        assert created.status_code == 200
+
+        page = client.get("/admin/articles")
+        assert page.status_code == 200
+        title_html = page.text.split("</title>", 1)[0]
+        assert "Материалы — Админка ФБРК" in title_html
+        assert "<script" not in title_html
+        assert 'id="bulkForm"' in page.text
+        assert 'name="csrf_token"' in page.text
+        assert "async function togglePub" in page.text
+
+
+def test_admin_edit_page_shows_existing_nlp_metadata(tmp_path: Path) -> None:
+    with _client(tmp_path) as client:
+        _login(client)
+        token = _csrf_from(client.get("/admin/").text)
+        created = client.post(
+            "/api/articles",
+            json=_article_payload("codex-meta-smoke"),
+            headers={"X-CSRF-Token": token},
+        )
+        assert created.status_code == 200
+
+        from app.db import db
+
+        with db() as conn:
+            conn.execute(
+                """INSERT INTO article_meta
+                   (article_id, summary_short, importance, sentiment, entities_json, tags_auto, region)
+                   VALUES (?, ?, ?, ?, ?, ?, ?)""",
+                (
+                    "codex-meta-smoke",
+                    "Короткое NLP-резюме для админки.",
+                    4,
+                    "neutral",
+                    json.dumps([{"name": "БНР", "type": "org"}], ensure_ascii=False),
+                    json.dumps(["статистика"], ensure_ascii=False),
+                    "Астана",
+                ),
+            )
+
+        page = client.get("/admin/edit/codex-meta-smoke")
+        assert page.status_code == 200
+        assert "Метаданные NLP" in page.text
+        assert "Короткое NLP-резюме для админки." in page.text
+        assert "БНР" in page.text
+        assert "+ статистика" in page.text
+
+
 def test_api_key_mutation_keeps_working_without_csrf(tmp_path: Path) -> None:
     with _client(tmp_path) as client:
         response = client.post(
