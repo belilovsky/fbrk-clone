@@ -24,8 +24,8 @@ from pathlib import Path
 
 from fastapi import APIRouter, HTTPException, Request
 from fastapi.responses import HTMLResponse, PlainTextResponse, Response
-from fastapi.templating import Jinja2Templates
 
+from .admin_platform.templating import AdminJinja2Templates
 from .config import settings
 from .db import db, row_to_article
 
@@ -36,7 +36,7 @@ TELEGRAM = "https://t.me/fund_kz_bot"
 YOUTUBE = "https://www.youtube.com/@fbrk_news"
 
 BASE = Path(__file__).resolve().parent.parent  # admin/
-templates = Jinja2Templates(directory=str(BASE / "templates"))
+templates = AdminJinja2Templates(directory=str(BASE / "templates"))
 
 # SSR template uses ad("slot") helper for promo blocks.
 # Keep it resilient: if ad table is unavailable we return empty HTML.

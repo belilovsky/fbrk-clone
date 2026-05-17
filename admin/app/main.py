@@ -16,6 +16,7 @@ Routes:
 """
 from __future__ import annotations
 
+from contextlib import asynccontextmanager
 import io
 import json
 import uuid
@@ -28,7 +29,6 @@ from fastapi import (
 )
 from fastapi.responses import HTMLResponse, RedirectResponse
 from fastapi.staticfiles import StaticFiles
-from fastapi.templating import Jinja2Templates
 from PIL import Image
 from slugify import slugify
 
@@ -36,6 +36,7 @@ from .config import settings
 from .admin_platform.audit import record_audit
 from .admin_platform.csrf import make_csrf_token, verify_csrf_token
 from .admin_platform.paths import upload_url_to_public_path, uploads_dir as platform_uploads_dir
+from .admin_platform.templating import AdminJinja2Templates
 from .admin_platform.uploads import validate_image_upload
 from .db import db, init_db, row_to_article
 from .editorjs import editorjs_to_sections, sections_to_editorjs
@@ -51,7 +52,17 @@ from .seo import router as seo_router
 # -----------------------------------------------------------------------------
 BASE = Path(__file__).resolve().parent.parent  # admin/
 
-app = FastAPI(title="FBRK Admin", docs_url=None, redoc_url=None)
+
+@asynccontextmanager
+async def lifespan(_app: FastAPI):
+    init_db()
+    from .meta_schema import ensure_meta_schema
+    ensure_meta_schema()
+    _ensure_seed_user()
+    yield
+
+
+app = FastAPI(title="FBRK Admin", docs_url=None, redoc_url=None, lifespan=lifespan)
 
 app.mount(
     "/admin/static",
@@ -59,7 +70,7 @@ app.mount(
     name="admin-static",
 )
 
-templates = Jinja2Templates(directory=str(BASE / "templates"))
+templates = AdminJinja2Templates(directory=str(BASE / "templates"))
 
 
 def admin_asset_url(value: str | None) -> str:
@@ -90,6 +101,7 @@ templates.env.globals["login_csrf_token"] = lambda: make_csrf_token(
     secret=settings.jwt_secret,
     subject=LOGIN_CSRF_SUBJECT,
 )
+_templates = templates
 
 # Public SEO/OG/IA routes — /a/{slug}, /sitemap.xml, /robots.txt, /feed.xml, /feed/ia.xml
 app.include_router(seo_router)
@@ -118,14 +130,6 @@ def _ensure_seed_user() -> None:
                 "INSERT INTO users (username, password_hash) VALUES (?, ?)",
                 (settings.admin_user, hash_password(settings.admin_password)),
             )
-
-
-@app.on_event("startup")
-def _startup() -> None:
-    init_db()
-    from .meta_schema import ensure_meta_schema
-    ensure_meta_schema()
-    _ensure_seed_user()
 
 
 # -----------------------------------------------------------------------------
@@ -686,8 +690,7 @@ from fastapi.responses import HTMLResponse as _HR
 try:
     _templates
 except NameError:
-    from fastapi.templating import Jinja2Templates as _J
-    _templates = _J(directory=str(Path(__file__).resolve().parent.parent/"templates"))
+    _templates = AdminJinja2Templates(directory=str(Path(__file__).resolve().parent.parent/"templates"))
 _templates.env.globals["admin_asset_url"] = admin_asset_url
 
 
@@ -784,8 +787,7 @@ from fastapi.responses import HTMLResponse as _HR2
 _t2 = _templates if '_templates' in globals() else None
 from pathlib import Path as _P2
 if _t2 is None:
-    from fastapi.templating import Jinja2Templates as _J2
-    _t2 = _J2(directory=str(_P2(__file__).resolve().parent.parent/"templates"))
+    _t2 = AdminJinja2Templates(directory=str(_P2(__file__).resolve().parent.parent/"templates"))
 
 def _kpi_stats():
     import sqlite3, json

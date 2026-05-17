@@ -113,12 +113,13 @@ build/deploy access to private registry is not guaranteed.
 
 ## Production readiness
 
-Current status: **yes, with minor maintenance caveats**.
+Current status: **yes**.
 
 The admin is operational, deployed, visually aligned with AV DS 3.7.1, and the
 main security primitives are covered locally and smoke-verified on production.
-Remaining caveats are maintenance-only: the older FastAPI lifespan/template
-deprecation warnings can be cleaned in a separate low-risk refactor.
+The previous maintenance caveat is also closed in this branch: FastAPI startup
+now uses lifespan, and legacy admin/SSR template calls are normalized by the
+shared `AdminJinja2Templates` adapter.
 
 ## Verification Log
 
@@ -127,6 +128,7 @@ deprecation warnings can be cleaned in a separate low-risk refactor.
 - `node --check js/app.js` — OK.
 - `node tests/article_js_filters.test.mjs` — OK.
 - `git diff --check` — OK.
+- `.venv/bin/python -W error::DeprecationWarning -m pytest tests/test_admin_platform_primitives.py tests/test_admin_routes_smoke.py tests/test_public_entity_tags.py` — OK, 15 tests, no deprecation warnings.
 - Active public/admin grep: no `v0.3`, `AV DS 2026`, `Fontshare`,
   `General Sans`, `Satoshi`, or `--color-accent` markers in active public/admin
   shell files.
@@ -188,9 +190,15 @@ deprecation warnings can be cleaned in a separate low-risk refactor.
   - `BACKEND_TOTAL=4671`, `NEW_TOTAL=4671`, delta `0`.
   - `data.js`, `data-archive.js`, `article-full.js` SHA-256 hashes match
     between `fbrk.qdev.run` and `new.fbrk.kz`.
-  - Browser smoke after deploy: home, archive, 404, admin login all have
+- Browser smoke after deploy: home, archive, 404, admin login all have
     `consoleErrors=0`; home has 37 `https://new.fbrk.kz/a/...` links and 0
     `https://fbrk.qdev.run/a/...` article-link leaks.
+- Maintenance cleanup after production pass:
+  - `@app.on_event("startup")` replaced with FastAPI lifespan.
+  - Admin and SSR templates now use `AdminJinja2Templates`, which normalizes
+    legacy `TemplateResponse(name, context)` calls to Starlette's current
+    request-first API.
+  - Verified with deprecation warnings treated as errors.
 
 ## Commits In This Pass
 
@@ -205,3 +213,4 @@ deprecation warnings can be cleaned in a separate low-risk refactor.
 - `1d176a1 fix(admin): требовать csrf для session api mutations`
 - `90b0a7f docs(admin): обновить hash финального csrf шага`
 - `3bac58a fix(admin): добавить csrf для входа`
+- `867e194 docs(admin): зафиксировать prod deploy финального прохода`
