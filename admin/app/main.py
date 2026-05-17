@@ -75,6 +75,8 @@ def admin_asset_url(value: str | None) -> str:
 
 templates.env.globals["admin_asset_url"] = admin_asset_url
 
+LOGIN_CSRF_SUBJECT = "admin-login"
+
 
 def csrf_token(request: Request) -> str:
     user = current_user(request)
@@ -84,6 +86,10 @@ def csrf_token(request: Request) -> str:
 
 
 templates.env.globals["csrf_token"] = csrf_token
+templates.env.globals["login_csrf_token"] = lambda: make_csrf_token(
+    secret=settings.jwt_secret,
+    subject=LOGIN_CSRF_SUBJECT,
+)
 
 # Public SEO/OG/IA routes — /a/{slug}, /sitemap.xml, /robots.txt, /feed.xml, /feed/ia.xml
 app.include_router(seo_router)
@@ -139,7 +145,14 @@ def login_submit(
     response: Response,
     username: str = Form(...),
     password: str = Form(...),
+    csrf_token: str = Form(""),
 ):
+    if not verify_csrf_token(
+        csrf_token,
+        secret=settings.jwt_secret,
+        subject=LOGIN_CSRF_SUBJECT,
+    ):
+        raise HTTPException(status_code=403, detail="CSRF token missing or invalid")
     with db() as conn:
         row = conn.execute(
             "SELECT * FROM users WHERE username = ?", (username,)

@@ -10,6 +10,7 @@
 </head>
 <body class="a-login-body">
   <form class="a-login" method="post" action="/admin/login">
+    <input type="hidden" name="csrf_token" value="{{ login_csrf_token() }}"/>
     <div class="a-login__brand">
       <span class="a-brand__dot"></span>
       <span>ФБРК · админка</span>

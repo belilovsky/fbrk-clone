@@ -48,13 +48,20 @@ def _client(tmp_path: Path) -> TestClient:
 
 
 def _login(client: TestClient) -> None:
+    token = _login_csrf_from(client.get("/admin/login").text)
     response = client.post(
         "/admin/login",
-        data={"username": "admin", "password": "secret"},
+        data={"username": "admin", "password": "secret", "csrf_token": token},
         follow_redirects=False,
     )
     assert response.status_code == 302
     assert response.headers["location"] == "/admin/"
+
+
+def _login_csrf_from(html: str) -> str:
+    match = re.search(r'name="csrf_token" value="([^"]+)"', html)
+    assert match, "login csrf token is missing"
+    return match.group(1)
 
 
 def _csrf_from(html: str) -> str:
@@ -94,6 +101,14 @@ def test_admin_login_and_protected_dashboard(tmp_path: Path) -> None:
         login_page = client.get("/admin/login")
         assert login_page.status_code == 200
         assert "Вход" in login_page.text
+        assert 'name="csrf_token" value="' in login_page.text
+
+        login_without_csrf = client.post(
+            "/admin/login",
+            data={"username": "admin", "password": "secret"},
+            follow_redirects=False,
+        )
+        assert login_without_csrf.status_code == 403
 
         protected = client.get("/admin/", follow_redirects=False)
         assert protected.status_code == 302
