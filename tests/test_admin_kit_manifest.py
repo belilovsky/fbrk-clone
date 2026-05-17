@@ -20,7 +20,8 @@ def test_admin_kit_manifest_is_safe_and_truthful():
 
     assert manifest["project"] == "fbrk"
     assert manifest["framework"] == "fastapi"
-    assert manifest["adapter_status"] == "planned"
+    assert manifest["adapter_status"] == "optional-bridge"
+    assert manifest["admin_kit_version"] == "0.3.0"
     assert manifest["risk"] == "medium"
     assert manifest["routes"] == 53
     assert set(manifest["smoke"]) == REQUIRED_SMOKE

@@ -3,6 +3,7 @@ from __future__ import annotations
 import sqlite3
 import sys
 import tempfile
+import types
 import unittest
 from pathlib import Path
 
@@ -13,6 +14,7 @@ sys.path.insert(0, str(ROOT / "admin"))
 from app.admin_platform.access import ROLE_ADMIN, has_role, principal_from_user, require_role
 from app.admin_platform.audit import compact_details, record_audit
 from app.admin_platform.csrf import make_csrf_token, verify_csrf_token
+from app.admin_platform.qaz_bridge import bridge_status
 from app.admin_platform.paths import safe_join
 from app.admin_platform.session import session_cookie_from_settings
 from app.admin_platform.uploads import detect_image_mime, validate_image_upload
@@ -65,6 +67,29 @@ class AdminPlatformPrimitiveTests(unittest.TestCase):
         self.assertFalse(mismatch.ok)
         self.assertIn("does not match", mismatch.error)
         self.assertFalse(validate_image_upload(b"not-image", content_type="image/png").ok)
+
+    def test_qaz_admin_bridge_delegates_when_package_is_available(self) -> None:
+        fake_package = types.ModuleType("qaz_admin")
+        fake_package.__version__ = "9.9.9"
+        fake_uploads = types.ModuleType("qaz_admin.uploads")
+        fake_uploads.detect_image_mime = lambda raw: "image/webp" if raw == b"central" else ""
+        previous_package = sys.modules.get("qaz_admin")
+        previous_uploads = sys.modules.get("qaz_admin.uploads")
+        sys.modules["qaz_admin"] = fake_package
+        sys.modules["qaz_admin.uploads"] = fake_uploads
+        try:
+            self.assertEqual(bridge_status()["version"], "9.9.9")
+            self.assertEqual(detect_image_mime(b"central"), "image/webp")
+            self.assertEqual(detect_image_mime(b"\x89PNG\r\n\x1a\n"), "image/png")
+        finally:
+            if previous_package is None:
+                sys.modules.pop("qaz_admin", None)
+            else:
+                sys.modules["qaz_admin"] = previous_package
+            if previous_uploads is None:
+                sys.modules.pop("qaz_admin.uploads", None)
+            else:
+                sys.modules["qaz_admin.uploads"] = previous_uploads
 
     def test_record_audit_is_best_effort(self) -> None:
         conn = sqlite3.connect(":memory:")

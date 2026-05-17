@@ -3,6 +3,8 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 
+from .qaz_bridge import detect_image_mime as detect_image_mime_bridge
+
 
 ALLOWED_IMAGE_MIME = ("image/jpeg", "image/png", "image/webp", "image/gif")
 DEFAULT_MAX_BYTES = 20 * 1024 * 1024
@@ -21,7 +23,7 @@ class UploadValidation:
     error: str = ""
 
 
-def detect_image_mime(raw: bytes) -> str:
+def _detect_image_mime_local(raw: bytes) -> str:
     if raw.startswith(b"\xff\xd8\xff"):
         return "image/jpeg"
     if raw.startswith(b"\x89PNG\r\n\x1a\n"):
@@ -31,6 +33,10 @@ def detect_image_mime(raw: bytes) -> str:
     if len(raw) >= 12 and raw[:4] == b"RIFF" and raw[8:12] == b"WEBP":
         return "image/webp"
     return ""
+
+
+def detect_image_mime(raw: bytes) -> str:
+    return detect_image_mime_bridge(raw, _detect_image_mime_local)
 
 
 def validate_image_upload(
@@ -52,4 +58,3 @@ def validate_image_upload(
     if detected != declared:
         return UploadValidation(False, detected, f"file content does not match MIME type: {detected}")
     return UploadValidation(True, detected)
-
