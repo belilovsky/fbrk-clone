@@ -8,7 +8,8 @@
 ## Стек
 
 - **Frontend**: статический сайт (HTML/CSS/Vanilla JS) с client-side роутингом
-  через nginx try_files. Шрифт — Onest, бренд-цвет `#0C115F`. Тёмная тема.
+  через nginx try_files. AV DS `3.7.1`, шрифт — Onest, бренд-цвет
+  `#0C115F`. Тёмная тема.
 - **Backend** (`/admin`): FastAPI + Uvicorn, SQLite, Editor.js для тел статей,
   AI-обогащение (importance, TL;DR, сущности).
 - **Контент-синхронизация**: ingester `ingest_fbrk.py` тянет статьи с fbrk.kz

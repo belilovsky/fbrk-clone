@@ -823,3 +823,43 @@ Remaining Plesk note:
 - the installed cron keeps the static split frontend current and usable, but
   the cleaner long-term architecture remains the documented Plesk nginx
   split-proxy.
+
+## AV DS version stamp in footer (2026-05-17, 08:14Z)
+
+Small product-polish follow-up: the public site was already on the current AV
+DS static shell, but the footer did not expose the DS version.
+
+Change:
+
+- added `AV DS 3.7.1` to the public footer in `index.html`, `archive.html`,
+  `article.html`, `about.html`, `404.html`;
+- added the same stamp to the SSR article template
+  `admin/templates/article_ssr.html`;
+- updated admin sidebar footer in `admin/templates/base.html` from
+  `AV DS 2026` to `AV DS 3.7.1`;
+- documented the version in `README.md`.
+
+Safety gates:
+
+- active VPS DB backup:
+  `/opt/fbrk-admin/backups/fbrk-20260517T081115Z-pre-avds-footer-version.db`
+  (`73M`, non-zero);
+- active VPS web snapshot:
+  `/opt/fbrk-admin/web-snapshots/20260517T081115Z-avds-footer-version`
+  (`2.3G`).
+
+Deploy / verification:
+
+- copied public HTML files to `/var/www/fbrk.qdev.run/`;
+- copied `article_ssr.html` and `base.html` to `/opt/fbrk-admin/templates/`;
+- applied `chown www-data:www-data` to changed prod files;
+- restarted `fbrk-admin`; health check returned `{"ok":true,...}`;
+- forced Plesk static sync via
+  `/opt/fbrk-admin/scripts/sync_new_frontend_to_plesk.py --force`;
+- final package version on `new.fbrk.kz`: `20260517081342`;
+- strict linkage after sync:
+  `BACKEND_TOTAL=4670`, `NEW_TOTAL=4670`,
+  `DELTA_BACKEND_MINUS_NEW=0`, SHA256 matches for all generated payloads;
+- live checks confirmed `AV DS 3.7.1` on:
+  `https://fbrk.qdev.run/`, an SSR article page, and
+  `https://new.fbrk.kz/no-such-page-codex-20260517?v=20260517081342`.
