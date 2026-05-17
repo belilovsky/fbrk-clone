@@ -1,5 +1,5 @@
 /* ==========================================================
-   FBRK Admin — AV DS 2026 (matches public fbrk.qdev.run)
+   FBRK Admin — AV DS 3.7.1 (matches public fbrk.qdev.run)
    ========================================================== */
 :root {
   --c-bg: #f7f6f2;
@@ -24,8 +24,8 @@
   --sp-1: 4px;  --sp-2: 8px;  --sp-3: 12px; --sp-4: 16px;
   --sp-5: 20px; --sp-6: 24px; --sp-8: 32px; --sp-10: 40px;
 
-  --font-body: 'Satoshi', -apple-system, system-ui, sans-serif;
-  --font-display: 'General Sans', 'Satoshi', system-ui, sans-serif;
+  --font-body: 'Onest', -apple-system, system-ui, sans-serif;
+  --font-display: 'Onest', system-ui, sans-serif;
 }
 
 * { box-sizing: border-box; }
@@ -346,7 +346,7 @@ table { border-collapse: collapse; }
 /* ===== v0.3 sidebar layout (appended) ===== */
 :root{--a-side-w:248px;--a-side-bg:#0b1230;--a-side-fg:#dfe5ff;--a-side-muted:#8b94c4;--a-side-active:#3b5bff;--a-radius:10px;}
 html,body{margin:0;}
-.a-body{background:#f6f7fb;color:#0f1330;font-family:'Satoshi','General Sans',system-ui,sans-serif;min-height:100vh;}
+.a-body{background:#f6f7fb;color:#0f1330;font-family:var(--font-body);min-height:100vh;}
 .a-sidebar{position:fixed;inset:0 auto 0 0;width:var(--a-side-w);background:linear-gradient(180deg,#0b1230 0%,#101a4a 100%);color:var(--a-side-fg);display:flex;flex-direction:column;padding:18px 12px;z-index:40;}
 .a-sidebar .a-brand{display:flex;align-items:center;gap:10px;color:#fff;text-decoration:none;font-weight:700;padding:6px 8px;margin-bottom:14px;}
 .a-sidebar .a-brand__dot{width:10px;height:10px;border-radius:50%;background:#ff5e7d;box-shadow:0 0 0 3px rgba(255,94,125,.18);}

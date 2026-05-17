@@ -863,3 +863,60 @@ Deploy / verification:
 - live checks confirmed `AV DS 3.7.1` on:
   `https://fbrk.qdev.run/`, an SSR article page, and
   `https://new.fbrk.kz/no-such-page-codex-20260517?v=20260517081342`.
+
+## AV DS coverage audit and admin cleanup (2026-05-17, 08:32Z)
+
+Follow-up clarified that the question was about real AV DS coverage, not only
+the footer label.
+
+Coverage audit:
+
+- public shells (`index.html`, `archive.html`, `article.html`, `about.html`,
+  `404.html`) already used `/fonts/avds/avds-fonts.css`, `css/style.css`,
+  `site-header`, `site-footer`, and `AV DS 3.7.1`;
+- SSR article template already used the same public AV DS shell;
+- admin content pages extend `admin/templates/base.html`;
+- remaining gap was admin-only: `base.html` and `login.html` still loaded
+  Fontshare, while `admin.css` still said `AV DS 2026` and used
+  Satoshi/General Sans font variables.
+
+Fix:
+
+- `admin/templates/base.html` now loads `/fonts/avds/avds-fonts.css` and
+  `/admin/static/admin.css?v=8`;
+- `admin/templates/login.html` now uses the same local AV DS font sheet,
+  `admin.css?v=8`, and shows `AV DS 3.7.1`;
+- `admin/static/admin.css` is marked `AV DS 3.7.1` and uses the local Onest
+  stack via `--font-body` / `--font-display`;
+- stale source comment in `css/style.css` was updated from the old
+  Satoshi/General Sans wording to the current local AV DS font stack.
+
+Safety gates:
+
+- active VPS DB backup:
+  `/opt/fbrk-admin/backups/fbrk-20260517T082812Z-pre-avds-admin-coverage.db`
+  (`73M`, non-zero);
+- active VPS web snapshot:
+  `/opt/fbrk-admin/web-snapshots/20260517T082812Z-avds-admin-coverage`
+  (`2.3G`);
+- template/static snapshot:
+  `/opt/fbrk-admin/template-snapshots/20260517T082812Z-avds-admin-coverage`
+  (`272K`).
+
+Deploy / verification:
+
+- copied `base.html`, `login.html`, `admin.css`, and public `style.css`;
+- applied `chown www-data:www-data`;
+- restarted `fbrk-admin`; health check returned `{"ok":true,...}`;
+- grep on prod templates/static found no `fontshare`, `Satoshi`,
+  `General Sans`, or `AV DS 2026` in the active admin shell;
+- live `/admin/` now loads `/fonts/avds/avds-fonts.css`,
+  `/admin/static/admin.css?v=8`, and shows `AV DS 3.7.1`;
+- ran full Plesk sync (`--force --full`) so `new.fbrk.kz` also has the latest
+  public CSS/static package; asset version `20260517082959`;
+- strict linkage at `2026-05-17T08:31:56Z` remained green:
+  `BACKEND_TOTAL=4670`, `NEW_TOTAL=4670`,
+  `DELTA_BACKEND_MINUS_NEW=0`, generated SHA256 values match.
+
+Current conclusion: AV DS 3.7.1 is now applied across the FBRK public site,
+SSR article shell, split `new.fbrk.kz` static shell, and admin/login shell.
