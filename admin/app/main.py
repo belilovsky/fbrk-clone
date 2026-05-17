@@ -395,7 +395,7 @@ def edit_article_page(article_id: str, request: Request):
 # -----------------------------------------------------------------------------
 # API — articles
 # -----------------------------------------------------------------------------
-def _save_article(payload: dict, article_id: Optional[str] = None) -> dict:
+def _save_article(payload: dict, article_id: Optional[str] = None, actor: str | None = None) -> dict:
     title = (payload.get("title") or "").strip()
     if not title:
         raise HTTPException(400, "title required")
@@ -445,6 +445,7 @@ def _save_article(payload: dict, article_id: Optional[str] = None) -> dict:
                    WHERE id=?""",
                 (*record[1:], article_id),
             )
+            audit_action = "update"
         else:
             conn.execute(
                 """INSERT INTO articles (id, slug, title, dek, author, date_iso, date_label,
@@ -453,9 +454,23 @@ def _save_article(payload: dict, article_id: Optional[str] = None) -> dict:
                    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)""",
                 record,
             )
+            audit_action = "create"
         # Only one featured article at a time
         if payload.get("featured"):
             conn.execute("UPDATE articles SET featured=0 WHERE id != ?", (aid,))
+        record_audit(
+            conn,
+            user=actor,
+            action=audit_action,
+            entity="article",
+            entity_id=aid,
+            details={
+                "slug": slug,
+                "title": title,
+                "published": bool(payload.get("published", True)),
+                "featured": bool(payload.get("featured")),
+            },
+        )
         row = conn.execute("SELECT * FROM articles WHERE id = ?", (aid,)).fetchone()
     return row_to_article(row)
 
@@ -474,34 +489,43 @@ def api_list(_: str = Depends(require_auth)):
 
 
 @app.post("/api/articles")
-async def api_create(request: Request, _: str = Depends(require_auth)):
+async def api_create(request: Request, actor: str = Depends(require_auth)):
     payload = await request.json()
-    art = _save_article(payload)
+    art = _save_article(payload, actor=actor)
     regenerate_data_js()
     return {"ok": True, "article": art}
 
 
 @app.put("/api/articles/{article_id}")
-async def api_update(article_id: str, request: Request, _: str = Depends(require_auth)):
+async def api_update(article_id: str, request: Request, actor: str = Depends(require_auth)):
     payload = await request.json()
     with db() as conn:
         if not conn.execute("SELECT 1 FROM articles WHERE id=?", (article_id,)).fetchone():
             raise HTTPException(404, "Not found")
-    art = _save_article(payload, article_id=article_id)
+    art = _save_article(payload, article_id=article_id, actor=actor)
     regenerate_data_js()
     return {"ok": True, "article": art}
 
 
 @app.delete("/api/articles/{article_id}")
-def api_delete(article_id: str, _: str = Depends(require_auth)):
+def api_delete(article_id: str, actor: str = Depends(require_auth)):
     with db() as conn:
+        row = conn.execute("SELECT slug, title FROM articles WHERE id=?", (article_id,)).fetchone()
         conn.execute("DELETE FROM articles WHERE id=?", (article_id,))
+        record_audit(
+            conn,
+            user=actor,
+            action="delete",
+            entity="article",
+            entity_id=article_id,
+            details={"slug": row["slug"], "title": row["title"]} if row else {},
+        )
     regenerate_data_js()
     return {"ok": True}
 
 
 @app.post("/api/articles/{article_id}/publish")
-def api_toggle_publish(article_id: str, _: str = Depends(require_auth)):
+def api_toggle_publish(article_id: str, actor: str = Depends(require_auth)):
     with db() as conn:
         row = conn.execute("SELECT published FROM articles WHERE id=?", (article_id,)).fetchone()
         if not row:
@@ -509,12 +533,20 @@ def api_toggle_publish(article_id: str, _: str = Depends(require_auth)):
         new_val = 0 if row["published"] else 1
         conn.execute("UPDATE articles SET published=?, updated_at=CURRENT_TIMESTAMP WHERE id=?",
                      (new_val, article_id))
+        record_audit(
+            conn,
+            user=actor,
+            action="publish" if new_val else "unpublish",
+            entity="article",
+            entity_id=article_id,
+            details={"published": bool(new_val)},
+        )
     regenerate_data_js()
     return {"ok": True, "published": bool(new_val)}
 
 
 @app.post("/api/articles/{article_id}/toggle-featured")
-def api_toggle_featured(article_id: str, _: str = Depends(require_auth)):
+def api_toggle_featured(article_id: str, actor: str = Depends(require_auth)):
     with db() as conn:
         row = conn.execute("SELECT featured FROM articles WHERE id=?", (article_id,)).fetchone()
         if not row:
@@ -523,13 +555,31 @@ def api_toggle_featured(article_id: str, _: str = Depends(require_auth)):
         if new_val == 1:
             conn.execute("UPDATE articles SET featured=0")
         conn.execute("UPDATE articles SET featured=?, updated_at=CURRENT_TIMESTAMP WHERE id=?", (new_val, article_id))
+        record_audit(
+            conn,
+            user=actor,
+            action="feature" if new_val else "unfeature",
+            entity="article",
+            entity_id=article_id,
+            details={"featured": bool(new_val)},
+        )
     regenerate_data_js()
     return {"ok": True, "featured": bool(new_val)}
 
 
 @app.post("/api/publish")
-def api_publish(_: str = Depends(require_auth)):
-    return {"ok": True, **regenerate_data_js()}
+def api_publish(actor: str = Depends(require_auth)):
+    result = regenerate_data_js()
+    with db() as conn:
+        record_audit(
+            conn,
+            user=actor,
+            action="regenerate",
+            entity="public_data",
+            entity_id="data.js",
+            details=result,
+        )
+    return {"ok": True, **result}
 
 
 # -----------------------------------------------------------------------------
@@ -1200,6 +1250,14 @@ async def _articles_bulk(request: Request, _csrf: None = Depends(require_admin_c
                 db.execute(f"DELETE FROM article_meta WHERE article_id IN ({qmarks})", ids)
             except Exception:
                 pass
+        record_audit(
+            db,
+            user=u,
+            action=f"bulk_{op}",
+            entity="article",
+            entity_id=",".join(ids[:20]),
+            details={"count": len(ids), "truncated_ids": len(ids) > 20},
+        )
         db.commit()
     finally:
         db.close()
