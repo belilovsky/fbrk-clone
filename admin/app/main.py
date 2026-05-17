@@ -34,6 +34,7 @@ from slugify import slugify
 
 from .config import settings
 from .admin_platform.audit import record_audit
+from .admin_platform.paths import upload_url_to_public_path, uploads_dir as platform_uploads_dir
 from .admin_platform.uploads import validate_image_upload
 from .db import db, init_db, row_to_article
 from .editorjs import editorjs_to_sections, sections_to_editorjs
@@ -689,7 +690,7 @@ if _t2 is None:
 
 def _kpi_stats():
     import sqlite3, json
-    db = sqlite3.connect(str(_P2('/opt/fbrk-admin/fbrk.db')))
+    db = sqlite3.connect(settings.db_path)
     db.row_factory = sqlite3.Row
     c = db.cursor()
     def q1(sql, *a):
@@ -755,7 +756,7 @@ from fastapi.responses import RedirectResponse as _RR
 
 def _adb():
     import sqlite3
-    db = sqlite3.connect('/opt/fbrk-admin/fbrk.db')
+    db = sqlite3.connect(settings.db_path)
     db.row_factory = sqlite3.Row
     return db
 
@@ -799,6 +800,7 @@ def _ads_toggle(ad_id: int, request: Request):
 def _validate_ad_image(url: str, ad_id: int | None = None):
     """Return (ok, normalized_url, error). Allowed: empty, http(s) to *.webp/.jpg/.jpeg/.png, or local /img/uploads/... existing file with allowed ext."""
     import os
+    import re
     u = (url or "").strip()
     if not u:
         return True, "", None
@@ -812,8 +814,8 @@ def _validate_ad_image(url: str, ad_id: int | None = None):
         u = "/" + u
     if not u.startswith("/img/uploads/"):
         return False, u, "Локальный путь должен начинаться с /img/uploads/"
-    fp = "/var/www/fbrk.qdev.run" + u
-    if not os.path.exists(fp):
+    fp = upload_url_to_public_path(u)
+    if not fp or not fp.exists():
         return False, u, "Файл не найден на диске"
     try:
         sz = os.path.getsize(fp)
@@ -844,8 +846,8 @@ def _validate_ad_image(url: str, ad_id: int | None = None):
                 if not sz or str(sz).lower() in ('hidden','none',''): return None
                 m = re.match(r'^\s*(\d+)\s*[x×хХ]\s*(\d+)\s*$', str(sz))
                 return (int(m.group(1)), int(m.group(2))) if m else None
-            if _row and u and u.startswith('/img/uploads/'):
-                _fp = '/var/www/fbrk.qdev.run' + u
+            _fp = upload_url_to_public_path(u)
+            if _row and _fp and _fp.exists():
                 with _Img.open(_fp) as _im:
                     _w,_h = _im.size
                 _exp_d = _parse(_row[0]); _exp_m = _parse(_row[1])
@@ -1029,10 +1031,9 @@ def _a_list(r:Request):
 # --- Ads public API ---
 @app.get("/api/ads")
 def _api_ads():
-    import sqlite3 as _sq
     out = {}
     try:
-        con = _sq.connect('/opt/fbrk-admin/fbrk.db'); con.row_factory = _sq.Row
+        con = _adb()
         for r in con.execute("SELECT slot_id,client_name,client_url,image_url FROM ad_placements WHERE is_active=1 AND COALESCE(image_url,'')!=''"):
             out[r['slot_id']] = {'name': r['client_name'] or '', 'url': r['client_url'] or '#', 'image': r['image_url']}
         con.close()
@@ -1046,9 +1047,8 @@ def _api_ads():
 
 @app.get("/api/ads/impr/{slot_id}")
 def _api_ad_impr(slot_id: str, request: Request):
-    import sqlite3 as _sq
     try:
-        with _sq.connect('/opt/fbrk-admin/fbrk.db') as _c:
+        with _adb() as _c:
             _c.execute("UPDATE ad_placements SET impressions=COALESCE(impressions,0)+1 WHERE slot_id=?",(slot_id,))
             _c.execute("INSERT INTO ad_events(slot_id,event,ip,referer) VALUES(?,?,?,?)",(slot_id,'impr',(request.client.host if request.client else None),request.headers.get('referer')))
             _c.commit()
@@ -1059,11 +1059,10 @@ def _api_ad_impr(slot_id: str, request: Request):
 
 @app.get("/api/ads/click/{slot_id}")
 def _api_ad_click(slot_id: str, request: Request):
-    import sqlite3 as _sq
     from fastapi.responses import RedirectResponse as _RR
     url = '/'
     try:
-        with _sq.connect('/opt/fbrk-admin/fbrk.db') as _c:
+        with _adb() as _c:
             cur=_c.execute("SELECT client_url FROM ad_placements WHERE slot_id=?",(slot_id,))
             row=cur.fetchone()
             if row and row[0]: url=row[0]
@@ -1074,12 +1073,10 @@ def _api_ad_click(slot_id: str, request: Request):
     return _RR(url=url, status_code=302)
 @app.get("/api/ads/stats/daily")
 def _api_ads_stats_daily(days: int = 14):
-    import sqlite3 as _sq
     days = max(1, min(int(days or 14), 90))
     out = {"days":[], "impr":[], "click":[], "by_slot":[]}
     try:
-        with _sq.connect('/opt/fbrk-admin/fbrk.db') as _c:
-            _c.row_factory = _sq.Row
+        with _adb() as _c:
             rows = _c.execute(f"SELECT substr(ts,1,10) AS d, event, COUNT(*) AS n FROM ad_events WHERE ts >= date('now', '-{days} day') GROUP BY d,event ORDER BY d").fetchall()
             agg = {}
             for r in rows:
@@ -1099,7 +1096,7 @@ def _api_admin_uploads(request: Request, limit: int = 200):
     u = current_user(request)
     if not u: return {"error":"auth"}
     import os
-    base = '/var/www/fbrk.qdev.run/img/uploads/thumb'
+    base = str(platform_uploads_dir() / "thumb")
     out = []
     try:
         files = []
@@ -1121,8 +1118,8 @@ def _api_admin_uploads(request: Request, limit: int = 200):
 def _articles_list_real(request: Request, q: str = "", page: int = 1, cat: str = "", status: str = "", featured: str = "", sort: str = "date", dir: str = "desc"):
     u = current_user(request)
     if not u: return _RR(url="/admin/login", status_code=302)
-    import sqlite3, math
-    db=sqlite3.connect("/opt/fbrk-admin/fbrk.db"); db.row_factory=sqlite3.Row
+    import math
+    db=_adb()
     page=max(1,int(page or 1)); per=30; off=(page-1)*per
     conds=[]; args=[]
     if q:
@@ -1163,8 +1160,7 @@ async def _articles_bulk(request: Request):
     back = form.get("back") or "/admin/articles"
     if not ids or op not in ("publish","unpublish","feature","unfeature","delete"):
         return _RR(url=back, status_code=303)
-    import sqlite3
-    db = sqlite3.connect("/opt/fbrk-admin/fbrk.db")
+    db = _adb()
     try:
         qmarks = ",".join("?" for _ in ids)
         if op == "publish":

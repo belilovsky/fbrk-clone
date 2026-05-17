@@ -81,7 +81,9 @@ build/deploy access to private registry is not guaranteed.
 1. ~~Wire `uploads.py` into `/api/upload`.~~ Done in this pass: route now uses
    centralized MIME/size/magic-byte validation and records a best-effort audit
    event after successful upload.
-2. Replace hardcoded DB paths in legacy routes with `settings.db_path`.
+2. ~~Replace hardcoded DB paths in legacy routes with `settings.db_path`.~~
+   Done in this pass for admin v0.x routes, ads API helpers and SSR ad lookup.
+   Media browser now uses `settings.uploads_dir` for thumb discovery.
 3. Add CSRF token emission to admin shell and enforce it first on one low-risk
    mutation route.
 4. Expand CSRF to all `/admin/*` forms and `/api/*` mutation fetches.

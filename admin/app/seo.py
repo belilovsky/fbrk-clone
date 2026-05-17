@@ -26,6 +26,7 @@ from fastapi import APIRouter, HTTPException, Request
 from fastapi.responses import HTMLResponse, PlainTextResponse, Response
 from fastapi.templating import Jinja2Templates
 
+from .config import settings
 from .db import db, row_to_article
 
 DEFAULT_SITE_URL = (os.environ.get("FBRK_SITE_URL") or "https://fbrk.qdev.run").rstrip("/")
@@ -39,7 +40,7 @@ templates = Jinja2Templates(directory=str(BASE / "templates"))
 
 # SSR template uses ad("slot") helper for promo blocks.
 # Keep it resilient: if ad table is unavailable we return empty HTML.
-_AD_DB_PATH = str(BASE / "fbrk.db") if (BASE / "fbrk.db").exists() else "/opt/fbrk-admin/fbrk.db"
+_AD_DB_PATH = settings.db_path
 _AD_CACHE = {"t": 0.0, "data": {}}
 
 
