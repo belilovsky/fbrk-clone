@@ -166,6 +166,17 @@ def test_session_api_mutation_requires_csrf_and_updates_frontend_data(tmp_path: 
         assert created.status_code == 200
         assert created.json()["article"]["title"] == "Codex smoke title"
 
+        related_payload = _article_payload("codex-related")
+        related_payload["title"] = "Codex related title"
+        related_payload["dek"] = "Уникальное описание related не должно попадать в SSR-карточку."
+        related_payload["tags"] = ["smoke", "related"]
+        related = client.post(
+            "/api/articles",
+            json=related_payload,
+            headers={"X-CSRF-Token": token},
+        )
+        assert related.status_code == 200
+
         data_js = tmp_path / "public" / "js" / "data.js"
         article_full = tmp_path / "public" / "js" / "article-full.js"
         assert data_js.exists()
@@ -180,8 +191,17 @@ def test_session_api_mutation_requires_csrf_and_updates_frontend_data(tmp_path: 
         # article-full.js for split static article pages.
         raw = data_text.split("const FBRK_DATA =", 1)[1].rsplit(";", 1)[0].strip()
         data = json.loads(raw)
-        assert data["totalCount"] == 1
+        assert data["totalCount"] == 2
         assert "sections" not in data["articles"][0]
+
+        ssr = client.get("/a/codex-smoke")
+        assert ssr.status_code == 200
+        assert 'data-lang="en"' not in ssr.text
+        assert "/data/articles.json" not in ssr.text
+        assert "202605050020" not in ssr.text
+        assert "Материалы по теме" in ssr.text
+        assert "Codex related title" in ssr.text
+        assert "Уникальное описание related" not in ssr.text
 
 
 def test_api_key_mutation_keeps_working_without_csrf(tmp_path: Path) -> None:

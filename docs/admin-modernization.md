@@ -121,9 +121,38 @@ The previous maintenance caveat is also closed in this branch: FastAPI startup
 now uses lifespan, and legacy admin/SSR template calls are normalized by the
 shared `AdminJinja2Templates` adapter.
 
+## Night Pass 2026-05-17
+
+Дополнительный спокойный проход по связке `new.fbrk.kz` + `fbrk.qdev.run`
+зафиксировал несколько безопасных хвостов старого публичного SSR-слоя:
+
+- article SSR ещё ссылался на старый cache-token
+  `/css/av-ds/tokens.css?v=202605050020`;
+- в шапке SSR-статьи оставалась кнопка `EN`, хотя публичный сайт ФБРК ведётся
+  на русском с переключателем `RU` / `ҚАЗ`;
+- внизу статьи был клиентский fetch `/data/articles.json`, который на
+  split-фронте `new.fbrk.kz` отдаёт 404 и не нужен для SSR;
+- шаблон принудительно снимал жирное начертание с `<strong>/<b>` в тексте
+  статьи, из-за чего терялось оригинальное форматирование;
+- related-карточки могли тянуть описание материала, хотя на главной и в новых
+  AV DS карточках оставлен только заголовок.
+
+Исправление сделано без изменения схемы БД и без массовой правки статей:
+
+- related materials теперь собираются серверно в `admin/app/seo.py` по
+  категории/тегам и рендерятся в SSR без браузерного запроса;
+- SSR-статья использует актуальный AV DS asset version, русский shell и
+  безопасный escaping для `dek`;
+- public design tokens/logo/favicon очищены от старых чужих font fallback и
+  приведены к Onest/system stack;
+- regression smoke расширен проверками SSR: нет `data-lang="en"`, нет
+  `/data/articles.json`, нет старого cache-token, related-блок содержит
+  заголовок связанного материала и не выводит его описание.
+
 ## Verification Log
 
-- `.venv/bin/python -m pytest tests/test_admin_platform_primitives.py tests/test_admin_routes_smoke.py tests/test_public_entity_tags.py` — OK, 15 tests.
+- `.venv/bin/python -m pytest` — OK, 16 tests.
+- `.venv/bin/python -m pytest tests/test_admin_platform_primitives.py tests/test_admin_routes_smoke.py tests/test_public_entity_tags.py` — OK, 16 tests.
 - `python3 -m py_compile admin/app/main.py admin/app/security.py admin/app/seo.py admin/app/publish.py admin/app/admin_platform/*.py tests/test_admin_platform_primitives.py tests/test_admin_routes_smoke.py tests/test_public_entity_tags.py` — OK.
 - `node --check js/app.js` — OK.
 - `node tests/article_js_filters.test.mjs` — OK.
@@ -210,6 +239,15 @@ shared `AdminJinja2Templates` adapter.
     match across `data.js`, `data-archive.js`, `article-full.js`.
   - Post-cleanup browser smoke: `new.fbrk.kz/` and `/admin/login` both have
     `consoleErrors=0`; login keeps CSRF input and AV DS 3.7.1 badge.
+- Night pass local verification:
+  - `python3 -m py_compile admin/app/main.py admin/app/security.py admin/app/seo.py admin/app/publish.py admin/app/admin_platform/*.py regen_covers.py tests/test_admin_kit_manifest.py tests/test_admin_platform_primitives.py tests/test_admin_routes_smoke.py tests/test_public_entity_tags.py` — OK.
+  - `.venv/bin/python -m pytest` — OK, 16 tests.
+  - `node --check js/app.js && node tests/article_js_filters.test.mjs` — OK.
+  - `git diff --check` — OK.
+  - Active grep: no `data-lang="en"`, `/data/articles.json`,
+    `202605050020`, forced `font-weight: normal`, `a.dek|safe`,
+    `AV Design System 2026`, `General Sans`, `Satoshi`, `Playfair`,
+    `Georgia`, or `--color-accent` in active SSR/public assets.
 
 ## Commits In This Pass
 

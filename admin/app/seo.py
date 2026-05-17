@@ -286,6 +286,70 @@ def _load_all_article_meta() -> list[dict]:
     return [dict(r) for r in rows]
 
 
+def _load_related_articles(article: dict, visible_tags: list[str], limit: int = 3) -> list[dict]:
+    """Return a small SSR related set without relying on split-frontend JSON fetches."""
+    slug = str(article.get("slug") or article.get("id") or "")
+    category = str(article.get("category") or "")
+    base_tags = {
+        str(tag or "").strip().casefold()
+        for tag in list(article.get("tags") or []) + list(visible_tags or [])
+        if str(tag or "").strip()
+    }
+
+    with db() as conn:
+        rows = conn.execute(
+            """
+            SELECT slug, title, date_iso, date_label, image, tags_json, category
+            FROM articles
+            WHERE published=1 AND slug != ?
+            ORDER BY
+              CASE WHEN category = ? THEN 0 ELSE 1 END,
+              date_iso DESC,
+              created_at DESC
+            LIMIT 80
+            """,
+            (slug, category),
+        ).fetchall()
+
+    seen: set[str] = set()
+    candidates: list[tuple[int, str, dict]] = []
+    for row in rows:
+        item = dict(row)
+        item_slug = str(item.get("slug") or "")
+        if not item_slug or item_slug in seen:
+            continue
+        seen.add(item_slug)
+        try:
+            item_tags = {
+                str(tag or "").strip().casefold()
+                for tag in json.loads(item.get("tags_json") or "[]")
+                if str(tag or "").strip()
+            }
+        except Exception:
+            item_tags = set()
+        score = 0
+        if category and item.get("category") == category:
+            score += 2
+        score += 3 * len(base_tags & item_tags)
+        if item.get("image"):
+            score += 1
+        candidates.append(
+            (
+                score,
+                str(item.get("date_iso") or ""),
+                {
+                    "slug": item_slug,
+                    "title": str(item.get("title") or ""),
+                    "date_label": str(item.get("date_label") or item.get("date_iso") or ""),
+                    "image": str(item.get("image") or ""),
+                },
+            )
+        )
+
+    candidates.sort(key=lambda item: (item[0], item[1]), reverse=True)
+    return [item for _, __, item in candidates[: max(0, int(limit))]]
+
+
 # ---------------------------------------------------------------------------
 # SSR article page — /a/{slug}
 # ---------------------------------------------------------------------------
@@ -418,6 +482,7 @@ def ssr_article(slug: str, request: Request):
         "org_full": ORG_FULL,
         "telegram_url": TELEGRAM,
         "youtube_url": YOUTUBE,
+        "related_articles": _load_related_articles(a, visible_tags),
     }
 
     response = templates.TemplateResponse("article_ssr.html", ctx)

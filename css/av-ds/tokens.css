@@ -1,7 +1,6 @@
-/* ═══ AV Design System — дизайн-токены (портированы из @sgeo/ui-kit v1.7.2) ═══
-   Источник правды: /opt/sgeo-ui-kit/versions/sgeo-ui-kit-1.7.2.tgz
-   Подключение: ПЕРЕД public.css, так чтобы Total мог точечно переопределять
-   токены в total-overlay.css. Не редактируй этот файл — обновляется при bump версии. */
+/* ═══ AV DS 3.7.1 — дизайн-токены для публичных страниц ФБРК ═══
+   Подключение: перед основным style.css для SSR-страниц.
+   Не вводит serif-типографику и не переопределяет брендовый --color-brand. */
 
 /* LIGHT MODE (по умолчанию) */
 :root {
@@ -33,7 +32,7 @@
   --secondary-foreground: 220 25% 10%;
   --muted: 216 12% 92%;
   --muted-foreground: 216 10% 45%;
-  --av-accent-semantic: 210 16% 90%;           /* renamed from --accent to avoid collision with Total's --accent */
+  --av-accent-semantic: 210 16% 90%;
   --av-accent-semantic-foreground: 220 25% 10%;
   --destructive: 0 72% 48%;
   --destructive-foreground: 0 0% 99%;
@@ -45,9 +44,9 @@
   --chart-4: 280 55% 50%;
   --chart-5: 0 65% 50%;
   --font-sans: 'Inter', 'Helvetica Neue', sans-serif;
-  --font-serif: Georgia, serif;
+  --font-serif: 'Onest', system-ui, sans-serif;
   --font-mono: 'JetBrains Mono', Menlo, monospace;
-  --av-radius: .5rem; /* 8px — переименован из --radius, у Total свой --radius */
+  --av-radius: .5rem;
   --shadow-2xs: 0px 1px 1px hsl(220 25% 10% / 0.03);
   --shadow-xs: 0px 1px 2px hsl(220 25% 10% / 0.04);
   --shadow-sm: 0px 1px 3px hsl(220 25% 10% / 0.06), 0px 1px 2px hsl(220 25% 10% / 0.04);
@@ -78,7 +77,7 @@
   --destructive-border: hsl(from hsl(var(--destructive)) h s calc(l + var(--opaque-button-border-intensity)) / alpha);
 }
 
-/* DARK MODE — активируется через класс .dark ИЛИ через [data-theme="dark"] (совместимость с Total) */
+/* DARK MODE — активируется через класс .dark или через [data-theme="dark"]. */
 .dark,
 [data-theme="dark"] {
   --button-outline: rgba(255,255,255, .10);

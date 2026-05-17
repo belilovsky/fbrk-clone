@@ -8,15 +8,15 @@
   <!-- Inner subtle ring separators -->
   <circle cx="100" cy="100" r="72" fill="none" stroke="#fff" stroke-width="0" />
   <!-- Text along top arc -->
-  <text fill="#fff" font-family="'General Sans', 'Satoshi', system-ui, sans-serif" font-weight="700" font-size="15" letter-spacing="2.2">
+  <text fill="#fff" font-family="'Onest', system-ui, sans-serif" font-weight="700" font-size="15" letter-spacing="2.2">
     <textPath href="#fbrk-top" startOffset="50%" text-anchor="middle">РАССЛЕДОВАНИЯ · КОРРУПЦИИ</textPath>
   </text>
   <!-- Text along bottom arc (readable, not mirrored) -->
-  <text fill="#fff" font-family="'General Sans', 'Satoshi', system-ui, sans-serif" font-weight="700" font-size="15" letter-spacing="2.2">
+  <text fill="#fff" font-family="'Onest', system-ui, sans-serif" font-weight="700" font-size="15" letter-spacing="2.2">
     <textPath href="#fbrk-bot" startOffset="50%" text-anchor="middle">ФОНД-БЮРО</textPath>
   </text>
   <!-- Center monogram -->
   <text x="100" y="115" text-anchor="middle" fill="#fff"
-        font-family="'General Sans', 'Satoshi', system-ui, sans-serif"
+        font-family="'Onest', system-ui, sans-serif"
         font-weight="700" font-size="44" letter-spacing="-0.5">ФБРК</text>
 </svg>
