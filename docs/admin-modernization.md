@@ -1,7 +1,8 @@
 # FBRK Admin Modernization
 
 Дата старта: 2026-05-17  
-Статус: local/GitHub branch ready, без production deploy в этом блоке.
+Статус: production deployed and live-smoke verified на `fbrk.qdev.run` и
+`new.fbrk.kz`.
 
 ## Цель
 
@@ -27,6 +28,8 @@
 - CSRF:
   - `/admin/*` form mutation routes теперь получают stateless HMAC token из
     общего admin shell и проверяют его на сервере;
+  - `/admin/login` получил отдельный stateless login-CSRF token, потому что на
+    странице входа ещё нет authenticated session subject;
   - `/api/*` mutation endpoints теперь разделяют режимы: `X-API-Key`
     automation работает без CSRF, а browser session mutations требуют
     `X-CSRF-Token`.
@@ -110,13 +113,12 @@ build/deploy access to private registry is not guaranteed.
 
 ## Production readiness
 
-Current status: **with caveats**.
+Current status: **yes, with minor maintenance caveats**.
 
-The admin is operational, visually aligned with AV DS 3.7.1, and the main
-security primitives are now covered locally. Remaining caveats are mostly
-operational: production deployment needs the usual backup/snapshot gate, and
-the older FastAPI lifespan/template deprecation warnings can be cleaned in a
-separate low-risk refactor.
+The admin is operational, deployed, visually aligned with AV DS 3.7.1, and the
+main security primitives are covered locally and smoke-verified on production.
+Remaining caveats are maintenance-only: the older FastAPI lifespan/template
+deprecation warnings can be cleaned in a separate low-risk refactor.
 
 ## Verification Log
 
@@ -129,9 +131,10 @@ separate low-risk refactor.
   `General Sans`, `Satoshi`, or `--color-accent` markers in active public/admin
   shell files.
 - Route smoke covers admin login render, unauth redirect, protected dashboard,
-  CSRF reject/accept for `/admin/articles/bulk`, bad image upload rejection,
-  session API mutation CSRF reject/accept, `X-API-Key` mutation compatibility,
-  and admin-save -> `data.js`/`article-full.js` frontend contract.
+  login CSRF reject/accept, CSRF reject/accept for `/admin/articles/bulk`,
+  bad image upload rejection, session API mutation CSRF reject/accept,
+  `X-API-Key` mutation compatibility, and admin-save ->
+  `data.js`/`article-full.js` frontend contract.
 - Live read-only smoke:
   - `https://new.fbrk.kz/` — 200, AV DS 3.7.1 footer, rendered article links
     point to `new.fbrk.kz/a/...`, no `fbrk.qdev.run/a/...` leak in rendered DOM.
@@ -145,6 +148,49 @@ separate low-risk refactor.
     both expose `totalCount=4671`, `embedded=200`, same current first article.
   - `article-full.js` on both hosts exposes 4671 full article records with
     rendered `sections`.
+- Production deploy gate:
+  - DB backup before first deploy:
+    `/opt/fbrk-admin/backups/fbrk-20260517T111850Z-pre-admin-final.db` — 73M.
+  - Web snapshot before first deploy:
+    `/opt/fbrk-admin/web-snapshots/20260517T111850Z-admin-final` — 2.3G.
+  - Admin snapshot before first deploy:
+    `/opt/fbrk-admin/admin-snapshots/20260517T111850Z-admin-final` — 868K.
+  - DB backup before login-CSRF deploy:
+    `/opt/fbrk-admin/backups/fbrk-20260517T114006Z-pre-admin-login-csrf.db` — 73M.
+  - Web snapshot before login-CSRF deploy:
+    `/opt/fbrk-admin/web-snapshots/20260517T114006Z-admin-login-csrf` — 2.3G.
+  - Admin snapshot before login-CSRF deploy:
+    `/opt/fbrk-admin/admin-snapshots/20260517T114006Z-admin-login-csrf` — 880K.
+  - Deploy scope: `admin/app/`, `admin/templates/`, `admin/static/`,
+    `admin/scripts/` in first pass; `admin/app/`, `admin/templates/` in
+    login-CSRF pass.
+  - Ownership after deploy: `chown -R www-data:www-data` applied to deployed
+    admin paths.
+  - Service: `systemctl restart fbrk-admin`, `systemctl is-active` -> `active`,
+    `/admin/healthz` -> 200.
+  - Journal after restart: no `traceback`, `error`, or `exception` lines in
+    checked window.
+- Production auth/API smoke:
+  - `/admin/` unauthenticated -> 302 `/admin/login`.
+  - `/admin/login` -> 200, AV DS 3.7.1, `admin.css?v=8`, login CSRF hidden
+    input present.
+  - `/admin/login` POST without CSRF -> 403; with valid login CSRF reaches the
+    normal login flow (302).
+  - `/api/upload` with session but without CSRF -> 403.
+  - `/api/upload` with session + CSRF and a corrupt image -> 400 image-policy
+    rejection.
+  - `/api/upload` with `X-API-Key` and a corrupt image -> 400 image-policy
+    rejection.
+  - `/api/articles/list` with `X-API-Key` -> 200.
+  - Temporary unpublished article create/delete smoke through session + CSRF:
+    create 200, delete 200, remaining matching records in SQLite = 0.
+- Production frontend/backend linkage after admin save smoke:
+  - `BACKEND_TOTAL=4671`, `NEW_TOTAL=4671`, delta `0`.
+  - `data.js`, `data-archive.js`, `article-full.js` SHA-256 hashes match
+    between `fbrk.qdev.run` and `new.fbrk.kz`.
+  - Browser smoke after deploy: home, archive, 404, admin login all have
+    `consoleErrors=0`; home has 37 `https://new.fbrk.kz/a/...` links and 0
+    `https://fbrk.qdev.run/a/...` article-link leaks.
 
 ## Commits In This Pass
 
@@ -157,3 +203,5 @@ separate low-risk refactor.
 - `4d54c04 test(admin): добавить smoke проверки админки`
 - `b09a036 chore(admin): убрать старые av ds маркеры`
 - `1d176a1 fix(admin): требовать csrf для session api mutations`
+- `90b0a7f docs(admin): обновить hash финального csrf шага`
+- `3bac58a fix(admin): добавить csrf для входа`
