@@ -862,9 +862,7 @@ def _ads_toggle(ad_id: int, request: Request, _csrf: None = Depends(require_admi
     if not u: return _auth_or_redirect(request)
     db = _adb(); c = db.cursor()
     c.execute("UPDATE ad_placements SET is_active = CASE WHEN is_active=1 THEN 0 ELSE 1 END WHERE id=?", (ad_id,))
-    try:
-        c.execute("INSERT INTO audit_log(user,action,entity,entity_id) VALUES(?,?,?,?)", (u.get("username") if isinstance(u,dict) else str(u), "toggle", "ad_placement", str(ad_id)))
-    except Exception: pass
+    record_audit(db, user=u, action="toggle", entity="ad_placement", entity_id=str(ad_id))
     db.commit(); db.close()
     return _RR(url="/admin/ads/list", status_code=303)
 
@@ -947,9 +945,14 @@ def _ads_update(ad_id: int, request: Request, _csrf: None = Depends(require_admi
         db.close(); return _t2.TemplateResponse('ad_edit.html', {'request':request,'user':u,'item':{'id':ad_id,'client_name':client_name,'client_url':client_url,'image_url':image_url,'notes':notes},'section':'ads','title':'Ошибка','error':err}, status_code=400)
     image_url = _iu
     c.execute("UPDATE ad_placements SET client_name=?, client_url=?, image_url=?, notes=?, updated_at=datetime('now') WHERE id=?", (client_name, client_url, image_url, notes, ad_id))
-    try:
-        c.execute("INSERT INTO audit_log(user,action,entity,entity_id,details) VALUES(?,?,?,?,?)", (u.get("username") if isinstance(u,dict) else str(u), "update", "ad_placement", str(ad_id), client_name))
-    except Exception: pass
+    record_audit(
+        db,
+        user=u,
+        action="update",
+        entity="ad_placement",
+        entity_id=str(ad_id),
+        details={"client_name": client_name, "image_url": image_url},
+    )
     db.commit(); db.close()
     return _RR(url="/admin/ads/list", status_code=303)
 
@@ -1046,7 +1049,13 @@ def _cats_add(request: Request, _csrf: None = Depends(require_admin_csrf), slug:
         db=_adb(); c=db.cursor()
         try:
             c.execute("INSERT INTO categories(slug,label,sort_order,is_featured) VALUES(?,?,?,0)",(slug.strip(),label.strip(),sort_order))
-            c.execute("INSERT INTO audit_log(user,action,entity,details) VALUES(?,?,?,?)",(str(u),"add","category",slug))
+            record_audit(
+                db,
+                user=u,
+                action="add",
+                entity="category",
+                details={"slug": slug.strip(), "label": label.strip()},
+            )
         except Exception as e: print(e)
         db.commit(); db.close()
     return _RR(url="/admin/categories/list", status_code=303)
@@ -1057,7 +1066,7 @@ def _cats_del(cid: int, request: Request, _csrf: None = Depends(require_admin_cs
     if not u: return _auth_or_redirect(request)
     db=_adb(); c=db.cursor()
     c.execute("DELETE FROM categories WHERE id=?",(cid,))
-    c.execute("INSERT INTO audit_log(user,action,entity,entity_id) VALUES(?,?,?,?)",(str(u),"delete","category",str(cid)))
+    record_audit(db, user=u, action="delete", entity="category", entity_id=str(cid))
     db.commit(); db.close()
     return _RR(url="/admin/categories/list", status_code=303)
 
@@ -1088,7 +1097,14 @@ def _s_set(r:Request, _csrf: None = Depends(require_admin_csrf), key:str=_Form("
     if key.strip():
         db=_adb(); c=db.cursor()
         c.execute("INSERT INTO settings(key,value) VALUES(?,?) ON CONFLICT(key) DO UPDATE SET value=excluded.value, updated_at=datetime('now')",(key.strip(),value))
-        c.execute("INSERT INTO audit_log(user,action,entity,entity_id,details) VALUES(?,?,?,?,?)",(str(u),"set","setting",key.strip(),value[:200]))
+        record_audit(
+            db,
+            user=u,
+            action="set",
+            entity="setting",
+            entity_id=key.strip(),
+            details=value[:200],
+        )
         db.commit(); db.close()
     return _RR(url="/admin/settings/list", status_code=303)
 

@@ -31,9 +31,9 @@
     отдельный совместимый план, чтобы не сломать редактор/importer.
 - Audit:
   - таблица `audit_log` используется частично в ads/categories/settings;
-  - upload, article CRUD, publish/feature toggles, public data regenerate and
-    bulk article actions теперь пишут best-effort audit events через общий
-    helper.
+  - upload, article CRUD, publish/feature toggles, public data regenerate,
+    bulk article actions, ads, categories and settings теперь пишут
+    best-effort audit events через общий helper.
 - Uploads:
   - `/api/upload` проверяет declared MIME, размер и открываемость через Pillow;
   - отдельной upload policy-прослойки до этого прохода не было;
@@ -57,9 +57,9 @@
    план для `/api/*` mutation endpoints.
 2. **Hardcoded production DB path**: часть legacy routes не уважает
    `FBRK_DB_PATH`, что мешает тестам и staging.
-3. **Audit coverage gap**: базовые article/media mutation flows покрыты
-   best-effort audit helper; remaining gap — привести старые ручные INSERT в
-   ads/categories/settings к тому же helper единообразно.
+3. **Audit coverage gap**: основные mutation flows теперь идут через общий
+   best-effort audit helper; remaining gap — route-level tests на реальном
+   FastAPI test client после установки локальных зависимостей.
 4. **Upload policy split**: проверка upload живёт в route-коде; нужна
    централизованная policy с magic-byte validation.
 5. **Template drift**: admin CRUD pages постепенно росли патчами, есть inline
