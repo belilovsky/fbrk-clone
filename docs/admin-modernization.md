@@ -251,6 +251,52 @@ shared `AdminJinja2Templates` adapter.
     `202605050020`, forced `font-weight: normal`, `a.dek|safe`,
     `AV Design System 2026`, `General Sans`, `Satoshi`, `Playfair`,
     `Georgia`, or `--color-accent` in active SSR/public assets.
+- Night pass production gate:
+  - DB backup:
+    `/opt/fbrk-admin/backups/fbrk-20260517T172910Z-pre-public-ssr-nightpass.db`
+    — 73M.
+  - Web snapshot:
+    `/opt/fbrk-admin/web-snapshots/20260517T172910Z-public-ssr-nightpass`
+    — 2.3G.
+  - Admin snapshot:
+    `/opt/fbrk-admin/admin-snapshots/20260517T172910Z-public-ssr-nightpass`
+    — 844K.
+  - Deploy scope: `admin/app/seo.py`, `admin/templates/article_ssr.html`,
+    public `style.css`, `css/av-ds/tokens.css`, logo/favicon assets, and
+    `admin/scripts/sync_new_frontend_to_plesk.py`.
+  - Ownership: deployed backend/template/static/script files installed with
+    `www-data:www-data`.
+  - Service: `systemctl restart fbrk-admin`, then `active`; local
+    `/admin/healthz` -> 200.
+  - Plesk split sync: `--full --force`, asset version `20260517173924`,
+    `UPLOAD_FILES=76`, includes `css/av-ds/tokens.css`,
+    `img/brand/logo.svg`, `img/favicon.svg`; final `STATUS=synced`.
+- Night pass live verification:
+  - `https://new.fbrk.kz/css/av-ds/tokens.css`, logo and favicon no longer
+    contain `General Sans`, `Satoshi`, `Playfair`, `Georgia`, `sgeo-ui-kit` or
+    Total-oriented comments; Onest/system stack is present.
+  - Backend SSR article:
+    no `data-lang="en"`, no `/data/articles.json`, no `202605050020`,
+    no forced `font-weight: normal`, brand `theme-color=#0C115F`, related
+    block present, related cards contain no `.card__dek`.
+  - Browser DOM smoke:
+    `new.fbrk.kz` home, archive, article, 404 and `fbrk.qdev.run/admin/login`
+    render with AV DS 3.7.1, no EN button, no old cache token, no
+    `/data/articles.json`; article page renders `Материалы по теме`; admin
+    login has login-CSRF input.
+  - API save/delete smoke with `X-API-Key`: temporary unpublished article
+    created and deleted; DB residue `0`; published total stays `4671`.
+  - Split linkage after smoke: `BACKEND_TOTAL=4671`, `NEW_TOTAL=4671`,
+    delta `0`; `data.js`, `data-archive.js`, `article-full.js` hashes match.
+  - Journal after deploy: `journalctl -u fbrk-admin -p warning..alert` for
+    the checked window has no entries.
+- Caveat:
+  - scripted session-login smoke could not authenticate with the credentials
+    available in `/etc/fbrk-admin/fbrk-admin.env` / `/opt/fbrk-admin/.admin_creds`;
+    the login page itself is healthy and returns the normal `error=1` path for
+    bad credentials. This looks like secret/password drift, not a runtime
+    regression, and should be resolved by rotating or resyncing the admin
+    password separately.
 
 ## Commits In This Pass
 
@@ -267,3 +313,5 @@ shared `AdminJinja2Templates` adapter.
 - `3bac58a fix(admin): добавить csrf для входа`
 - `867e194 docs(admin): зафиксировать prod deploy финального прохода`
 - `e129919 refactor(admin): убрать deprecated startup и template api`
+- `7e64843 fix(public): убрать старые хвосты av ds и ssr статьи`
+- `ca1d419 fix(deploy): синхронизировать все av ds assets на new fbrk`
