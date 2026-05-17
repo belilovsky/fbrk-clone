@@ -78,7 +78,9 @@ build/deploy access to private registry is not guaranteed.
 
 ## Safe next layers
 
-1. Wire `uploads.py` into `/api/upload`.
+1. ~~Wire `uploads.py` into `/api/upload`.~~ Done in this pass: route now uses
+   centralized MIME/size/magic-byte validation and records a best-effort audit
+   event after successful upload.
 2. Replace hardcoded DB paths in legacy routes with `settings.db_path`.
 3. Add CSRF token emission to admin shell and enforce it first on one low-risk
    mutation route.
@@ -97,4 +99,3 @@ Current status: **with caveats**.
 The admin is operational and now visually aligned with AV DS 3.7.1, but it is
 not yet fully production-hardened because CSRF is not enforced and several
 legacy routes still bypass the central DB/settings/audit layer.
-

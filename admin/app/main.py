@@ -33,6 +33,8 @@ from PIL import Image
 from slugify import slugify
 
 from .config import settings
+from .admin_platform.audit import record_audit
+from .admin_platform.uploads import validate_image_upload
 from .db import db, init_db, row_to_article
 from .editorjs import editorjs_to_sections, sections_to_editorjs
 from .publish import regenerate_data_js
@@ -509,16 +511,12 @@ def api_publish(_: str = Depends(require_auth)):
 # -----------------------------------------------------------------------------
 # Image upload
 # -----------------------------------------------------------------------------
-ALLOWED_MIME = {"image/jpeg", "image/png", "image/webp", "image/gif"}
-
-
 @app.post("/api/upload")
-async def api_upload(file: UploadFile = File(...), _: str = Depends(require_auth)):
-    if file.content_type not in ALLOWED_MIME:
-        raise HTTPException(400, f"unsupported type: {file.content_type}")
+async def api_upload(file: UploadFile = File(...), actor: str = Depends(require_auth)):
     raw = await file.read()
-    if len(raw) > 20 * 1024 * 1024:
-        raise HTTPException(400, "file too large (max 20MB)")
+    validation = validate_image_upload(raw, content_type=file.content_type)
+    if not validation.ok:
+        raise HTTPException(400, validation.error)
 
     # Normalize to webp, write full + thumb
     uploads_dir = Path(settings.uploads_dir)
@@ -556,6 +554,14 @@ async def api_upload(file: UploadFile = File(...), _: str = Depends(require_auth
         conn.execute(
             "INSERT INTO uploads (filename, url, size_bytes) VALUES (?, ?, ?)",
             (f"{name}.webp", thumb_url, full_path.stat().st_size),
+        )
+        record_audit(
+            conn,
+            user=actor,
+            action="upload",
+            entity="media",
+            entity_id=f"{name}.webp",
+            details={"source": file.filename or "", "mime": validation.detected_mime},
         )
 
     # Editor.js image tool expects {success:1, file:{url}}
