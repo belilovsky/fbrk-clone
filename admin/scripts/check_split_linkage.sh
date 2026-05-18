@@ -209,6 +209,13 @@ if [ "$STRICT" = "--strict" ]; then
       fail=1
       ;;
   esac
+  case "$new_canonical_article" in
+    "${NEW_ORIGIN}/a/${first_slug}") : ;;
+    *)
+      echo "FAIL: new article canonical is not the static article URL" >&2
+      fail=1
+      ;;
+  esac
 fi
 
 exit "$fail"

@@ -11,6 +11,7 @@ from __future__ import annotations
 import argparse
 import datetime as dt
 import hashlib
+import html
 import json
 import mimetypes
 import os
@@ -160,6 +161,137 @@ def referenced_upload_assets(out_dir: Path, web_root: Path) -> list[Path]:
     return assets
 
 
+def parse_article_full(path: Path) -> list[dict]:
+    text = path.read_text(encoding="utf-8").strip()
+    marker = "window.ARTICLE_FULL ="
+    idx = text.find(marker)
+    if idx < 0:
+        raise SyncError(f"article-full marker missing: {path}")
+    payload = text[idx + len(marker):].strip()
+    if payload.endswith(";"):
+        payload = payload[:-1]
+    parsed = json.loads(payload)
+    articles = parsed.get("articles")
+    if not isinstance(articles, list):
+        raise SyncError(f"article-full articles missing: {path}")
+    return articles
+
+
+def absolute_public_url(public_origin: str, value: str) -> str:
+    if not value:
+        return f"{public_origin}/img/brand/logo-on-brand-640.png"
+    if value.startswith(("http://", "https://")):
+        return value
+    return urllib.parse.urljoin(f"{public_origin}/", value.lstrip("/"))
+
+
+def replace_meta(html_text: str, pattern: str, replacement: str) -> str:
+    updated, count = re.subn(pattern, replacement, html_text, count=1, flags=re.S)
+    if count != 1:
+        raise SyncError(f"article template pattern did not match: {pattern}")
+    return updated
+
+
+def render_static_article_shell(template: str, article: dict, public_origin: str) -> str:
+    slug = str(article.get("slug") or article.get("id") or "").strip()
+    if not re.fullmatch(r"[A-Za-z0-9_-]+", slug):
+        raise SyncError(f"unsafe article slug for static shell: {slug!r}")
+
+    title = str(article.get("title") or "Материал").strip()
+    dek = str(article.get("dek") or "").strip()
+    category = str(article.get("categoryLabel") or article.get("category") or "Материал").strip()
+    date_iso = str(article.get("dateIso") or "").strip()
+    image = absolute_public_url(public_origin, str(article.get("image") or ""))
+    article_url = f"{public_origin}/a/{slug}"
+
+    title_text = f"{title} — ФБРК"
+    description = dek or f"{category} ФБРК."
+
+    page = template
+    page = replace_meta(
+        page,
+        r"<title[^>]*>.*?</title>",
+        f"<title data-article-title>{html.escape(title_text)}</title>",
+    )
+    page = replace_meta(
+        page,
+        r'<meta name="description" content="[^"]*" data-article-desc\s*/>',
+        f'<meta name="description" content="{html.escape(description, quote=True)}" data-article-desc />',
+    )
+    page = replace_meta(
+        page,
+        r'<link rel="canonical" href="[^"]*" data-article-canonical\s*/>',
+        f'<link rel="canonical" href="{html.escape(article_url, quote=True)}" data-article-canonical />',
+    )
+    page = replace_meta(
+        page,
+        r'<link rel="alternate" hreflang="ru" href="[^"]*" data-article-hreflang\s*/>',
+        f'<link rel="alternate" hreflang="ru" href="{html.escape(article_url, quote=True)}" data-article-hreflang />',
+    )
+
+    replacements = {
+        "data-article-og-title": title_text,
+        "data-article-og-desc": description,
+        "data-article-og-image": image,
+        "data-article-og-url": article_url,
+        "data-article-tw-title": title_text,
+        "data-article-tw-desc": description,
+        "data-article-tw-image": image,
+    }
+    for marker, value in replacements.items():
+        page = replace_meta(
+            page,
+            rf'(<meta [^>]*content=")[^"]*("[^>]*{marker}[^>]*/>)',
+            rf"\g<1>{html.escape(value, quote=True)}\g<2>",
+        )
+
+    json_ld = {
+        "@context": "https://schema.org",
+        "@type": "NewsArticle",
+        "mainEntityOfPage": {"@type": "WebPage", "@id": article_url},
+        "headline": title,
+        "description": description,
+        "image": [image],
+        "datePublished": date_iso,
+        "dateModified": date_iso,
+        "author": {"@type": "Organization", "name": "ФБРК", "url": public_origin},
+        "publisher": {
+            "@type": "Organization",
+            "name": "ФБРК",
+            "logo": {
+                "@type": "ImageObject",
+                "url": f"{public_origin}/img/brand/logo-brand-256.png",
+                "width": 256,
+                "height": 256,
+            },
+        },
+        "articleSection": category,
+        "inLanguage": "ru",
+        "isAccessibleForFree": True,
+    }
+    json_ld_text = json.dumps(json_ld, ensure_ascii=False, separators=(",", ":"))
+    page = replace_meta(
+        page,
+        r"</head>",
+        f'    <script type="application/ld+json" data-static-article-jsonld>{json_ld_text}</script>\n  </head>',
+    )
+    return page
+
+
+def generate_static_article_shells(out_dir: Path, public_origin: str) -> list[Path]:
+    template = (out_dir / "article.html").read_text(encoding="utf-8")
+    articles = parse_article_full(out_dir / "js" / "article-full.js")
+    generated: list[Path] = []
+    for article in articles:
+        slug = str(article.get("slug") or article.get("id") or "").strip()
+        if not slug:
+            continue
+        target = out_dir / "a" / slug / "index.html"
+        write_text(target, render_static_article_shell(template, article, public_origin))
+        generated.append(target)
+    return generated
+
+
 def build_package(
     out_dir: Path,
     *,
@@ -168,6 +300,7 @@ def build_package(
     web_root: Path,
     asset_version: str,
     include_static: bool,
+    generate_article_pages: bool,
 ) -> list[Path]:
     uploaded: list[Path] = []
     for name in ROOT_FILES:
@@ -201,6 +334,9 @@ def build_package(
         target = out_dir / "js" / name
         write_bytes(target, fetch_bytes(f"{backend_origin.rstrip('/')}/js/{name}", cache_bust=True))
         uploaded.append(target)
+
+    if generate_article_pages:
+        uploaded.extend(generate_static_article_shells(out_dir, public_origin))
 
     uploaded.extend(referenced_upload_assets(out_dir, web_root))
 
@@ -397,6 +533,7 @@ def main(argv: list[str] | None = None) -> int:
         web_root=web_root,
         asset_version=asset_version,
         include_static=args.full,
+        generate_article_pages=os.environ.get("GENERATE_STATIC_ARTICLE_PAGES") == "1",
     )
     plan = package_upload_plan(files, out_dir, plesk_root)
 
