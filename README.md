@@ -54,8 +54,8 @@ systemctl restart fbrk-admin
 
 Для split-схемы (`new.fbrk.kz` = статика, `fbrk.qdev.run` = backend/DB):
 - `docs/audit/NEW_FBRK_VPS_FRONTEND_RUNBOOK.md` — текущая целевая схема:
-  dedicated KZ VPS `213.155.22.190` отдаёт `new.fbrk.kz`, backend остаётся на
-  `fbrk.qdev.run`.
+  отдельный KZ VPS в том же ps.kz-аккаунте (`213.155.22.190`) отдаёт
+  `new.fbrk.kz`, backend остаётся на `fbrk.qdev.run`.
 - `docs/audit/NEW_FBRK_SPLIT_FRONTEND_RUNBOOK.md`
 - `admin/deploy/plesk-new-fbrk-split-proxy.conf`
 - `admin/scripts/sync_new_frontend_to_vps.sh` — штатный backend → frontend VPS

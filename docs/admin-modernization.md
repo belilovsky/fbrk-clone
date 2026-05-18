@@ -401,8 +401,8 @@ Verification:
 
 ## 2026-05-18 new.fbrk.kz VPS cutover
 
-The split frontend was moved from temporary Plesk static hosting to the
-dedicated KZ frontend VPS.
+The split frontend was moved from temporary Plesk static hosting to a separate
+KZ frontend VPS in the same ps.kz account.
 
 Changes:
 

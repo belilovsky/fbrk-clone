@@ -19,7 +19,7 @@ No production files, DB, or services were modified in this pass.
 ### DNS + Live Traffic
 
 - `fbrk.qdev.run` resolves to `148.230.117.131` and serves live traffic.
-- `new.fbrk.kz` resolves to `195.210.46.10` (external host), not to either audited VPS.
+- `new.fbrk.kz` resolves to `195.210.46.10` (legacy Plesk hosting IP), not to either audited VPS.
 
 ### VPS Roles
 

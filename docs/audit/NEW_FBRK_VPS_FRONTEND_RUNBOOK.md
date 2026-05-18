@@ -7,21 +7,21 @@ Production status: cutover complete.
 ## Purpose
 
 `new.fbrk.kz` is the public static frontend. `fbrk.qdev.run` remains the
-backend/admin/SQLite source of truth. The dedicated KZ VPS replaces the
-temporary Plesk File Manager static sync path.
+backend/admin/SQLite source of truth. A separate KZ VPS in the same ps.kz
+account replaces the temporary Plesk File Manager static sync path.
 
 ## Current topology
 
 - Backend/admin VPS: `148.230.117.131`
-- Frontend VPS: `213.155.22.190`
+- Frontend VPS: `213.155.22.190` (same ps.kz account, separate VPS)
 - Frontend IPv6: `2a00:5da0:2005:1::2d1`
 - Frontend web-root: `/var/www/new.fbrk.kz`
 - Frontend nginx site: `/etc/nginx/sites-available/new.fbrk.kz`
 - Public origin: `https://new.fbrk.kz`
 - Backend origin: `https://fbrk.qdev.run`
 
-Current authoritative DNS for `new.fbrk.kz` points to the dedicated frontend
-VPS:
+Current authoritative DNS for `new.fbrk.kz` points to the separate frontend
+VPS in the same ps.kz account:
 
 - `A`: `213.155.22.190`
 - `AAAA`: `2a00:5da0:2005:1::2d1`
@@ -32,7 +32,7 @@ Legacy Plesk values were:
 - `AAAA`: `2a00:5da0:1000::150`
 
 Plesk File Manager sync remains a rollback/fallback path only. The active
-frontend is now the dedicated VPS.
+frontend is now the separate ps.kz VPS.
 
 ## Sync command
 
