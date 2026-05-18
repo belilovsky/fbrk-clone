@@ -1076,3 +1076,50 @@ Operational note:
 - `/etc/cron.d/fbrk-plesk-sync` is intentionally left in place as a temporary
   fallback for old DNS caches and can be disabled after 24-48 hours of stable
   `new.fbrk.kz` traffic on the dedicated VPS.
+
+### Header Search Button Follow-up (2026-05-18, 16:57Z)
+
+Issue found during the post-cutover frontend smoke:
+
+- site search worked via `Cmd/Ctrl+K`, but the AV DS header did not expose a
+  visible search button after the latest split-host rebuild;
+- this made search easy to miss on desktop and mobile even though the overlay
+  itself was still present in the static shells.
+
+Fix:
+
+- added one `data-search-open` icon button with `aria-label="Открыть поиск"`
+  to the public static shells and SSR article template:
+  `index.html`, `archive.html`, `article.html`, `about.html`, `404.html`,
+  `admin/templates/article_ssr.html`;
+- no route, data, theme, or layout structure was changed.
+
+Safety / deploy:
+
+- backend web snapshot:
+  `/opt/fbrk-admin/web-snapshots/20260518T165225Z-header-search`;
+- backend template snapshot:
+  `/opt/fbrk-admin/template-snapshots/20260518T165225Z-header-search`;
+- frontend web snapshot:
+  `/opt/fbrk-new/web-snapshots/20260518T165225Z-header-search`;
+- backend static files and SSR template were copied with `www-data:www-data`
+  ownership, then `fbrk-admin` was restarted and `/admin/healthz` returned
+  `HTTP/2 200`;
+- dedicated frontend VPS sync completed with `STATUS=synced`,
+  `ASSET_VERSION=20260518165442`.
+
+Verification:
+
+- `https://new.fbrk.kz/`, `https://fbrk.qdev.run/`, and a representative
+  static article page each contain exactly one `data-search-open` button;
+- strict split linkage after the deploy:
+  `BACKEND_TOTAL=4682`, `NEW_TOTAL=4682`,
+  `DELTA_BACKEND_MINUS_NEW=0`, SHA256 matches for `data.js`,
+  `data-archive.js`, and `article-full.js`;
+- in-browser smoke on `https://new.fbrk.kz/`:
+  visible header search button -> overlay opens -> query `петуний` returns
+  `Ввоз зараженных петуний из Узбекистана пресекли в Казахстане`;
+- browser console warnings/errors for the search scenario: `0`.
+- mobile geometry check at `390px` for home and article:
+  `scrollWidth=390`, viewport width `390`, overflow `0`, one visible
+  `data-search-open` button, header height `61px`.
