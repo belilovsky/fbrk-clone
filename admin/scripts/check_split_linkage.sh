@@ -162,12 +162,15 @@ backend_archive_sha="$(sha256_url "${BACKEND_ORIGIN}/js/data-archive.js")"
 new_archive_sha="$(sha256_url "${NEW_ORIGIN}/js/data-archive.js")"
 backend_article_full_sha="$(sha256_url "${BACKEND_ORIGIN}/js/article-full.js")"
 new_article_full_sha="$(sha256_url "${NEW_ORIGIN}/js/article-full.js")"
+backend_videos_sha="$(sha256_url "${BACKEND_ORIGIN}/data/videos.json")"
+new_videos_sha="$(sha256_url "${NEW_ORIGIN}/data/videos.json")"
 
 first_slug="$(extract_first_slug "$BACKEND_ORIGIN")"
 
 new_home_code="$(http_code "${NEW_ORIGIN}/")"
 new_archive_code="$(http_code "${NEW_ORIGIN}/archive.html")"
 new_article_code="$(http_code "${NEW_ORIGIN}/a/${first_slug}")"
+new_videos_code="$(http_code "${NEW_ORIGIN}/data/videos.json")"
 backend_home_code="$(http_code "${BACKEND_ORIGIN}/")"
 backend_health_code="$(http_code "${BACKEND_ORIGIN}/admin/healthz")"
 
@@ -188,10 +191,13 @@ echo "BACKEND_ARCHIVE_SHA256=${backend_archive_sha}"
 echo "NEW_ARCHIVE_SHA256=${new_archive_sha}"
 echo "BACKEND_ARTICLE_FULL_SHA256=${backend_article_full_sha}"
 echo "NEW_ARTICLE_FULL_SHA256=${new_article_full_sha}"
+echo "BACKEND_VIDEOS_SHA256=${backend_videos_sha}"
+echo "NEW_VIDEOS_SHA256=${new_videos_sha}"
 echo "FIRST_BACKEND_SLUG=${first_slug}"
 echo "HTTP_NEW_HOME=${new_home_code}"
 echo "HTTP_NEW_ARCHIVE=${new_archive_code}"
 echo "HTTP_NEW_ARTICLE=${new_article_code}"
+echo "HTTP_NEW_VIDEOS=${new_videos_code}"
 echo "HTTP_BACKEND_HOME=${backend_home_code}"
 echo "HTTP_BACKEND_ADMIN_HEALTHZ=${backend_health_code}"
 echo "NEW_CANONICAL_HOME=${new_canonical_home}"
@@ -202,7 +208,7 @@ if [ "$STRICT" = "--strict" ]; then
     echo "FAIL: backend /admin/healthz is not 200" >&2
     fail=1
   fi
-  if [ "$new_home_code" != "200" ] || [ "$new_archive_code" != "200" ] || [ "$new_article_code" != "200" ]; then
+  if [ "$new_home_code" != "200" ] || [ "$new_archive_code" != "200" ] || [ "$new_article_code" != "200" ] || [ "$new_videos_code" != "200" ]; then
     echo "FAIL: one or more NEW endpoints are not 200" >&2
     fail=1
   fi
@@ -224,6 +230,10 @@ if [ "$STRICT" = "--strict" ]; then
   fi
   if [ "$backend_article_full_sha" != "$new_article_full_sha" ]; then
     echo "FAIL: new article-full.js hash differs from backend" >&2
+    fail=1
+  fi
+  if [ "$backend_videos_sha" != "$new_videos_sha" ]; then
+    echo "FAIL: new data/videos.json hash differs from backend" >&2
     fail=1
   fi
   case "$new_canonical_home" in

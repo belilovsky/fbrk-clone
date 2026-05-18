@@ -35,6 +35,7 @@ DEFAULT_BACKEND_ORIGIN = "https://fbrk.qdev.run"
 DEFAULT_WEB_ROOT = "/var/www/fbrk.qdev.run"
 DEFAULT_PLESK_ROOT = "/new.fbrk.kz"
 GENERATED_FILES = ("data.js", "data-archive.js", "article-full.js")
+DATA_FILES = ("videos.json",)
 ROOT_FILES = ("index.html", "archive.html", "about.html", "article.html", "404.html")
 SEO_FILES = ("robots.txt", "sitemap.xml", "feed.xml")
 
@@ -333,6 +334,14 @@ def build_package(
     for name in GENERATED_FILES:
         target = out_dir / "js" / name
         write_bytes(target, fetch_bytes(f"{backend_origin.rstrip('/')}/js/{name}", cache_bust=True))
+        uploaded.append(target)
+
+    for name in DATA_FILES:
+        source = web_root / "data" / name
+        if not source.exists():
+            raise SyncError(f"missing source data file: {source}")
+        target = out_dir / "data" / name
+        write_bytes(target, source.read_bytes())
         uploaded.append(target)
 
     if generate_article_pages:

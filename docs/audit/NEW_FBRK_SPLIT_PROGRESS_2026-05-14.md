@@ -1123,3 +1123,50 @@ Verification:
 - mobile geometry check at `390px` for home and article:
   `scrollWidth=390`, viewport width `390`, overflow `0`, one visible
   `data-search-open` button, header height `61px`.
+
+### Video Data Sync Follow-up (2026-05-18, 17:24Z)
+
+Issue found during the frontend pass:
+
+- the homepage attempted to fetch `/data/videos.json`, but the dedicated
+  `new.fbrk.kz` VPS package did not include the `data/` payload;
+- visually the site still rendered, but Chrome console reported
+  `Failed to load resource: 404` for `/data/videos.json`, and the YouTube
+  shelf could silently disappear.
+
+Fix:
+
+- `sync_new_frontend_to_plesk.py` now includes `data/videos.json` in the split
+  frontend package;
+- `check_split_linkage.sh` now verifies `HTTP_NEW_VIDEOS=200` and SHA256
+  equality between backend and `new.fbrk.kz` for `data/videos.json`;
+- added a regression test proving that `build_package()` writes
+  `data/videos.json` into the package.
+
+Safety / deploy:
+
+- DB backup:
+  `/opt/fbrk-admin/backups/fbrk-20260518T172201Z-pre-videos-json.db` (`73M`);
+- backend web snapshot:
+  `/opt/fbrk-admin/web-snapshots/20260518T172201Z-videos-json`;
+- backend script snapshot:
+  `/opt/fbrk-admin/admin-snapshots/20260518T172201Z-videos-json/scripts`;
+- frontend web snapshot:
+  `/opt/fbrk-new/web-snapshots/20260518T172212Z-videos-json`;
+- updated scripts were copied to `/opt/fbrk-admin/scripts/`, owned by
+  `www-data:www-data`, executable, syntax-checked, then `fbrk-admin` was
+  restarted and `/admin/healthz` returned healthy;
+- dedicated frontend VPS sync completed with `STATUS=synced`,
+  `ASSET_VERSION=20260518172306`.
+
+Verification:
+
+- `https://new.fbrk.kz/data/videos.json` and
+  `https://fbrk.qdev.run/data/videos.json` both return `14` videos with the
+  same first id `sj3WE7YfI-E`;
+- strict split linkage now reports
+  `HTTP_NEW_VIDEOS=200` and matching
+  `BACKEND_VIDEOS_SHA256` / `NEW_VIDEOS_SHA256`;
+- browser smoke on homepage:
+  `9` video cards rendered, video section visible, horizontal overflow `0`,
+  network failures `0`, console errors/warnings `0`.
