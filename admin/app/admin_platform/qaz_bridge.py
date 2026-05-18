@@ -23,6 +23,14 @@ def admin_kit_version() -> str | None:
 
 def bridge_status() -> dict[str, Any]:
     """Expose a small status payload for admin diagnostics and tests."""
+    try:
+        bridge = import_module("qaz_admin.bridge")
+        return bridge.bridge_status(
+            primitives=("uploads.detect_image_mime",),
+            fallback="project-local upload MIME policy",
+        )
+    except Exception:
+        pass
     version = admin_kit_version()
     return {
         "available": version is not None,
@@ -33,6 +41,11 @@ def bridge_status() -> dict[str, Any]:
 
 def detect_image_mime(raw: bytes, fallback: Callable[[bytes], str]) -> str:
     """Detect image MIME through qaz-admin-kit when it is installed."""
+    try:
+        bridge = import_module("qaz_admin.bridge")
+        return str(bridge.detect_image_mime(raw, fallback=fallback) or "")
+    except Exception:
+        pass
     try:
         uploads = import_module("qaz_admin.uploads")
         detector = getattr(uploads, "detect_image_mime")

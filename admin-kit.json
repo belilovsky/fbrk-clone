@@ -1,6 +1,6 @@
 {
   "adapter_status": "optional-bridge",
-  "adapter_version": "optional-bridge-2026-05-17",
+  "adapter_version": "optional-bridge-2026-05-18",
   "admin_kit_version": "0.3.0",
   "framework": "fastapi",
   "last_checked_at": "2026-05-18T12:48:14Z",
@@ -8,7 +8,8 @@
     "Read-only local inventory found 53 admin service route decorators.",
     "SSR publish pipeline stays project-local during first adapter pass.",
     "Admin route smoke and admin-surface ruff passed locally on 2026-05-18.",
-    "Upload MIME detection delegates to qaz-admin-kit when the package is installed, with local fallback."
+    "Upload MIME detection delegates to qaz-admin-kit when the package is installed, with local fallback.",
+    "Optional wrapper now prefers qaz_admin.bridge when installed and keeps local fallback."
   ],
   "project": "fbrk",
   "risk": "medium",
