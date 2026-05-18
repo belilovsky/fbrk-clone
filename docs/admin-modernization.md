@@ -398,3 +398,43 @@ Verification:
     have `consoleErrors=0`, `lang="ru"`, `AV DS 3.7.1`, no old font markers,
     no `fbrk.qdev.run/a/` article-link leaks, and no images without `alt`.
   - Article page renders both `Упоминания` and `Материалы по теме`.
+
+## 2026-05-18 new.fbrk.kz VPS cutover
+
+The split frontend was moved from temporary Plesk static hosting to the
+dedicated KZ frontend VPS.
+
+Changes:
+
+- `new.fbrk.kz` DNS in the ps.kz/Plesk zone now points to the frontend VPS:
+  `A 213.155.22.190`, `AAAA 2a00:5da0:2005:1::2d1`.
+- Let's Encrypt certificate was issued on the frontend VPS with `certbot
+  --nginx`; HTTPS redirect is active and certificate renewal is scheduled by
+  certbot.
+- Backend/admin remains on `https://fbrk.qdev.run`; no DB/backend migration was
+  made during this cutover.
+- Backend -> frontend VPS sync remains the primary publication path via
+  `/opt/fbrk-admin/scripts/sync_new_frontend_to_vps.sh`.
+- Plesk File Manager sync remains only as rollback/fallback while DNS
+  propagation finishes and for emergency static rollback.
+
+Verification:
+
+- Authoritative DNS:
+  `ns1.ps.kz`, `ns2.ps.kz`, and `ns3.ps.kz` all return
+  `213.155.22.190` for A and `2a00:5da0:2005:1::2d1` for AAAA.
+- Frontend VPS:
+  `nginx -t` OK, `systemctl is-active nginx` -> `active`, cert expires
+  `2026-08-16`.
+- Live HTTPS:
+  `https://new.fbrk.kz/` -> 200,
+  `https://new.fbrk.kz/archive.html` -> 200,
+  representative `/a/...` article -> 200,
+  unknown page -> 404.
+- Payload consistency:
+  `data.js`, `data-archive.js`, and `article-full.js` SHA256 values match
+  `https://fbrk.qdev.run/js/...`.
+- Browser smoke:
+  home, archive, and article render through `https://new.fbrk.kz`; article
+  title, share URLs, `Упоминания`/`Материалы по теме`, and `AV DS 3.7.1` footer
+  are present.

@@ -2,6 +2,8 @@
 
 Status date: 2026-05-18
 
+Production status: cutover complete.
+
 ## Purpose
 
 `new.fbrk.kz` is the public static frontend. `fbrk.qdev.run` remains the
@@ -18,14 +20,19 @@ temporary Plesk File Manager static sync path.
 - Public origin: `https://new.fbrk.kz`
 - Backend origin: `https://fbrk.qdev.run`
 
-Current DNS still points to the legacy Plesk host until cutover:
+Current authoritative DNS for `new.fbrk.kz` points to the dedicated frontend
+VPS:
+
+- `A`: `213.155.22.190`
+- `AAAA`: `2a00:5da0:2005:1::2d1`
+
+Legacy Plesk values were:
 
 - `A`: `195.210.46.10`
 - `AAAA`: `2a00:5da0:1000::150`
 
-The currently available Plesk API role can sync files but cannot mutate DNS
-records (`dns.get_rec` returns `Permission denied`). DNS cutover must be done in
-the ps.kz DNS panel or by an account/role with DNS permissions.
+Plesk File Manager sync remains a rollback/fallback path only. The active
+frontend is now the dedicated VPS.
 
 ## Sync command
 
@@ -79,12 +86,33 @@ At ps.kz DNS, change only `new.fbrk.kz`:
 
 Do not change `fbrk.qdev.run`.
 
+Applied on 2026-05-18 in the `new.fbrk.kz` DNS zone:
+
+- `A` record id `101864` -> `213.155.22.190`
+- `AAAA` record id `101863` -> `2a00:5da0:2005:1::2d1`
+
+Authoritative verification:
+
+```bash
+dig @ns1.ps.kz +short new.fbrk.kz A
+dig @ns2.ps.kz +short new.fbrk.kz A
+dig @ns3.ps.kz +short new.fbrk.kz A
+dig @ns1.ps.kz +short new.fbrk.kz AAAA
+dig @ns2.ps.kz +short new.fbrk.kz AAAA
+dig @ns3.ps.kz +short new.fbrk.kz AAAA
+```
+
+Expected: all A answers are `213.155.22.190`; all AAAA answers are
+`2a00:5da0:2005:1::2d1`.
+
 After DNS resolves to the new VPS, issue the certificate on the frontend VPS:
 
 ```bash
 certbot --nginx -d new.fbrk.kz --non-interactive --agree-tos -m admin@qdev.run --redirect
 systemctl reload nginx
 ```
+
+Certificate issued on 2026-05-18. Current expiry: 2026-08-16.
 
 ## Post-cutover verification
 

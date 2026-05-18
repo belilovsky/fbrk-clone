@@ -62,9 +62,10 @@ systemctl restart fbrk-admin
   sync через SSH/rsync; на backend VPS установлен cron
   `/etc/cron.d/fbrk-new-vps-sync`.
 - `admin/scripts/build_new_frontend_static_package.sh` — delta-пакет для ручной
-  синхронизации Plesk-статики, пока split-proxy недоступен по правам роли.
+  синхронизации Plesk-статики; после cutover 2026-05-18 это fallback/rollback
+  путь, а не основной production-hosting.
 - `admin/scripts/sync_new_frontend_to_plesk.py` — автоматический guarded sync
-  через Plesk File Manager; на проде запущен cron
+  через Plesk File Manager; используется как fallback, на проде запущен cron
   `/etc/cron.d/fbrk-plesk-sync`, env-секреты лежат вне репо в
   `/etc/fbrk-admin/plesk-sync.env`.
 
