@@ -59,3 +59,45 @@ def test_static_article_shell_gets_specific_metadata(tmp_path):
     assert '<meta property="og:url" content="https://new.fbrk.kz/a/test-slug" data-article-og-url />' in html
     assert "Описание &amp; лид" in html
     assert "data-static-article-jsonld" in html
+
+
+def test_split_frontend_package_includes_video_data(tmp_path, monkeypatch):
+    sync = load_sync_module()
+    web_root = tmp_path / "web"
+    web_root.mkdir()
+    (web_root / "data").mkdir()
+    (web_root / "data" / "videos.json").write_text('[{"id":"demo"}]', encoding="utf-8")
+    for name in sync.ROOT_FILES:
+        (web_root / name).write_text("<html><head></head><body></body></html>", encoding="utf-8")
+
+    def fake_fetch_bytes(url, *, timeout=45, cache_bust=False):
+        if url.endswith("/js/article-full.js"):
+            return b'window.ARTICLE_FULL = {"articles":[]};'
+        if url.endswith("/js/data.js"):
+            return b"const FBRK_DATA = {\"articles\":[]};"
+        if url.endswith("/js/data-archive.js"):
+            return b"const FBRK_ARCHIVE = {\"articles\":[]};"
+        if url.endswith("/robots.txt"):
+            return b"User-agent: *\nAllow: /\n"
+        if url.endswith("/sitemap.xml"):
+            return b"<?xml version=\"1.0\"?><urlset></urlset>"
+        if url.endswith("/feed.xml"):
+            return b"<?xml version=\"1.0\"?><rss></rss>"
+        raise AssertionError(url)
+
+    monkeypatch.setattr(sync, "fetch_bytes", fake_fetch_bytes)
+
+    out_dir = tmp_path / "package"
+    uploaded = sync.build_package(
+        out_dir,
+        public_origin="https://new.fbrk.kz",
+        backend_origin="https://fbrk.qdev.run",
+        web_root=web_root,
+        asset_version="20260518180000",
+        include_static=False,
+        generate_article_pages=False,
+    )
+
+    rel_paths = {path.relative_to(out_dir).as_posix() for path in uploaded}
+    assert "data/videos.json" in rel_paths
+    assert (out_dir / "data" / "videos.json").read_text(encoding="utf-8") == '[{"id":"demo"}]'
