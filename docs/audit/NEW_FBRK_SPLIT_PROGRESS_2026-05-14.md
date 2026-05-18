@@ -992,3 +992,87 @@ Verification:
     `fbrk.qdev.run/a/` article-link leaks, no missing `alt`;
   - article page renders `Упоминания` and `Материалы по теме`;
   - page console errors: `0` for FBRK pages checked.
+
+## Dedicated frontend VPS cutover and static article meta (2026-05-18, 16:22Z)
+
+После Plesk-этапа `new.fbrk.kz` радикально перенесён на отдельный KZ VPS в
+том же ps.kz аккаунте:
+
+- IPv4: `213.155.22.190`;
+- IPv6: `2a00:5da0:2005:1::2d1`;
+- DNS: `new.fbrk.kz A/AAAA` указывает на новый VPS;
+- TLS: Let's Encrypt certificate for `new.fbrk.kz`, expiry `2026-08-16`;
+- primary web-root: `/var/www/new.fbrk.kz`;
+- sync target: `root@213.155.22.190:/var/www/new.fbrk.kz`.
+
+Repository state:
+
+- PR #13 `audit/new-fbrk-cutover-20260514` merged into `master` as
+  `e80f592`;
+- PR #14 `fix/frontend/static-article-meta` adds static per-article
+  `/a/<slug>/index.html` shells for the dedicated VPS path.
+
+Fixes in the static article meta pass:
+
+- `sync_new_frontend_to_vps.sh` enables
+  `GENERATE_STATIC_ARTICLE_PAGES=1` for the dedicated VPS deploy path;
+- `sync_new_frontend_to_plesk.py` can render static article shells with
+  article-specific `<title>`, canonical, Open Graph, Twitter Card and
+  JSON-LD metadata;
+- Plesk sync remains lightweight and does not generate thousands of static
+  article pages by default;
+- `nginx-new-fbrk-vps.conf` now represents the real post-cutover state:
+  HTTP redirects to HTTPS, ACME challenge path remains open, HTTPS serves
+  with HSTS/security headers, and `/a/<slug>` / `/a/<slug>/` both resolve to
+  the generated static article shell before falling back to `article.html`;
+- `check_split_linkage.sh` supports `FBRK_NEW_RESOLVE_IP` so backend-side cron
+  can verify the new VPS even while the backend resolver still has a stale
+  DNS cache.
+
+Safety / rollback:
+
+- backend script snapshot:
+  `/opt/fbrk-admin/admin-snapshots/20260518T160151Z-static-article-meta/scripts/`;
+- frontend nginx snapshot:
+  `/opt/fbrk-new/nginx-snapshots/20260518T160151Z-pre-static-article-meta.conf`;
+- frontend web snapshot:
+  `/opt/fbrk-new/web-snapshots/20260518T160151Z-pre-static-article-meta`
+  (`76M`);
+- additional nginx snapshot before SSL restore:
+  `/opt/fbrk-new/nginx-snapshots/20260518T160827Z-pre-ssl-restore.conf`.
+
+Deploy / verification:
+
+- updated backend scripts under `/opt/fbrk-admin/scripts/` with
+  `www-data:www-data` ownership and executable permissions where required;
+- updated frontend nginx config at `/etc/nginx/sites-available/new.fbrk.kz`;
+- `nginx -t` passed, nginx reloaded and is `active`;
+- `ss -ltnp` confirms nginx listens on `80` and `443` for IPv4/IPv6;
+- frontend sync to the dedicated VPS completed with `STATUS=synced`,
+  `UPLOAD_FILES=5081`, `ASSET_VERSION=20260518160431`;
+- generated static article pages: `4682`;
+- live HTTPS home:
+  `https://new.fbrk.kz/` -> `HTTP/2 200`;
+- HTTP redirect:
+  `http://new.fbrk.kz/` -> `301 https://new.fbrk.kz/`;
+- no-slash article URL:
+  `/a/vvoz-zarazhennykh-petuniy-iz-uzbekistana-presekli-v-kazakhstane`
+  -> `HTTP/2 200` and article-specific title/canonical/JSON-LD;
+- missing page:
+  `/no-such-page-codex-20260518` -> custom AV DS `404`;
+- strict split linkage with forced new VPS IP:
+  `BACKEND_TOTAL=4682`, `NEW_TOTAL=4682`,
+  `DELTA_BACKEND_MINUS_NEW=0`,
+  `BACKEND_ARTICLE_FULL_TOTAL=4682`,
+  `NEW_ARTICLE_FULL_TOTAL=4682`,
+  SHA256 matches for `data.js`, `data-archive.js`, `article-full.js`,
+  `NEW_CANONICAL_ARTICLE=https://new.fbrk.kz/a/gknb-kyrgyzstana-soobschil-o-zaderzhanii-shesti-podozrevaemykh-v-kontrabande-tabachnoy`;
+- `/etc/cron.d/fbrk-split-linkage-check` now runs with
+  `FBRK_NEW_RESOLVE_IP=213.155.22.190` to avoid false negatives from stale
+  backend DNS cache during the cutover window.
+
+Operational note:
+
+- `/etc/cron.d/fbrk-plesk-sync` is intentionally left in place as a temporary
+  fallback for old DNS caches and can be disabled after 24-48 hours of stable
+  `new.fbrk.kz` traffic on the dedicated VPS.
