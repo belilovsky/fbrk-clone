@@ -37,6 +37,7 @@ BACKEND_ORIGIN="${BACKEND_ORIGIN}" \
 FBRK_WEB_ROOT="${FBRK_WEB_ROOT}" \
 PLESK_SYNC_WORKDIR="${WORKDIR}" \
 ASSET_VERSION="${ASSET_VERSION}" \
+GENERATE_STATIC_ARTICLE_PAGES=1 \
 python3 "${PLESK_BUILDER}" --force --full --dry-run --keep-package --no-verify | tee "${log_file}"
 
 package_dir="$(awk -F= '/^PACKAGE_DIR=/{print $2}' "${log_file}" | tail -1)"

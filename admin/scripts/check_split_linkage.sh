@@ -4,19 +4,43 @@ set -euo pipefail
 NEW_ORIGIN="${1:-https://new.fbrk.kz}"
 BACKEND_ORIGIN="${2:-https://fbrk.qdev.run}"
 STRICT="${3:-}"
+FBRK_NEW_RESOLVE_IP="${FBRK_NEW_RESOLVE_IP:-}"
 
 fail=0
+CURL_NEW_RESOLVE_ARGS=()
+
+if [ -n "$FBRK_NEW_RESOLVE_IP" ]; then
+  NEW_HOST="${NEW_ORIGIN#*://}"
+  NEW_HOST="${NEW_HOST%%/*}"
+  NEW_HOST="${NEW_HOST%%:*}"
+  if [ -n "$NEW_HOST" ]; then
+    CURL_NEW_RESOLVE_ARGS=(
+      --resolve "${NEW_HOST}:443:${FBRK_NEW_RESOLVE_IP}"
+      --resolve "${NEW_HOST}:80:${FBRK_NEW_RESOLVE_IP}"
+    )
+  fi
+fi
+
+curl_url() {
+  local url="$1"
+  shift
+  if [[ "$url" == "${NEW_ORIGIN}"* ]] && [ "${#CURL_NEW_RESOLVE_ARGS[@]}" -gt 0 ]; then
+    curl "${CURL_NEW_RESOLVE_ARGS[@]}" "$@" "$url"
+  else
+    curl "$@" "$url"
+  fi
+}
 
 http_code() {
   local url="$1"
-  curl -sS -o /dev/null -w '%{http_code}' "$url"
+  curl_url "$url" -sS -o /dev/null -w '%{http_code}'
 }
 
 extract_total_count() {
   local origin="$1"
   local value
   value="$(
-    curl -fsS "${origin}/js/data.js" \
+    curl_url "${origin}/js/data.js" -fsS \
       | python3 -c '
 import json, sys
 origin = sys.argv[1]
@@ -47,7 +71,7 @@ extract_first_slug() {
   local origin="$1"
   local slug
   slug="$(
-    curl -fsS "${origin}/js/data.js" \
+    curl_url "${origin}/js/data.js" -fsS \
       | python3 -c '
 import json, sys
 origin = sys.argv[1]
@@ -82,7 +106,7 @@ extract_article_full_count() {
   local origin="$1"
   local value
   value="$(
-    curl -fsS "${origin}/js/article-full.js" \
+    curl_url "${origin}/js/article-full.js" -fsS \
       | python3 -c '
 import json, sys
 origin = sys.argv[1]
@@ -109,7 +133,7 @@ print(len(arts))
 
 sha256_url() {
   local url="$1"
-  curl -fsS "$url" \
+  curl_url "$url" -fsS \
     | python3 -c 'import hashlib, sys; print(hashlib.sha256(sys.stdin.buffer.read()).hexdigest())'
 }
 
@@ -117,7 +141,7 @@ extract_canonical() {
   local url="$1"
   local canon
   canon="$(
-    curl -fsS "$url" \
+    curl_url "$url" -fsS \
       | tr '\n' ' ' \
       | sed -n 's/.*<link rel="canonical" href="\([^"]*\)".*/\1/p' \
       | head -n1
@@ -206,6 +230,13 @@ if [ "$STRICT" = "--strict" ]; then
     "${NEW_ORIGIN}"/*) : ;;
     *)
       echo "FAIL: new homepage canonical is not on NEW_ORIGIN" >&2
+      fail=1
+      ;;
+  esac
+  case "$new_canonical_article" in
+    "${NEW_ORIGIN}/a/${first_slug}") : ;;
+    *)
+      echo "FAIL: new article canonical is not the static article URL" >&2
       fail=1
       ;;
   esac
