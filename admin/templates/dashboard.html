@@ -1,83 +1,58 @@
 {% extends "base.html" %}
-{% block title %}Материалы — Админка ФБРК{% endblock %}
+{% block title %}Дашборд — Админка ФБРК{% endblock %}
+{% block page_title %}Дашборд{% endblock %}
 {% block content %}
-<section class="a-section">
-  <div class="a-section__head">
-    <h1>Материалы</h1>
-    <div class="a-actions">
-      <button class="a-btn" onclick="publishAll()">Перегенерировать сайт</button>
-      <a class="a-btn a-btn--primary" href="/admin/new">+ Новый материал</a>
-    </div>
+  <div class="kpi-grid">
+    <div class="kpi-card"><div class="kpi-label">Всего материалов</div><div class="kpi-value">{{ stats.articles_total }}</div></div>
+    <div class="kpi-card"><div class="kpi-label">Опубликовано</div><div class="kpi-value">{{ stats.articles_pub }}</div></div>
+    <div class="kpi-card"><div class="kpi-label">Черновики</div><div class="kpi-value">{{ stats.articles_draft }}</div></div>
+    <div class="kpi-card"><div class="kpi-label">Категории</div><div class="kpi-value">{{ stats.categories }}</div></div>
+    <div class="kpi-card"><div class="kpi-label">Теги (уникальные)</div><div class="kpi-value">{{ stats.tags }}</div></div>
+    <div class="kpi-card"><div class="kpi-label">Сущности</div><div class="kpi-value">{{ stats.entities }}</div></div>
+    <div class="kpi-card"><div class="kpi-label">Рекламные слоты</div><div class="kpi-value">{{ stats.ads_total }}</div></div>
+    <div class="kpi-card"><div class="kpi-label">Активные кампании</div><div class="kpi-value">{{ stats.ads_active }}</div></div>
   </div>
-
-  {% if articles %}
-  <table class="a-table">
-    <thead>
-      <tr>
-        <th class="a-col-cover"></th>
-        <th>Заголовок</th>
-        <th>Раздел</th>
-        <th>Дата</th>
-        <th>Статус</th>
-        <th class="a-col-actions"></th>
-      </tr>
-    </thead>
-    <tbody>
-    {% for a in articles %}
-      <tr>
-        <td class="a-col-cover">
-          {% if a.image %}<img src="/{{ a.image.lstrip('/') }}" alt=""/>{% else %}<div class="a-cover-ph"></div>{% endif %}
-        </td>
-        <td>
-          <a class="a-link" href="/admin/edit/{{ a.id }}">{{ a.title }}</a>
-          {% if a.featured %}<span class="a-pill a-pill--featured">главная</span>{% endif %}
-          <div class="a-muted">{{ a.dek[:140] }}{% if a.dek|length > 140 %}…{% endif %}</div>
-        </td>
-        <td><span class="a-pill">{{ a.categoryLabel }}</span></td>
-        <td class="a-nowrap">{{ a.date }}</td>
-        <td>
-          {% if a.published %}
-            <span class="a-pill a-pill--ok">опубликовано</span>
-          {% else %}
-            <span class="a-pill a-pill--mute">скрыто</span>
-          {% endif %}
-        </td>
-        <td class="a-col-actions">
-          <a class="a-iconbtn" href="/admin/edit/{{ a.id }}" title="Редактировать">✎</a>
-          <button class="a-iconbtn" onclick="togglePublish('{{ a.id }}', this)" title="Опубликовать/скрыть">●</button>
-          <button class="a-iconbtn a-iconbtn--danger" onclick="deleteArt('{{ a.id }}')" title="Удалить">✕</button>
-        </td>
-      </tr>
-    {% endfor %}
-    </tbody>
-  </table>
-  {% else %}
-    <div class="a-empty">
-      <p>Нет материалов. <a class="a-link" href="/admin/new">Создать первый</a>.</p>
-    </div>
-  {% endif %}
-</section>
-{% endblock %}
-
-{% block scripts %}
-<script>
-async function togglePublish(id, btn) {
-  const res = await fetch('/api/articles/' + id + '/publish', { method: 'POST' });
-  if (res.ok) location.reload();
-}
-async function deleteArt(id) {
-  if (!confirm('Удалить материал безвозвратно?')) return;
-  const res = await fetch('/api/articles/' + id, { method: 'DELETE' });
-  if (res.ok) location.reload();
-}
-async function publishAll() {
-  const res = await fetch('/api/publish', { method: 'POST' });
-  const data = await res.json();
-  if (data.ok) {
-    alert('Готово. Опубликовано: ' + data.articles + ' материалов.');
-  } else {
-    alert('Ошибка публикации');
-  }
-}
-</script>
+  <div class="section-card" style="margin-top:24px">
+    <h3>Последние материалы</h3>
+    {% if recent %}
+    <ul class="recent-list">
+      {% for a in recent %}
+      <li><a class="a-link" href="/admin/edit/{{ a.id }}">{{ a.title }}</a> <span class="muted">{{ a.date }}</span></li>
+      {% endfor %}
+    </ul>
+    {% else %}
+    <p class="muted">Материалов пока нет. <a class="a-link" href="/admin/new">Создать первый</a>.</p>
+    {% endif %}
+  </div>
+  <div class="section-card" style="margin-top:16px">
+    <h3>Последние действия</h3>
+    {% if audit %}
+    <ul class="recent-list">
+      {% for r in audit %}
+      <li><span class="muted">{{ r.ts }}</span> — {{ r.user }} — <b>{{ r.action }}</b> {{ r.entity }} {{ r.entity_id or '' }}</li>
+      {% endfor %}
+    </ul>
+    {% else %}
+    <p class="muted">Лог пока пуст.</p>
+    {% endif %}
+  </div>
+  <div class="section-card" style="margin-top:16px">
+    <h3>Реклама — показы/клики (14 дней)</h3>
+    <canvas id="sp-ads-chart" height="90"></canvas>
+  </div>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+  <script>
+  (async function(){
+    try{
+      const r = await fetch('/api/ads/stats/daily?days=14',{credentials:'same-origin'});
+      const j = await r.json();
+      const ctx = document.getElementById('sp-ads-chart');
+      if(!ctx) return;
+      new Chart(ctx, {type:'line', data:{labels:j.days||[], datasets:[
+        {label:'Показы', data:j.impr||[], borderColor:'#1d4ed8', backgroundColor:'rgba(29,78,216,.15)', tension:.3, fill:true},
+        {label:'Клики', data:j.click||[], borderColor:'#166534', backgroundColor:'rgba(22,101,52,.15)', tension:.3, fill:true}
+      ]}, options:{responsive:true, plugins:{legend:{position:'bottom'}}, scales:{y:{beginAtZero:true,ticks:{precision:0}}}}});
+    }catch(e){console.warn('ads chart',e);}
+  })();
+  </script>
 {% endblock %}

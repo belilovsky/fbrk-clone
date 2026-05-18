@@ -36,6 +36,7 @@ venv/
 # Generated / large
 js/data.js
 js/data-archive.js
+js/article-full.js
 data/*.db
 data/*.db-journal
 data/*.sqlite

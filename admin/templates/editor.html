@@ -72,7 +72,14 @@
 
         <label class="a-field">
           <span>Теги (через запятую)</span>
-          <input id="f-tags" value="{{ article.tags | join(', ') }}" placeholder="Коррупция, КНБ, ..."/>
+          <input id="f-tags" value="{{ article.tags | join(', ') }}" placeholder="Коррупция, КНБ, ..." style="font-size:16px"/>
+        <div id="f-tags-chips" class="chips" style="display:flex;flex-wrap:wrap;gap:6px;margin-top:6px"></div>
+        {% if meta and meta.tags_auto %}
+        <div class="a-suggest" style="margin-top:8px;font-size:12px;opacity:.8">
+          <span>AI:</span>
+          {% for t in meta.tags_auto %}<button type="button" class="chip-suggest" data-tag="{{ t }}" style="margin:2px 4px 0 0;padding:2px 8px;border:1px solid rgba(127,127,127,.4);border-radius:12px;background:transparent;cursor:pointer">+ {{ t }}</button>{% endfor %}
+        </div>
+        {% endif %}
         </label>
 
         <label class="a-check">
@@ -89,14 +96,30 @@
       <div class="a-card">
         <h3>Обложка</h3>
         <div class="a-cover" id="coverPreview">
-          {% if article.image %}<img src="/{{ article.image.lstrip('/') }}" alt=""/>{% endif %}
+          {% if article.image %}<img src="{{ admin_asset_url(article.image) }}" alt=""/>{% endif %}
         </div>
         <input type="file" id="f-coverFile" accept="image/*" hidden/>
-        <button class="a-btn a-btn--ghost" type="button" onclick="document.getElementById('f-coverFile').click()">Загрузить…</button>
+        <button class="a-btn a-btn--ghost" type="button" onclick="document.getElementById('f-coverFile').click()">Загрузить…</button> <button class="a-btn a-btn--ghost" type="button" onclick="openCoverMediaPicker()">📁 Из медиа</button>
         <input id="f-image" value="{{ article.image }}" placeholder="img/covers/thumb/..." style="margin-top:8px"/>
         <small class="a-muted">Путь сохраняется относительно корня сайта.</small>
       </div>
-    </aside>
+      {% if meta and (meta.entities or meta.summary_short or meta.region) %}
+  <div class="a-card" style="margin-top:12px">
+    <h3 style="margin:0 0 8px 0">Метаданные NLP</h3>
+    {% if meta.summary_short %}<p style="font-size:13px;opacity:.85;margin:0 0 8px 0">{{ meta.summary_short }}</p>{% endif %}
+    {% if meta.region %}<div style="font-size:12px;opacity:.75;margin-bottom:6px">Регион: <b>{{ meta.region }}</b></div>{% endif %}
+    {% if meta.importance is not none %}<div style="font-size:12px;opacity:.75;margin-bottom:6px">Важность: <b>{{ "%.2f"|format(meta.importance) }}</b>{% if meta.sentiment %} · Тон: <b>{{ meta.sentiment }}</b>{% endif %}</div>{% endif %}
+    {% if meta.entities %}
+      <div style="font-size:12px;opacity:.8;margin-top:8px">Сущности ({{ meta.entities|length }}):</div>
+      <div style="display:flex;flex-wrap:wrap;gap:4px;margin-top:6px">
+      {% for ent in meta.entities[:40] %}
+        <span class="ent" title="{{ ent.type or 'other' }}{% if ent.wikidata %} · {{ ent.wikidata }}{% endif %}" style="font-size:12px;padding:2px 8px;border-radius:10px;background:rgba(127,127,127,.12);border:1px solid rgba(127,127,127,.25)">{% if ent.wiki_url %}<a href="{{ ent.wiki_url }}" target="_blank" rel="noopener" style="color:inherit;text-decoration:none">{{ ent.name }}</a>{% else %}{{ ent.name }}{% endif %}</span>
+      {% endfor %}
+      </div>
+    {% endif %}
+  </div>
+  {% endif %}
+</aside>
   </div>
 </section>
 
@@ -149,6 +172,20 @@ function setStatus(msg, ok = true) {
   el.textContent = msg;
   el.className = 'a-editor__status ' + (ok ? 'is-ok' : 'is-err');
   if (msg && ok) setTimeout(() => { if (el.textContent === msg) el.textContent = ''; }, 2500);
+}
+
+function adminAssetUrl(url) {
+  url = (url || '').trim();
+  if (!url) return '';
+  if (/^(https?:)?\/\//i.test(url) || /^(data|blob):/i.test(url)) return url;
+  if (url.startsWith('/')) return url;
+  return '/' + url.replace(/^\/+/, '');
+}
+
+function setCoverPreview(url) {
+  const src = adminAssetUrl(url);
+  document.getElementById('coverPreview').innerHTML =
+    src ? '<img src="' + src.replace(/"/g, '&quot;') + '" alt=""/>' : '';
 }
 
 async function gather(publish = null) {
@@ -217,8 +254,7 @@ document.getElementById('f-coverFile').addEventListener('change', async (e) => {
   const url = data.thumb || (data.file && data.file.url);
   if (url) {
     document.getElementById('f-image').value = url;
-    document.getElementById('coverPreview').innerHTML =
-      '<img src="/' + url.replace(/^\/+/, '') + '" alt=""/>';
+    setCoverPreview(url);
     setStatus('Обложка загружена ✓');
   }
 });
@@ -228,4 +264,88 @@ document.addEventListener('keydown', (e) => {
   if ((e.ctrlKey || e.metaKey) && e.key === 's') { e.preventDefault(); doSave(null); }
 });
 </script>
+
+<!-- Media picker for cover -->
+<div id="mediaPickerModalEditor" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.55);z-index:9999;align-items:center;justify-content:center;" onclick="if(event.target.id==='mediaPickerModalEditor')closeCoverMediaPicker()">
+  <div style="background:#fff;border-radius:12px;width:min(900px,92vw);max-height:85vh;display:flex;flex-direction:column;overflow:hidden">
+    <div style="display:flex;align-items:center;justify-content:space-between;padding:12px 16px;border-bottom:1px solid #eee">
+      <b>Выбрать из медиа</b>
+      <button type="button" class="a-btn a-btn--ghost" onclick="closeCoverMediaPicker()">✕</button>
+    </div>
+    <div style="padding:10px 16px;border-bottom:1px solid #f1f1f1">
+      <input type="text" id="mediaPickerSearchEditor" placeholder="Поиск по имени файла…" style="width:100%;padding:8px 10px;border:1px solid #e3e3e3;border-radius:8px" oninput="renderCoverPickerGrid()">
+    </div>
+    <div id="mediaPickerGridEditor" style="padding:1rem;display:grid;grid-template-columns:repeat(auto-fill,minmax(140px,1fr));gap:.6rem;overflow:auto"><div style="color:#888">Загрузка…</div></div>
+  </div>
+</div>
+<script>
+var __mediaItemsEditor = null;
+function openCoverMediaPicker(){
+  var m=document.getElementById('mediaPickerModalEditor'); m.style.display='flex';
+  if(__mediaItemsEditor){ renderCoverPickerGrid(); return; }
+  fetch('/api/admin/uploads?limit=300',{credentials:'same-origin'}).then(r=>r.json()).then(d=>{
+    __mediaItemsEditor = (d&&d.items)||[];
+    renderCoverPickerGrid();
+  }).catch(e=>{document.getElementById('mediaPickerGridEditor').innerHTML='Ошибка загрузки: '+e;});
+}
+function closeCoverMediaPicker(){ document.getElementById('mediaPickerModalEditor').style.display='none'; }
+function renderCoverPickerGrid(){
+  var g=document.getElementById('mediaPickerGridEditor'); var q=(document.getElementById('mediaPickerSearchEditor').value||'').toLowerCase();
+  var items=__mediaItemsEditor||[];
+  if(q) items=items.filter(function(it){ return ((it.name||'')+' '+(it.url||'')).toLowerCase().indexOf(q)>=0; });
+  if(!items.length){ g.innerHTML='<div style="color:#888">Пусто</div>'; return; }
+  g.innerHTML=items.map(function(it){
+    var u=it.url; var n=it.name||'';
+    return '<div style="cursor:pointer;border:1px solid #eee;border-radius:8px;overflow:hidden;background:#fafafa" onclick="pickCoverMedia(\''+u.replace(/'/g,"\\'")+'\')">' +
+      '<img src="'+adminAssetUrl(u).replace(/"/g, '&quot;')+'" loading="lazy" style="display:block;width:100%;height:90px;object-fit:cover">' +
+      '<div style="font-size:11px;color:#666;padding:4px 6px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">'+n+'</div></div>';
+  }).join('');
+}
+function pickCoverMedia(url){
+  var i=document.getElementById('f-image'); if(!i){ alert('f-image not found'); return; }
+  i.value=url; try{ i.dispatchEvent(new Event('change')); }catch(e){}
+  setCoverPreview(url);
+  closeCoverMediaPicker();
+}
+</script>
+
 {% endblock %}
+
+<script>
+(function(){
+  var inp=document.getElementById("f-tags"), wrap=document.getElementById("f-tags-chips");
+  if(!inp||!wrap) return;
+  function parse(){return inp.value.split(",").map(function(s){return s.trim();}).filter(Boolean);}
+  function setT(a){inp.value=Array.from(new Set(a)).join(", ");render();}
+  function render(){
+    wrap.innerHTML="";
+    parse().forEach(function(t){
+      var c=document.createElement("span");
+      c.className="chip";
+      c.style.cssText="display:inline-flex;align-items:center;gap:6px;padding:3px 10px;border-radius:14px;background:rgba(127,127,127,.12);border:1px solid rgba(127,127,127,.25);font-size:13px";
+      c.textContent=t;
+      var x=document.createElement("button");
+      x.type="button";
+      x.textContent="×";
+      x.style.cssText="border:0;background:transparent;cursor:pointer;font-size:14px;padding:0;color:inherit";
+      x.onclick=function(){
+        setT(parse().filter(function(v){return v!==t;}));
+      };
+      c.appendChild(x);
+      wrap.appendChild(c);
+    });
+  }
+  inp.addEventListener("input",render);
+  inp.addEventListener("change",render);
+  document.querySelectorAll(".chip-suggest").forEach(function(b){
+    b.addEventListener("click",function(){
+      var t=b.getAttribute("data-tag");
+      var c=parse();
+      if(c.indexOf(t)===-1){c.push(t);setT(c);}
+      b.style.opacity=".4";
+      b.disabled=true;
+    });
+  });
+  render();
+})();
+</script>

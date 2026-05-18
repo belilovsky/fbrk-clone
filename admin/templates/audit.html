@@ -1,0 +1,11 @@
+{% extends "base.html" %}
+{% block title %}Аудит{% endblock %}
+{% block page_title %}Аудит ({{ items|length }}){% endblock %}
+{% block content %}
+<div class="section-card">
+  <table class="a-table"><thead><tr><th>#</th><th>ts</th><th>user</th><th>action</th><th>entity</th><th>id</th><th>details</th></tr></thead><tbody>
+  {% for x in items %}<tr><td>{{ x.id }}</td><td class="muted">{{ x.ts }}</td><td>{{ x.user }}</td><td><b>{{ x.action }}</b></td><td>{{ x.entity }}</td><td>{{ x.entity_id }}</td><td class="muted">{{ x.details }}</td></tr>{% endfor %}
+  {% if not items %}<tr><td colspan="7" class="muted">Лог пуст.</td></tr>{% endif %}
+  </tbody></table>
+</div>
+{% endblock %}

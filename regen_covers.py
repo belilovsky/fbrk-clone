@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Regenerate cover SVGs in clean AV DS 2026 style.
+"""Regenerate cover SVGs in clean AV DS 3.7.1 style.
 Flat geometry, no headline text, subtle FBRK marker only."""
 import os
 

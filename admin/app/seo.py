@@ -15,27 +15,72 @@ from __future__ import annotations
 
 import html
 import json
+import os
 import re
+import sqlite3 as _ad_sqlite
+import time as _ad_time
 from datetime import datetime, timezone
 from pathlib import Path
 
 from fastapi import APIRouter, HTTPException, Request
 from fastapi.responses import HTMLResponse, PlainTextResponse, Response
-from fastapi.templating import Jinja2Templates
 
+from .admin_platform.templating import AdminJinja2Templates
+from .config import settings
 from .db import db, row_to_article
 
-SITE_URL = "https://fbrk.qdev.run"
+DEFAULT_SITE_URL = (os.environ.get("FBRK_SITE_URL") or "https://fbrk.qdev.run").rstrip("/")
 ORG_NAME = "ФБРК"
 ORG_FULL = "Фонд-бюро расследования коррупции"
-ORG_LOGO = f"{SITE_URL}/img/brand/logo-white-512.png"
-ORG_LOGO_BRAND = f"{SITE_URL}/img/brand/logo-brand-256.png"
-DEFAULT_OG = f"{SITE_URL}/img/brand/logo-on-brand-640.png"
 TELEGRAM = "https://t.me/fund_kz_bot"
 YOUTUBE = "https://www.youtube.com/@fbrk_news"
 
 BASE = Path(__file__).resolve().parent.parent  # admin/
-templates = Jinja2Templates(directory=str(BASE / "templates"))
+templates = AdminJinja2Templates(directory=str(BASE / "templates"))
+
+# SSR template uses ad("slot") helper for promo blocks.
+# Keep it resilient: if ad table is unavailable we return empty HTML.
+_AD_DB_PATH = settings.db_path
+_AD_CACHE = {"t": 0.0, "data": {}}
+
+
+def _ads_load() -> dict:
+    now = _ad_time.time()
+    if now - float(_AD_CACHE.get("t", 0)) < 60 and _AD_CACHE.get("data"):
+        return _AD_CACHE["data"]
+    out: dict = {}
+    try:
+        con = _ad_sqlite.connect(_AD_DB_PATH)
+        con.row_factory = _ad_sqlite.Row
+        rows = con.execute(
+            "SELECT slot_id, client_name, client_url, image_url, notes "
+            "FROM ad_placements WHERE is_active=1 AND COALESCE(image_url, '') != ''"
+        ).fetchall()
+        for r in rows:
+            out[r["slot_id"]] = dict(r)
+        con.close()
+    except Exception:
+        pass
+    _AD_CACHE["t"] = now
+    _AD_CACHE["data"] = out
+    return out
+
+
+def _ad(slot_id: str) -> str:
+    a = _ads_load().get(slot_id)
+    if not a:
+        return ""
+    url = a.get("client_url") or "#"
+    img = a.get("image_url") or ""
+    name = str(a.get("client_name") or "").replace('"', "&quot;")
+    return (
+        f'<a class="ad-slot ad-{slot_id}" href="{url}" target="_blank" rel="sponsored noopener" '
+        f'data-slot="{slot_id}" aria-label="Реклама: {name}">'
+        f'<img src="{img}" alt="{name}" loading="lazy"></a>'
+    )
+
+
+templates.env.globals["ad"] = _ad
 
 router = APIRouter()
 
@@ -43,14 +88,35 @@ router = APIRouter()
 # ---------------------------------------------------------------------------
 # Helpers
 # ---------------------------------------------------------------------------
-def _abs_url(u: str) -> str:
+def _site_url(request: Request | None = None) -> str:
+    if request is not None:
+        proto = (request.headers.get("x-forwarded-proto") or request.url.scheme or "https").split(",")[0].strip()
+        host = (request.headers.get("x-forwarded-host") or request.headers.get("host") or "").split(",")[0].strip()
+        if host:
+            return f"{proto}://{host}"
+    return DEFAULT_SITE_URL
+
+
+def _brand_logo(site_url: str) -> str:
+    return f"{site_url}/img/brand/logo-white-512.png"
+
+
+def _brand_logo_mark(site_url: str) -> str:
+    return f"{site_url}/img/brand/logo-brand-256.png"
+
+
+def _default_og(site_url: str) -> str:
+    return f"{site_url}/img/brand/logo-on-brand-640.png"
+
+
+def _abs_url(u: str, site_url: str) -> str:
     if not u:
-        return DEFAULT_OG
+        return _default_og(site_url)
     if u.startswith("http"):
         return u
     if u.startswith("/"):
-        return f"{SITE_URL}{u}"
-    return f"{SITE_URL}/{u}"
+        return f"{site_url}{u}"
+    return f"{site_url}/{u}"
 
 
 def _rfc822(iso: str) -> str:
@@ -91,7 +157,7 @@ def _sections_to_plain(sections: list) -> str:
     return "\n\n".join(p for p in parts if p)
 
 
-def _sections_to_html(sections: list) -> str:
+def _sections_to_html(sections: list, site_url: str) -> str:
     """Render sections as clean semantic HTML for SSR body + RSS content:encoded."""
     out: list[str] = []
     for s in sections or []:
@@ -103,7 +169,7 @@ def _sections_to_html(sections: list) -> str:
         if h:
             out.append(f"<h2>{html.escape(str(h))}</h2>")
         if img:
-            src = _abs_url(str(img))
+            src = _abs_url(str(img), site_url)
             cap = html.escape(str(s.get("caption") or ""))
             out.append(f'<figure><img src="{src}" alt="{cap}" /></figure>')
         if p:
@@ -144,6 +210,63 @@ def _load_article_meta(article_id: str) -> dict | None:
     }
 
 
+PUBLIC_ENTITY_TYPES = {"person", "org", "gov", "place", "law", "case", "money"}
+
+
+def _hidden_entity_names(raw: list) -> set[str]:
+    out: set[str] = set()
+    for item in raw or []:
+        if not isinstance(item, dict):
+            continue
+        name = str(item.get("name") or "").strip()
+        kind = str(item.get("type") or "other").strip().lower()
+        if name and kind not in PUBLIC_ENTITY_TYPES:
+            out.add(name.casefold())
+    return out
+
+
+def _visible_entities(raw: list, exclude_names: set[str] | None = None, limit: int = 32) -> list[dict]:
+    """Return public-facing named entities, excluding topic tags and fallback noise."""
+    excluded = {str(x or "").strip().casefold() for x in (exclude_names or set()) if str(x or "").strip()}
+    out: list[dict] = []
+    seen: set[str] = set()
+    for item in raw or []:
+        if not isinstance(item, dict):
+            continue
+        name = str(item.get("name") or "").strip()
+        kind = str(item.get("type") or "other").strip().lower()
+        if not name or kind not in PUBLIC_ENTITY_TYPES:
+            continue
+        if name.casefold() in excluded:
+            continue
+        key = f"{kind}:{name.casefold()}"
+        if key in seen:
+            continue
+        out.append({"name": name[:80], "type": kind})
+        seen.add(key)
+        if len(out) >= limit:
+            break
+    return out
+
+
+def _visible_tags(raw: list, auto_raw: list, exclude_names: set[str] | None = None, limit: int = 16) -> list[str]:
+    """Return manually curated tags only; auto topics are kept for metadata, not chips."""
+    auto_names = {str(item or "").strip().casefold() for item in auto_raw or [] if str(item or "").strip()}
+    excluded = {str(item or "").strip().casefold() for item in (exclude_names or set()) if str(item or "").strip()}
+    out: list[str] = []
+    seen: set[str] = set()
+    for item in raw or []:
+        value = str(item or "").strip()
+        key = value.casefold()
+        if not value or key in seen or key in auto_names or key in excluded:
+            continue
+        out.append(value[:64])
+        seen.add(key)
+        if len(out) >= limit:
+            break
+    return out
+
+
 def _load_recent_articles(limit: int | None = None) -> list[dict]:
     with db() as conn:
         q = "SELECT * FROM articles WHERE published=1 ORDER BY date_iso DESC, created_at DESC"
@@ -163,6 +286,70 @@ def _load_all_article_meta() -> list[dict]:
     return [dict(r) for r in rows]
 
 
+def _load_related_articles(article: dict, visible_tags: list[str], limit: int = 3) -> list[dict]:
+    """Return a small SSR related set without relying on split-frontend JSON fetches."""
+    slug = str(article.get("slug") or article.get("id") or "")
+    category = str(article.get("category") or "")
+    base_tags = {
+        str(tag or "").strip().casefold()
+        for tag in list(article.get("tags") or []) + list(visible_tags or [])
+        if str(tag or "").strip()
+    }
+
+    with db() as conn:
+        rows = conn.execute(
+            """
+            SELECT slug, title, date_iso, date_label, image, tags_json, category
+            FROM articles
+            WHERE published=1 AND slug != ?
+            ORDER BY
+              CASE WHEN category = ? THEN 0 ELSE 1 END,
+              date_iso DESC,
+              created_at DESC
+            LIMIT 80
+            """,
+            (slug, category),
+        ).fetchall()
+
+    seen: set[str] = set()
+    candidates: list[tuple[int, str, dict]] = []
+    for row in rows:
+        item = dict(row)
+        item_slug = str(item.get("slug") or "")
+        if not item_slug or item_slug in seen:
+            continue
+        seen.add(item_slug)
+        try:
+            item_tags = {
+                str(tag or "").strip().casefold()
+                for tag in json.loads(item.get("tags_json") or "[]")
+                if str(tag or "").strip()
+            }
+        except Exception:
+            item_tags = set()
+        score = 0
+        if category and item.get("category") == category:
+            score += 2
+        score += 3 * len(base_tags & item_tags)
+        if item.get("image"):
+            score += 1
+        candidates.append(
+            (
+                score,
+                str(item.get("date_iso") or ""),
+                {
+                    "slug": item_slug,
+                    "title": str(item.get("title") or ""),
+                    "date_label": str(item.get("date_label") or item.get("date_iso") or ""),
+                    "image": str(item.get("image") or ""),
+                },
+            )
+        )
+
+    candidates.sort(key=lambda item: (item[0], item[1]), reverse=True)
+    return [item for _, __, item in candidates[: max(0, int(limit))]]
+
+
 # ---------------------------------------------------------------------------
 # SSR article page — /a/{slug}
 # ---------------------------------------------------------------------------
@@ -173,15 +360,16 @@ def ssr_article(slug: str, request: Request):
         raise HTTPException(404, "Article not found")
 
     meta = _load_article_meta(a["id"]) or {}
+    site_url = _site_url(request)
 
-    url = f"{SITE_URL}/a/{a['slug']}"
+    url = f"{site_url}/a/{a['slug']}"
     title = a["title"]
     dek = _strip_html(a.get("dek") or "")
     plain_body = _sections_to_plain(a.get("sections") or [])
     # Prefer AI short summary when available (tighter, better for SEO/LLMs)
     desc = (meta.get("summary_short") or dek or plain_body[:240]).strip()[:240]
-    image = _abs_url(a.get("image") or "")
-    body_html = _sections_to_html(a.get("sections") or [])
+    image = _abs_url(a.get("image") or "", site_url)
+    body_html = _sections_to_html(a.get("sections") or [], site_url)
     word_count = len((plain_body or "").split())
 
     date_iso = a.get("dateIso") or ""
@@ -189,10 +377,27 @@ def ssr_article(slug: str, request: Request):
     published_iso = _iso8601(date_iso)
     modified_iso = _iso8601((a.get("updatedAt") or date_iso)[:10])
     category_label = a.get("categoryLabel") or "Новости"
-    tags = a.get("tags") or []
-    # Fall back to AI-generated tags if no manual ones — boosts keywords coverage
-    if not tags:
-        tags = list(meta.get("tags_auto") or [])
+    tags = []
+    seen_tags = set()
+    for item in list(a.get("tags") or []) + list(meta.get("tags_auto") or []):
+        value = str(item or "").strip()
+        key = value.casefold()
+        if value and key not in seen_tags:
+            tags.append(value)
+            seen_tags.add(key)
+    raw_entities = meta.get("entities") or []
+    visible_entities = _visible_entities(raw_entities)
+    meta = {**meta, "entities": visible_entities}
+    entity_names = {
+        str(item.get("name") or "").strip().casefold()
+        for item in visible_entities
+        if isinstance(item, dict) and str(item.get("name") or "").strip()
+    }
+    visible_tags = _visible_tags(
+        a.get("tags") or [],
+        meta.get("tags_auto") or [],
+        exclude_names=entity_names | _hidden_entity_names(raw_entities),
+    )
 
     # --- JSON-LD NewsArticle ---
     news_article_ld = {
@@ -207,7 +412,7 @@ def ssr_article(slug: str, request: Request):
         "author": {
             "@type": "Organization",
             "name": ORG_NAME,
-            "url": SITE_URL,
+            "url": site_url,
         },
         "publisher": {
             "@type": "Organization",
@@ -215,7 +420,7 @@ def ssr_article(slug: str, request: Request):
             "legalName": ORG_FULL,
             "logo": {
                 "@type": "ImageObject",
-                "url": ORG_LOGO_BRAND,
+                "url": _brand_logo_mark(site_url),
                 "width": 256,
                 "height": 256,
             },
@@ -243,12 +448,12 @@ def ssr_article(slug: str, request: Request):
         "@context": "https://schema.org",
         "@type": "BreadcrumbList",
         "itemListElement": [
-            {"@type": "ListItem", "position": 1, "name": "Главная", "item": f"{SITE_URL}/"},
+            {"@type": "ListItem", "position": 1, "name": "Главная", "item": f"{site_url}/"},
             {
                 "@type": "ListItem",
                 "position": 2,
                 "name": category_label,
-                "item": f"{SITE_URL}/archive.html?cat={a.get('category') or 'news'}",
+                "item": f"{site_url}/archive.html?cat={a.get('category') or 'news'}",
             },
             {"@type": "ListItem", "position": 3, "name": title, "item": url},
         ],
@@ -269,13 +474,15 @@ def ssr_article(slug: str, request: Request):
         "modified_iso": modified_iso,
         "category_label": category_label,
         "tags": tags,
+        "visible_tags": visible_tags,
         "news_article_ld": json.dumps(news_article_ld, ensure_ascii=False),
         "breadcrumb_ld": json.dumps(breadcrumb_ld, ensure_ascii=False),
-        "site_url": SITE_URL,
+        "site_url": site_url,
         "org_name": ORG_NAME,
         "org_full": ORG_FULL,
         "telegram_url": TELEGRAM,
         "youtube_url": YOUTUBE,
+        "related_articles": _load_related_articles(a, visible_tags),
     }
 
     response = templates.TemplateResponse("article_ssr.html", ctx)
@@ -287,7 +494,8 @@ def ssr_article(slug: str, request: Request):
 # ---------------------------------------------------------------------------
 # robots.txt
 # ---------------------------------------------------------------------------
-_ROBOTS_BODY = """# ФБРК — robots.txt
+def _robots_body(site_url: str) -> str:
+    return f"""# ФБРК — robots.txt
 User-agent: *
 Allow: /
 Disallow: /admin/
@@ -340,21 +548,22 @@ Allow: /
 User-agent: TelegramBot
 Allow: /
 
-Sitemap: https://fbrk.qdev.run/sitemap.xml
+Sitemap: {site_url}/sitemap.xml
 """
 
 
 @router.api_route("/robots.txt", methods=["GET", "HEAD"], response_class=PlainTextResponse)
-def robots_txt():
-    return PlainTextResponse(_ROBOTS_BODY, media_type="text/plain; charset=utf-8")
+def robots_txt(request: Request):
+    return PlainTextResponse(_robots_body(_site_url(request)), media_type="text/plain; charset=utf-8")
 
 
 # ---------------------------------------------------------------------------
 # sitemap.xml — dynamic with <lastmod> per article
 # ---------------------------------------------------------------------------
 @router.api_route("/sitemap.xml", methods=["GET", "HEAD"])
-def sitemap_xml():
+def sitemap_xml(request: Request):
     arts = _load_all_article_meta()
+    site_url = _site_url(request)
     now = datetime.now(timezone.utc).strftime("%Y-%m-%d")
     newest = arts[0]["date_iso"] if arts else now
 
@@ -403,16 +612,16 @@ def sitemap_xml():
         lines.append("  </url>")
 
     # Static pages
-    _url(f"{SITE_URL}/", newest, "hourly", "1.0")
-    _url(f"{SITE_URL}/archive.html", newest, "daily", "0.9")
-    _url(f"{SITE_URL}/archive.html?cat=investigation", newest, "daily", "0.8")
-    _url(f"{SITE_URL}/archive.html?cat=news", newest, "daily", "0.8")
-    _url(f"{SITE_URL}/about.html", now, "monthly", "0.5")
+    _url(f"{site_url}/", newest, "hourly", "1.0")
+    _url(f"{site_url}/archive.html", newest, "daily", "0.9")
+    _url(f"{site_url}/archive.html?cat=investigation", newest, "daily", "0.8")
+    _url(f"{site_url}/archive.html?cat=news", newest, "daily", "0.8")
+    _url(f"{site_url}/about.html", now, "monthly", "0.5")
 
     recent_ids = {a["id"] for a in recent_news}
     for a in arts:
         slug = a.get("slug") or a["id"]
-        loc = f"{SITE_URL}/a/{slug}"
+        loc = f"{site_url}/a/{slug}"
         lastmod = (a.get("updated_at") or a.get("date_iso") or now)[:10]
         news = None
         if a["id"] in recent_ids:
@@ -420,7 +629,7 @@ def sitemap_xml():
                 "pubdate": _iso8601(a["date_iso"]),
                 "title": a["title"],
             }
-        img = _abs_url(a.get("image") or "") if a.get("image") else None
+        img = _abs_url(a.get("image") or "", site_url) if a.get("image") else None
         _url(loc, lastmod, "weekly", "0.7", news=news, image=img)
 
     lines.append("</urlset>")
@@ -433,8 +642,10 @@ def sitemap_xml():
 # RSS feed.xml with <content:encoded>
 # ---------------------------------------------------------------------------
 @router.api_route("/feed.xml", methods=["GET", "HEAD"])
-def feed_xml():
+def feed_xml(request: Request):
     arts = _load_recent_articles(limit=50)
+    site_url = _site_url(request)
+    org_logo_brand = _brand_logo_mark(site_url)
     now_rfc = datetime.now(timezone.utc).strftime("%a, %d %b %Y %H:%M:%S +0000")
     lines = [
         '<?xml version="1.0" encoding="UTF-8"?>',
@@ -445,19 +656,19 @@ def feed_xml():
         '     xmlns:media="http://search.yahoo.com/mrss/">',
         '  <channel>',
         f'    <title>{html.escape(ORG_NAME)} — Независимые расследования</title>',
-        f'    <link>{SITE_URL}/</link>',
+        f'    <link>{site_url}/</link>',
         f'    <description>{html.escape(ORG_FULL)}. Журналистские расследования и новости Казахстана.</description>',
         '    <language>ru</language>',
         f'    <lastBuildDate>{now_rfc}</lastBuildDate>',
-        f'    <atom:link href="{SITE_URL}/feed.xml" rel="self" type="application/rss+xml" />',
-        f'    <image><url>{ORG_LOGO_BRAND}</url><title>{html.escape(ORG_NAME)}</title><link>{SITE_URL}/</link></image>',
+        f'    <atom:link href="{site_url}/feed.xml" rel="self" type="application/rss+xml" />',
+        f'    <image><url>{org_logo_brand}</url><title>{html.escape(ORG_NAME)}</title><link>{site_url}/</link></image>',
     ]
     for a in arts:
         slug = a.get("slug") or a["id"]
-        url = f"{SITE_URL}/a/{slug}"
-        img = _abs_url(a.get("image") or "") if a.get("image") else ""
+        url = f"{site_url}/a/{slug}"
+        img = _abs_url(a.get("image") or "", site_url) if a.get("image") else ""
         dek = _strip_html(a.get("dek") or "")[:500]
-        body_html = _sections_to_html(a.get("sections") or [])
+        body_html = _sections_to_html(a.get("sections") or [], site_url)
         content_encoded = f"<![CDATA[{body_html}]]>"
         lines.append("    <item>")
         lines.append(f"      <title>{html.escape(a.get('title') or '')}</title>")
@@ -484,7 +695,7 @@ def feed_xml():
 # ---------------------------------------------------------------------------
 # Facebook Instant Articles RSS /feed/ia.xml
 # ---------------------------------------------------------------------------
-def _render_ia_body_html(a: dict, url: str, image: str) -> str:
+def _render_ia_body_html(a: dict, url: str, image: str, site_url: str) -> str:
     """Build the <content:encoded> HTML per Facebook IA Markup."""
     title = html.escape(a.get("title") or "")
     dek = html.escape(_strip_html(a.get("dek") or ""))
@@ -493,7 +704,7 @@ def _render_ia_body_html(a: dict, url: str, image: str) -> str:
     date_iso = a.get("dateIso") or ""
     pub_iso = _iso8601(date_iso)
     date_label = html.escape(a.get("date") or date_iso)
-    body_inner = _sections_to_html(a.get("sections") or [])
+    body_inner = _sections_to_html(a.get("sections") or [], site_url)
 
     parts = [
         '<!doctype html>',
@@ -533,8 +744,9 @@ def _render_ia_body_html(a: dict, url: str, image: str) -> str:
 
 
 @router.api_route("/feed/ia.xml", methods=["GET", "HEAD"])
-def feed_ia_xml():
+def feed_ia_xml(request: Request):
     arts = _load_recent_articles(limit=100)
+    site_url = _site_url(request)
     now_rfc = datetime.now(timezone.utc).strftime("%a, %d %b %Y %H:%M:%S +0000")
     lines = [
         '<?xml version="1.0" encoding="utf-8" standalone="no"?>',
@@ -542,16 +754,16 @@ def feed_ia_xml():
         '     xmlns:content="http://purl.org/rss/1.0/modules/content/">',
         '  <channel>',
         f'    <title>{html.escape(ORG_NAME)} — Instant Articles</title>',
-        f'    <link>{SITE_URL}/</link>',
+        f'    <link>{site_url}/</link>',
         f'    <description>{html.escape(ORG_FULL)} — Facebook Instant Articles feed</description>',
         '    <language>ru</language>',
         f'    <lastBuildDate>{now_rfc}</lastBuildDate>',
     ]
     for a in arts:
         slug = a.get("slug") or a["id"]
-        url = f"{SITE_URL}/a/{slug}"
-        img = _abs_url(a.get("image") or "") if a.get("image") else ""
-        body_html_ia = _render_ia_body_html(a, url, img)
+        url = f"{site_url}/a/{slug}"
+        img = _abs_url(a.get("image") or "", site_url) if a.get("image") else ""
+        body_html_ia = _render_ia_body_html(a, url, img, site_url)
         lines.append("    <item>")
         lines.append(f"      <title>{html.escape(a.get('title') or '')}</title>")
         lines.append(f"      <link>{html.escape(url)}</link>")

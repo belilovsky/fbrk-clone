@@ -1,6 +1,91 @@
 // ============================================================
-// ФБРК — интерактив (AV DS 2026)
+// ФБРК — интерактив (AV DS 3.7.1)
 // ============================================================
+
+function _cfgOrigin(key) {
+  try {
+    const value = (window && window[key]) ? String(window[key]).trim() : '';
+    if (!value) return '';
+    return value.replace(/\/+$/, '');
+  } catch (_) {
+    return '';
+  }
+}
+
+function siteOrigin() {
+  const configured = _cfgOrigin('FBRK_PUBLIC_ORIGIN');
+  if (configured) return configured;
+  try {
+    if (window.location && window.location.origin) {
+      return window.location.origin.replace(/\/+$/, '');
+    }
+  } catch (_) {}
+  return 'https://fbrk.qdev.run';
+}
+
+function backendOrigin() {
+  const configured = _cfgOrigin('FBRK_BACKEND_ORIGIN');
+  return configured || siteOrigin();
+}
+
+function absSiteUrl(pathOrUrl) {
+  if (!pathOrUrl) return siteOrigin();
+  if (/^https?:\/\//i.test(pathOrUrl)) return pathOrUrl;
+  const base = siteOrigin();
+  if (String(pathOrUrl).startsWith('/')) return base + pathOrUrl;
+  return base + '/' + pathOrUrl;
+}
+
+function absBackendUrl(pathOrUrl) {
+  if (!pathOrUrl) return backendOrigin();
+  if (/^https?:\/\//i.test(pathOrUrl)) return pathOrUrl;
+  const base = backendOrigin();
+  if (String(pathOrUrl).startsWith('/')) return base + pathOrUrl;
+  return base + '/' + pathOrUrl;
+}
+
+function articleUrl(slugOrId) {
+  const id = encodeURIComponent(String(slugOrId || ''));
+  return absSiteUrl(`/a/${id}`);
+}
+
+function articleHref(a) {
+  if (!a) return articleUrl('');
+  return articleUrl(a.slug || a.id);
+}
+
+// Align static SEO tags with runtime public origin in split-hosting mode.
+(function normalizeStaticSeoHost() {
+  const base = siteOrigin();
+  const isDefault = base === 'https://fbrk.qdev.run';
+  if (isDefault) return;
+  const path = (location && location.pathname) ? location.pathname : '/';
+  const href = (path === '/' || path === '/index.html') ? '/' : path;
+  const canonical = document.querySelector('link[rel="canonical"]');
+  if (canonical) canonical.setAttribute('href', absSiteUrl(href));
+  const ogUrl = document.querySelector('meta[property="og:url"]');
+  if (ogUrl) ogUrl.setAttribute('content', absSiteUrl(href));
+  const hreflangs = document.querySelectorAll('link[rel="alternate"][hreflang]');
+  hreflangs.forEach((el) => el.setAttribute('href', absSiteUrl('/')));
+  const imgMeta = document.querySelectorAll('meta[property="og:image"],meta[name="twitter:image"]');
+  imgMeta.forEach((el) => {
+    const content = (el.getAttribute('content') || '').trim();
+    if (!content) return;
+    if (content.startsWith('/')) {
+      el.setAttribute('content', absSiteUrl(content));
+      return;
+    }
+    if (content.includes('fbrk.qdev.run')) {
+      el.setAttribute('content', content.replace('https://fbrk.qdev.run', base));
+    }
+  });
+  const ldScripts = document.querySelectorAll('script[type="application/ld+json"]');
+  ldScripts.forEach((script) => {
+    const raw = script.textContent || '';
+    if (!raw.includes('fbrk.qdev.run')) return;
+    script.textContent = raw.replace(/https:\/\/fbrk\.qdev\.run/g, base);
+  });
+})();
 
 // ---------- date formatting (used everywhere; defined first) ----------
 // Genitive month names («22 апреля» / «22 апр»)
@@ -157,7 +242,7 @@ function fbrkToast(message, ms = 2400) {
     renderResults('');
   }
   function toResultHtml(a) {
-    return `<a class="search-result" href="/a/${a.slug || a.id}">
+    return `<a class="search-result" href="${articleHref(a)}">
       <div class="search-result__title">${escapeHtml(a.title)}</div>
       <div class="search-result__meta">${a.categoryLabel} · ${fmtDateLong(a.dateIso) || a.date}</div>
     </a>`;
@@ -270,13 +355,13 @@ function liveBadgeHtml(a) {
   const featured = all.find((a) => a.featured) || all[0];
 
   leadRoot.innerHTML = `
-    <a class="lead__media" href="/a/${featured.slug || featured.id}" aria-label="${escapeHtml(featured.title)}">
+    <a class="lead__media" href="${articleHref(featured)}" aria-label="${escapeHtml(featured.title)}">
       <img src="${fullCover(featured)}" alt="${escapeHtml(featured.title)}" width="1200" height="800" loading="eager"/>
     </a>
     <div class="lead__body">
       <div class="kicker">${featured.categoryLabel}</div>
       <h1 class="lead__title">
-        <a href="/a/${featured.slug || featured.id}">${escapeHtml(featured.title)}</a>
+        <a href="${articleHref(featured)}">${escapeHtml(featured.title)}</a>
       </h1>
       <p class="lead__dek">${escapeHtml(featured.dek)}</p>
       <div class="lead__meta">
@@ -309,7 +394,7 @@ function liveBadgeHtml(a) {
           : '';
         return `
       <article class="${cardCls}">
-        <a href="/a/${a.slug || a.id}">
+        <a href="${articleHref(a)}">
           <div class="card__media">
             ${mediaInner}
             <span class="card__date-badge">${fmtDateShort(a.dateIso) || a.date}</span>
@@ -317,7 +402,6 @@ function liveBadgeHtml(a) {
           </div>
           <h3 class="card__title">${escapeHtml(a.title)}</h3>
         </a>
-        <p class="card__dek">${escapeHtml(a.dek)}</p>
       </article>`;
       })
       .join('');
@@ -334,16 +418,16 @@ function liveBadgeHtml(a) {
       const thumbCls = hasImg ? 'latest__thumb' : 'latest__thumb latest__thumb--no-image';
       const thumbInner = hasImg
         ? `<img src="${a.image}" alt="${escapeHtml(a.title)}" width="320" height="200" loading="lazy"/>`
-        : `<span class="latest__thumb-mark">FBRK</span>`;
+        : `<span class="latest__thumb-mark">ФБРК</span>`;
       return `
       <li class="latest__item">
-        <a class="${thumbCls}" href="/a/${a.slug || a.id}">
+        <a class="${thumbCls}" href="${articleHref(a)}">
           ${thumbInner}
           ${importanceBadgeHtml(a)}${liveBadgeHtml(a)}
         </a>
         <div>
           <h3 class="latest__title">
-            <a href="/a/${a.slug || a.id}">${escapeHtml(a.title)}</a>
+            <a href="${articleHref(a)}">${escapeHtml(a.title)}</a>
           </h3>
           <div class="latest__meta">${fmtDateShort(a.dateIso) || a.date}</div>
         </div>
@@ -526,24 +610,51 @@ function liveBadgeHtml(a) {
   const root = document.querySelector('[data-article]');
   if (!root) return;
   const params = new URLSearchParams(location.search);
-  const id = params.get('id');
+  const pathMatch = (location.pathname || '').match(/^\/a\/([^/?#]+)/);
+  const id = params.get('id') || (pathMatch ? decodeURIComponent(pathMatch[1]) : '');
+  if (!id) return;
 
-  // ALWAYS redirect to canonical SSR /a/<slug>. The SSR page has TL;DR,
-  // entity-chips, Schema.org NewsArticle. data.js no longer carries full
-  // article bodies (only listing metadata for the latest 80 articles), so
-  // SPA rendering is not viable for older articles. Trust the id as slug.
-  if (id && params.get('spa') !== '1') {
-    location.replace('/a/' + id + (location.hash || ''));
+  const primary = (typeof FBRK_DATA !== 'undefined' && Array.isArray(FBRK_DATA.articles))
+    ? FBRK_DATA.articles
+    : [];
+  const fullArticles = (typeof ARTICLE_FULL !== 'undefined' && Array.isArray(ARTICLE_FULL.articles))
+    ? ARTICLE_FULL.articles
+    : [];
+  const archive = (typeof ARTICLES_ARCHIVE !== 'undefined' && Array.isArray(ARTICLES_ARCHIVE.articles))
+    ? ARTICLES_ARCHIVE.articles
+    : [];
+  const findById = (list) => list.find((x) => x && (x.id === id || x.slug === id));
+  const compactArticle = findById(primary) || findById(archive);
+  const fullArticle = findById(fullArticles);
+  const a = fullArticle
+    ? { ...(compactArticle || {}), ...fullArticle }
+    : compactArticle;
+
+  // If article is not present in local static data, fallback to backend canonical.
+  const redirectToBackend = backendOrigin() !== siteOrigin();
+  if (!a) {
+    if (redirectToBackend) {
+      location.replace(absBackendUrl(`/a/${encodeURIComponent(id)}`) + (location.hash || ''));
+    }
     return;
   }
-  if (typeof FBRK_DATA === 'undefined') return;
-  const a = FBRK_DATA.articles.find((x) => x.id === id) || FBRK_DATA.articles[0];
-  if (!a) return;
+
+  const sectionItems = Array.isArray(a.sections)
+    ? a.sections.filter((s) => s && ((s.h && String(s.h).trim()) || (s.p && String(s.p).trim())))
+    : [];
+  const fallbackParagraphs = String(a.dek || '')
+    .replace(/\r\n/g, '\n')
+    .split(/\n{2,}/)
+    .map((x) => x.trim())
+    .filter(Boolean)
+    .map((p) => ({ h: '', p }));
+  const bodySections = sectionItems.length ? sectionItems : fallbackParagraphs;
+  const heroDek = sectionItems.length ? String(a.dek || '').trim() : '';
 
   document.title = `${a.title} — ФБРК`;
 
   // Reading time estimate
-  const plainText = (a.dek || '') + ' ' + (a.sections || []).map((s) => (s.h || '') + ' ' + (s.p || '')).join(' ');
+  const plainText = (heroDek || '') + ' ' + bodySections.map((s) => (s.h || '') + ' ' + (s.p || '')).join(' ');
   const wordCount = plainText.trim().split(/\s+/).filter(Boolean).length;
   const readMin = Math.max(1, Math.round(wordCount / 180));
 
@@ -560,13 +671,18 @@ function liveBadgeHtml(a) {
     <span class="article__share__label">Поделиться:</span>
     ${shareTargets.map((t) => `<a class="article__share__btn" href="${t.href}" ${t.copy ? 'data-copy' : 'target="_blank" rel="noopener"'} aria-label="${t.label}">${t.icon}</a>`).join('')}
   </div>`;
+  const rawTags = articleTags(a);
+  const visibleEntities = articleEntities(a.entities, rawTags);
+  const tldrHtml = renderArticleTldr(a);
+  const entitiesHtml = renderArticleEntities(visibleEntities);
+  const tagsHtml = renderArticleTags(articleTags(a, visibleEntities.map((e) => e.name)));
 
   root.innerHTML = `
     <article class="article container">
       <header class="article__head">
         <div class="kicker article__kicker">${a.categoryLabel}</div>
         <h1 class="article__title">${escapeHtml(a.title)}</h1>
-        <p class="article__dek">${escapeHtml(a.dek)}</p>
+        ${heroDek ? `<p class="article__dek">${escapeHtml(heroDek)}</p>` : ''}
         <div class="article__meta">
           <span>${fmtDateLong(a.dateIso) || a.date}</span>
           <span class="article__meta__dot">${readMin} мин чтения</span>
@@ -576,9 +692,18 @@ function liveBadgeHtml(a) {
       <div class="article__cover">
         <img src="${fullCover(a)}" alt="${escapeHtml(a.title)}" width="1440" height="810" loading="eager"/>
       </div>
+      ${tldrHtml}
       <div class="article__body">
-        ${a.sections.map((s) => `<h2>${escapeHtml(s.h).replace(/^(.)(.*)/,(_,f,r)=>f+r.toLowerCase())}</h2><p>${escapeHtml(s.p)}</p>`).join('')}
+        ${bodySections.map((s) => {
+          const h = String((s && s.h) || '').trim();
+          const p = String((s && s.p) || '').trim();
+          const hHtml = h ? `<h2>${escapeHtml(h)}</h2>` : '';
+          const pHtml = p ? renderArticleParagraphs(p) : '';
+          return hHtml + pHtml;
+        }).join('')}
       </div>
+      ${entitiesHtml}
+      ${tagsHtml}
                 ${a.source && !a.source.includes('fbrk.kz') ? `<div class="article_source">Источник: <a href="${a.source}" target="_blank" rel="noopener">${new URL(a.source).hostname}</a></div>` : ''}
 
           <div class="ad-block ad-block--article" data-ad-slot="article-bottom"></div>
@@ -597,7 +722,7 @@ function liveBadgeHtml(a) {
                   : '';
                 return `
             <article class="${cardCls}">
-              <a href="/a/${x.slug || x.id}">
+              <a href="${articleHref(x)}">
                 <div class="card__media">
                   ${mediaInner}
                   <span class="card__date-badge">${fmtDateShort(x.dateIso) || x.date}</span>
@@ -634,17 +759,156 @@ function escapeHtml(s) {
   return String(s).replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
 }
 
+function safeArticleUrl(raw) {
+  const value = String(raw || '').trim();
+  if (!value) return '';
+  try {
+    const url = new URL(value, location.origin);
+    if (url.protocol === 'http:' || url.protocol === 'https:' || url.protocol === 'mailto:') {
+      return url.href;
+    }
+  } catch (_) {}
+  return '';
+}
+
+function sanitizeArticleInlineHtml(raw) {
+  const template = document.createElement('template');
+  template.innerHTML = String(raw || '');
+  const allowedTextTags = new Set(['b', 'strong', 'i', 'em', 'u', 's', 'sub', 'sup', 'code']);
+
+  function clean(node) {
+    if (node.nodeType === Node.TEXT_NODE) return escapeHtml(node.textContent || '');
+    if (node.nodeType !== Node.ELEMENT_NODE) return '';
+    const tag = node.tagName.toLowerCase();
+    const children = Array.from(node.childNodes).map(clean).join('');
+    if (allowedTextTags.has(tag)) return `<${tag}>${children}</${tag}>`;
+    if (tag === 'br') return '<br>';
+    if (tag === 'a') {
+      const href = safeArticleUrl(node.getAttribute('href'));
+      if (!href) return children;
+      return `<a href="${escapeHtml(href)}" target="_blank" rel="noopener">${children}</a>`;
+    }
+    if (tag === 'img') {
+      const src = safeArticleUrl(node.getAttribute('src'));
+      if (!src) return '';
+      const alt = escapeHtml(node.getAttribute('alt') || '');
+      return `<img src="${escapeHtml(src)}" alt="${alt}" loading="lazy" decoding="async">`;
+    }
+    return children;
+  }
+
+  return Array.from(template.content.childNodes).map(clean).join('');
+}
+
+function renderArticleParagraphs(raw) {
+  return String(raw || '')
+    .replace(/\r\n/g, '\n')
+    .split(/\n{2,}/)
+    .map((part) => part.trim())
+    .filter(Boolean)
+    .map((part) => `<p>${sanitizeArticleInlineHtml(part).replace(/\n/g, '<br>')}</p>`)
+    .join('');
+}
+
+function articleTags(a, excludedNames = []) {
+  const excluded = new Set((excludedNames || []).map(normalizeEntityName).filter(Boolean));
+  const seen = new Set();
+  const tags = [];
+  ((a && a.tags) || []).forEach((item) => {
+    const value = String(item || '').trim();
+    const key = normalizeEntityName(value);
+    if (!value || !key || excluded.has(key) || seen.has(key)) return;
+    tags.push(value);
+    seen.add(key);
+  });
+  return tags.slice(0, 16);
+}
+
+function normalizeEntityName(value) {
+  return String(value || '').trim().toLocaleLowerCase('ru-RU');
+}
+
+function articleEntities(entities, excludedNames = []) {
+  if (!Array.isArray(entities) || !entities.length) return [];
+  const publicTypes = new Set(['person', 'org', 'gov', 'place', 'law', 'case', 'money']);
+  const excluded = new Set((excludedNames || []).map(normalizeEntityName).filter(Boolean));
+  const seen = new Set();
+  const items = [];
+  entities.forEach((entity) => {
+    if (!entity || typeof entity !== 'object') return;
+    const name = String(entity.name || '').trim();
+    const normalizedName = normalizeEntityName(name);
+    const type = String(entity.type || 'other').toLowerCase().replace(/[^a-z0-9_-]/g, '') || 'other';
+    if (!name || !normalizedName || !publicTypes.has(type) || excluded.has(normalizedName)) return;
+    const key = `${type}:${normalizedName}`;
+    if (seen.has(key)) return;
+    seen.add(key);
+    items.push({ name, type });
+  });
+  return items.slice(0, 32);
+}
+
+function renderArticleTldr(a) {
+  const summary = String((a && a.summaryShort) || '').trim();
+  const points = Array.isArray(a && a.keyPoints)
+    ? a.keyPoints.map((x) => String(x || '').trim()).filter(Boolean).slice(0, 5)
+    : [];
+  if (!summary && !points.length) return '';
+  return `
+    <aside class="article__tldr" aria-label="Кратко">
+      ${summary ? `<p class="article__lead">${escapeHtml(summary)}</p>` : ''}
+      ${points.length ? `<ul class="article__tldr-list">${points.map((p) => `<li>${escapeHtml(p)}</li>`).join('')}</ul>` : ''}
+    </aside>
+  `;
+}
+
+function renderArticleEntities(entities) {
+  if (!Array.isArray(entities) || !entities.length) return '';
+  return `
+    <div class="entity-chips" aria-label="Упомянуты в тексте">
+      <h3 class="entity-chips__title">Упоминания</h3>
+      <div class="entity-chips__row">
+        ${entities.slice(0, 32).map((e) => `<span class="entity-chip entity-chip--${escapeHtml(e.type)}">${escapeHtml(e.name)}</span>`).join('')}
+      </div>
+    </div>
+  `;
+}
+
+function renderArticleTags(tags) {
+  if (!Array.isArray(tags) || !tags.length) return '';
+  return `
+    <div class="article__tags" aria-label="Теги">
+      ${tags.map((tag) => `<a class="tag-chip" href="/archive.html?q=${encodeURIComponent(tag)}">${escapeHtml(tag)}</a>`).join('')}
+    </div>
+  `;
+}
+
 // ---------- Article page SEO (meta tags from article data) ----------
 (function () {
   const titleEl = document.querySelector('[data-article-title]');
   if (!titleEl || typeof FBRK_DATA === 'undefined') return;
-  const id = new URLSearchParams(location.search).get('id');
-  const a = FBRK_DATA.articles.find((x) => x.id === id) || FBRK_DATA.articles[0];
+  const params = new URLSearchParams(location.search);
+  const pathMatch = (location.pathname || '').match(/^\/a\/([^/?#]+)/);
+  const id = params.get('id') || (pathMatch ? decodeURIComponent(pathMatch[1]) : '');
+  const primary = Array.isArray(FBRK_DATA.articles) ? FBRK_DATA.articles : [];
+  const fullArticles = (typeof ARTICLE_FULL !== 'undefined' && Array.isArray(ARTICLE_FULL.articles))
+    ? ARTICLE_FULL.articles
+    : [];
+  const archive = (typeof ARTICLES_ARCHIVE !== 'undefined' && Array.isArray(ARTICLES_ARCHIVE.articles))
+    ? ARTICLES_ARCHIVE.articles
+    : [];
+  const compactArticle = primary.find((x) => x.id === id || x.slug === id)
+    || archive.find((x) => x.id === id || x.slug === id);
+  const fullArticle = fullArticles.find((x) => x.id === id || x.slug === id);
+  const a = fullArticle
+    ? { ...(compactArticle || {}), ...fullArticle }
+    : compactArticle;
   if (!a) return;
+  const base = siteOrigin();
   const title = `${a.title} — ФБРК`;
   const desc = (a.dek || '').slice(0, 200);
-  const url = `https://fbrk.qdev.run/a/${a.slug || a.id}`;
-  const img = (a.image || '').startsWith('http') ? a.image : `https://fbrk.qdev.run${a.image || '/img/og-default.jpg'}`;
+  const url = articleUrl(a.slug || a.id);
+  const img = (a.image || '').startsWith('http') ? a.image : absSiteUrl(a.image || '/img/og-default.jpg');
   titleEl.textContent = title;
   const descEl = document.querySelector('[data-article-desc]');
   if (descEl) descEl.setAttribute('content', desc);
@@ -677,12 +941,12 @@ function escapeHtml(s) {
     image: [img],
     datePublished: a.dateIso || a.date,
     dateModified: a.updatedAt || a.dateIso || a.date,
-    author: { '@type': 'Organization', name: 'ФБРК', url: 'https://fbrk.qdev.run/' },
+    author: { '@type': 'Organization', name: 'ФБРК', url: base + '/' },
     publisher: {
       '@type': 'NewsMediaOrganization',
       name: 'ФБРК',
       legalName: 'Фонд-бюро расследования коррупции',
-      logo: { '@type': 'ImageObject', url: 'https://fbrk.qdev.run/img/brand/logo-brand-256.png', width: 256, height: 256 },
+      logo: { '@type': 'ImageObject', url: absSiteUrl('/img/brand/logo-brand-256.png'), width: 256, height: 256 },
     },
     articleSection: a.categoryLabel || 'Новости',
     inLanguage: 'ru',
@@ -699,8 +963,8 @@ function escapeHtml(s) {
     '@context': 'https://schema.org',
     '@type': 'BreadcrumbList',
     itemListElement: [
-      { '@type': 'ListItem', position: 1, name: 'Главная', item: 'https://fbrk.qdev.run/' },
-      { '@type': 'ListItem', position: 2, name: a.categoryLabel || 'Новости', item: 'https://fbrk.qdev.run/archive.html?cat=' + (a.category || 'news') },
+      { '@type': 'ListItem', position: 1, name: 'Главная', item: base + '/' },
+      { '@type': 'ListItem', position: 2, name: a.categoryLabel || 'Новости', item: base + '/archive.html?cat=' + (a.category || 'news') },
       { '@type': 'ListItem', position: 3, name: a.title, item: url },
     ],
   });
@@ -841,7 +1105,7 @@ function escapeHtml(s) {
       : '';
     return `
       <article class="${cardCls}">
-        <a href="/a/${a.slug || a.id}">
+        <a href="${articleHref(a)}">
           <div class="card__media">
             ${mediaInner}
             <span class="card__date-badge">${fmtDateShort(a.dateIso) || a.date}</span>

@@ -2,7 +2,9 @@
 from __future__ import annotations
 
 import html
+import hashlib
 import json
+import os
 from datetime import datetime, timezone
 from pathlib import Path
 
@@ -10,7 +12,7 @@ from .config import settings
 from .db import db, row_to_article
 
 
-SITE_URL = "https://fbrk.qdev.run"
+SITE_URL = (os.environ.get("FBRK_SITE_URL") or "https://fbrk.qdev.run").rstrip("/")
 
 HEADER = """// ============================================================
 // ФБРК — данные статей
@@ -44,10 +46,103 @@ SITE_META = {
 }
 
 
+def _json_list(raw: object) -> list:
+    try:
+        value = json.loads(str(raw or "[]"))
+    except (TypeError, ValueError, json.JSONDecodeError):
+        return []
+    return value if isinstance(value, list) else []
+
+
+def _unique_strings(*groups: list, limit: int = 16) -> list[str]:
+    out: list[str] = []
+    seen: set[str] = set()
+    for group in groups:
+        for item in group or []:
+            value = str(item or "").strip()
+            key = value.casefold()
+            if not value or key in seen:
+                continue
+            out.append(value[:64])
+            seen.add(key)
+            if len(out) >= limit:
+                return out
+    return out
+
+
+def _manual_public_tags(
+    raw: list,
+    auto_raw: list,
+    limit: int = 16,
+    exclude_names: set[str] | None = None,
+) -> list[str]:
+    auto_names = {str(item or "").strip().casefold() for item in auto_raw or [] if str(item or "").strip()}
+    excluded = {str(item or "").strip().casefold() for item in (exclude_names or set()) if str(item or "").strip()}
+    out: list[str] = []
+    seen: set[str] = set()
+    for item in raw or []:
+        value = str(item or "").strip()
+        key = value.casefold()
+        if not value or key in seen or key in auto_names or key in excluded:
+            continue
+        out.append(value[:64])
+        seen.add(key)
+        if len(out) >= limit:
+            break
+    return out
+
+
+PUBLIC_ENTITY_TYPES = {"person", "org", "gov", "place", "law", "case", "money"}
+
+
+def _hidden_entity_names(raw: list) -> set[str]:
+    out: set[str] = set()
+    for item in raw or []:
+        if not isinstance(item, dict):
+            continue
+        name = str(item.get("name") or "").strip()
+        kind = str(item.get("type") or "other").strip().lower()
+        if name and kind not in PUBLIC_ENTITY_TYPES:
+            out.add(name.casefold())
+    return out
+
+
+def _public_entities(raw: list, limit: int = 32, exclude_names: set[str] | None = None) -> list[dict]:
+    excluded = {str(x or "").strip().casefold() for x in (exclude_names or set()) if str(x or "").strip()}
+    out: list[dict] = []
+    seen: set[str] = set()
+    for item in raw or []:
+        if not isinstance(item, dict):
+            continue
+        name = str(item.get("name") or "").strip()
+        if not name:
+            continue
+        kind = str(item.get("type") or "other").strip().lower()
+        if kind not in PUBLIC_ENTITY_TYPES:
+            continue
+        if name.casefold() in excluded:
+            continue
+        key = f"{kind}:{name.casefold()}"
+        if key in seen:
+            continue
+        out.append({"name": name[:80], "type": kind})
+        seen.add(key)
+        if len(out) >= limit:
+            break
+    return out
+
+
 def _load_articles() -> list[dict]:
     with db() as conn:
         rows = conn.execute(
-            "SELECT a.*, m.importance AS _meta_importance, m.sentiment AS _meta_sentiment, m.region AS _meta_region "
+            "SELECT a.*, "
+            "m.importance AS _meta_importance, "
+            "m.sentiment AS _meta_sentiment, "
+            "m.region AS _meta_region, "
+            "m.summary_short AS _meta_summary_short, "
+            "m.key_points AS _meta_key_points, "
+            "m.entities_json AS _meta_entities_json, "
+            "m.tags_auto AS _meta_tags_auto "
             "FROM articles a LEFT JOIN article_meta m ON m.article_id=a.id "
             "WHERE a.published=1 ORDER BY a.date_iso DESC, a.created_at DESC"
         ).fetchall()
@@ -59,6 +154,10 @@ def _load_articles() -> list[dict]:
             art["_meta_importance"] = r["_meta_importance"]
             art["_meta_sentiment"] = r["_meta_sentiment"]
             art["_meta_region"] = r["_meta_region"]
+            art["_meta_summary_short"] = r["_meta_summary_short"]
+            art["_meta_key_points"] = r["_meta_key_points"]
+            art["_meta_entities_json"] = r["_meta_entities_json"]
+            art["_meta_tags_auto"] = r["_meta_tags_auto"]
         except Exception:
             pass
         out.append(art)
@@ -94,6 +193,44 @@ def _public_shape(a: dict) -> dict:
     return shape
 
 
+def _article_full_shape(a: dict) -> dict:
+    """Public article-page payload for split static hosting.
+
+    This intentionally keeps only public article fields and rendered sections:
+    no admin body_json, no author names, no private editor metadata.
+    """
+    shape = _public_shape(a)
+    shape["sections"] = a.get("sections") or []
+    raw_entities = _json_list(a.get("_meta_entities_json"))
+    manual_tags = _manual_public_tags(
+        shape.get("tags") or [],
+        _json_list(a.get("_meta_tags_auto")),
+        limit=16,
+        exclude_names=_hidden_entity_names(raw_entities),
+    )
+    entities = _public_entities(
+        raw_entities,
+        limit=32,
+    )
+    entity_names = {str(e.get("name") or "").casefold() for e in entities}
+    shape["tags"] = [
+        tag for tag in manual_tags
+        if tag.casefold() not in entity_names
+    ]
+    summary_short = str(a.get("_meta_summary_short") or "").strip()
+    if summary_short:
+        shape["summaryShort"] = summary_short[:240]
+    key_points = _unique_strings(_json_list(a.get("_meta_key_points")), limit=5)
+    if key_points:
+        shape["keyPoints"] = key_points
+    if entities:
+        shape["entities"] = entities
+    source = (a.get("source") or "").strip()
+    if source and "fbrk.kz" not in source:
+        shape["source"] = source
+    return shape
+
+
 def _write_sitemap(articles: list[dict], web_root: Path) -> None:
     """Generate sitemap.xml with static pages + every article."""
     now = datetime.now(timezone.utc).strftime("%Y-%m-%d")
@@ -107,12 +244,8 @@ def _write_sitemap(articles: list[dict], web_root: Path) -> None:
     ]
     for a in articles:
         iso = (a.get("dateIso") or now)
-        urls.append((
-            f"{SITE_URL}/article.html?id={a['id']}",
-            iso,
-            "monthly",
-            "0.7",
-        ))
+        slug_or_id = a.get("slug") or a["id"]
+        urls.append((f"{SITE_URL}/a/{slug_or_id}", iso, "weekly", "0.7"))
     body = ['<?xml version="1.0" encoding="UTF-8"?>',
             '<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">']
     for loc, lastmod, cf, pr in urls:
@@ -151,7 +284,8 @@ def _write_feed(articles: list[dict], web_root: Path) -> None:
         f'    <atom:link href="{SITE_URL}/feed.xml" rel="self" type="application/rss+xml" />',
     ]
     for a in items:
-        url = f"{SITE_URL}/article.html?id={a['id']}"
+        slug_or_id = a.get("slug") or a["id"]
+        url = f"{SITE_URL}/a/{slug_or_id}"
         img = a.get("image") or ""
         if img and not img.startswith("http"):
             img = f"{SITE_URL}{img}"
@@ -171,7 +305,6 @@ def _write_feed(articles: list[dict], web_root: Path) -> None:
     (web_root / "feed.xml").write_text("\n".join(lines), encoding="utf-8")
 
 
-import os
 import fcntl
 import tempfile
 import threading
@@ -199,6 +332,10 @@ def _file_lock(lock_path: str):
     Path(lock_path).parent.mkdir(parents=True, exist_ok=True)
     fd = os.open(lock_path, os.O_RDWR | os.O_CREAT, 0o644)
     try:
+        try:
+            os.chmod(lock_path, 0o666)
+        except OSError:
+            pass
         fcntl.flock(fd, fcntl.LOCK_EX)
         yield
     finally:
@@ -209,9 +346,11 @@ def _file_lock(lock_path: str):
 
 def regenerate_data_js() -> dict:
     out = Path(settings.data_js_path)
-    lock_file = str(out.with_suffix(out.suffix + ".lock"))
+    lock_key = hashlib.sha256(str(out.resolve()).encode("utf-8")).hexdigest()[:16]
+    lock_file = str(Path(tempfile.gettempdir()) / f"fbrk-publish-{lock_key}.lock")
     with _PUBLISH_LOCK, _file_lock(lock_file):
-        articles = [_public_shape(a) for a in _load_articles()]
+        source_articles = _load_articles()
+        articles = [_public_shape(a) for a in source_articles]
 
         # Tier 1: data.js — homepage (last N articles). Fast initial load.
         # N is tunable via FBRK_HOME_LATEST_LIMIT env var (default 200).
@@ -227,6 +366,18 @@ def regenerate_data_js() -> dict:
         archive_data = {"articles": articles}
         archive_body = "/* ФБРК archive — auto-generated. */\nwindow.ARTICLES_ARCHIVE = " + json.dumps(archive_data, ensure_ascii=False) + ";\n"
         _atomic_write(archive_out, archive_body)
+
+        # Tier 3: article-full.js — full public body for static /a/<slug>
+        # fallback on split hosting. Loaded only by article.html.
+        article_full_out = out.parent / "article-full.js"
+        article_full_data = {"articles": [_article_full_shape(a) for a in source_articles]}
+        article_full_body = (
+            "/* ФБРК full article bodies — auto-generated. */\n"
+            "window.ARTICLE_FULL = "
+            + json.dumps(article_full_data, ensure_ascii=False, separators=(",", ":"))
+            + ";\n"
+        )
+        _atomic_write(article_full_out, article_full_body)
 
         # Note: sitemap.xml, feed.xml, feed/ia.xml and robots.txt are now served
         # dynamically by FastAPI (app.seo). Legacy static writers removed so stale

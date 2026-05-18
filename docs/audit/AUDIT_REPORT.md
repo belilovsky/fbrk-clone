@@ -1,5 +1,7 @@
 # Аудит ФБРК — 2026-04-28
 
+> Update (2026-05-14): for current GitHub+VPS split status and `new.fbrk.kz` cutover baseline, see `docs/audit/NEW_FBRK_STATUS_2026-05-14.md`.
+
 ## Executive Summary
 
 Проведён repo + public audit проекта `belilovsky/fbrk-clone` и публичного сайта `https://fbrk.qdev.run`.

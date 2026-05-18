@@ -1,0 +1,22 @@
+{% extends "base.html" %}
+{% block title %}Категории — Админка ФБРК{% endblock %}
+{% block page_title %}Категории ({{ items|length }}){% endblock %}
+{% block content %}
+<div class="section-card">
+  <form method="post" action="/admin/categories/add" class="a-form-inline">
+    <input name="slug" placeholder="slug (news)" required>
+    <input name="label" placeholder="Название (Новости)" required>
+    <input name="sort_order" type="number" value="0" style="width:80px">
+    <button type="submit" class="a-btn a-btn--primary">Добавить</button>
+  </form>
+  <table class="a-table" style="margin-top:14px">
+    <thead><tr><th>#</th><th>Slug</th><th>Название</th><th>Порядок</th><th>Featured</th><th></th></tr></thead>
+    <tbody>
+    {% for c in items %}
+    <tr><td>{{ c.id }}</td><td><code>{{ c.slug }}</code></td><td>{{ c.label }}</td><td>{{ c.sort_order }}</td><td>{% if c.is_featured %}★{% endif %}</td>
+      <td><form method="post" action="/admin/categories/{{ c.id }}/delete" onsubmit="return confirm('Удалить?')" style="display:inline"><button class="a-iconbtn">✕</button></form></td></tr>
+    {% endfor %}
+    </tbody>
+  </table>
+</div>
+{% endblock %}
