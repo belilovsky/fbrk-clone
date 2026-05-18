@@ -18,6 +18,15 @@ temporary Plesk File Manager static sync path.
 - Public origin: `https://new.fbrk.kz`
 - Backend origin: `https://fbrk.qdev.run`
 
+Current DNS still points to the legacy Plesk host until cutover:
+
+- `A`: `195.210.46.10`
+- `AAAA`: `2a00:5da0:1000::150`
+
+The currently available Plesk API role can sync files but cannot mutate DNS
+records (`dns.get_rec` returns `Permission denied`). DNS cutover must be done in
+the ps.kz DNS panel or by an account/role with DNS permissions.
+
 ## Sync command
 
 Run on the backend VPS:
