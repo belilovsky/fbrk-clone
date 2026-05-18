@@ -42,7 +42,7 @@ fbrk/
 
 ## Деплой
 
-VPS: `62.72.32.112`. Web-root: `/var/www/fbrk.qdev.run/`.
+Backend VPS: `148.230.117.131`. Web-root: `/var/www/fbrk.qdev.run/`.
 Backend: systemd-юнит `fbrk-admin.service`, порт 8787 (uvicorn, www-data).
 DB: `/opt/fbrk-admin/fbrk.db`.
 
@@ -53,8 +53,14 @@ systemctl restart fbrk-admin
 ```
 
 Для split-схемы (`new.fbrk.kz` = статика, `fbrk.qdev.run` = backend/DB):
+- `docs/audit/NEW_FBRK_VPS_FRONTEND_RUNBOOK.md` — текущая целевая схема:
+  dedicated KZ VPS `213.155.22.190` отдаёт `new.fbrk.kz`, backend остаётся на
+  `fbrk.qdev.run`.
 - `docs/audit/NEW_FBRK_SPLIT_FRONTEND_RUNBOOK.md`
 - `admin/deploy/plesk-new-fbrk-split-proxy.conf`
+- `admin/scripts/sync_new_frontend_to_vps.sh` — штатный backend → frontend VPS
+  sync через SSH/rsync; на backend VPS установлен cron
+  `/etc/cron.d/fbrk-new-vps-sync`.
 - `admin/scripts/build_new_frontend_static_package.sh` — delta-пакет для ручной
   синхронизации Plesk-статики, пока split-proxy недоступен по правам роли.
 - `admin/scripts/sync_new_frontend_to_plesk.py` — автоматический guarded sync
