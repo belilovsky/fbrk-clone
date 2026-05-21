@@ -6,3 +6,5 @@ itsdangerous==2.2.0
 pyjwt==2.9.0
 pillow==10.4.0
 python-slugify==8.0.4
+requests==2.32.3
+beautifulsoup4==4.12.3

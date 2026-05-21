@@ -1,0 +1,49 @@
+name: fbrk
+
+x-fbrk-common: &fbrk-common
+  build:
+    context: ..
+    dockerfile: deploy/Dockerfile
+  image: fbrk-admin:local
+  env_file:
+    - /etc/fbrk-admin/fbrk-admin.env
+  environment:
+    FBRK_DB: /host/fbrk-admin/fbrk.db
+    FBRK_DB_PATH: /host/fbrk-admin/fbrk.db
+    FBRK_PUBLIC_ROOT: /var/www/fbrk.qdev.run
+    FBRK_UPLOADS_DIR: /var/www/fbrk.qdev.run/img/uploads
+    FBRK_UPLOADS_URL: img/uploads
+    FBRK_DATA_JS: /var/www/fbrk.qdev.run/js/data.js
+    FBRK_SITE_URL: https://fbrk.qdev.run
+    FBRK_COOKIE_SECURE: "true"
+  volumes:
+    - /opt/fbrk-admin:/host/fbrk-admin
+    - /var/www/fbrk.qdev.run:/var/www/fbrk.qdev.run
+    - /var/log/fbrk:/var/log/fbrk
+  user: "33:33"
+  working_dir: /opt/fbrk-admin
+
+services:
+  admin:
+    <<: *fbrk-common
+    container_name: fbrk-admin
+    restart: unless-stopped
+    ports:
+      - "127.0.0.1:${FBRK_ADMIN_HOST_PORT:-8788}:8787"
+
+  rss:
+    <<: *fbrk-common
+    profiles: ["jobs"]
+    container_name: fbrk-rss
+    restart: "no"
+    command: ["python", "ingest_fbrk.py", "rss"]
+
+  enrich:
+    <<: *fbrk-common
+    profiles: ["jobs"]
+    container_name: fbrk-enrich
+    restart: "no"
+    env_file:
+      - /etc/fbrk-admin/fbrk-admin.env
+      - /opt/fbrk-admin/.env
+    command: ["python", "enrich.py", "--sleep", "15"]
