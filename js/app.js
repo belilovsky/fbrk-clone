@@ -223,11 +223,29 @@ function fbrkToast(message, ms = 2400) {
   if (!overlay) return;
   const input = overlay.querySelector('.search-box__input');
   const results = overlay.querySelector('.search-box__results');
+  let activeIndex = -1;
   // Lazy getter: when full archive lands later, search uses it automatically.
   function dataset() {
     if (typeof ARTICLES_ARCHIVE !== 'undefined' && ARTICLES_ARCHIVE.articles) return ARTICLES_ARCHIVE.articles;
     if (typeof FBRK_DATA !== 'undefined') return FBRK_DATA.articles;
     return [];
+  }
+  function resultLinks() {
+    return Array.from(results.querySelectorAll('.search-result'));
+  }
+  function setActiveResult(index) {
+    const links = resultLinks();
+    if (!links.length) {
+      activeIndex = -1;
+      return;
+    }
+    activeIndex = Math.max(0, Math.min(index, links.length - 1));
+    links.forEach((link, i) => {
+      link.classList.toggle('is-active', i === activeIndex);
+      if (i === activeIndex) link.setAttribute('aria-current', 'true');
+      else link.removeAttribute('aria-current');
+    });
+    links[activeIndex].scrollIntoView({ block: 'nearest' });
   }
 
   function open() {
@@ -252,6 +270,7 @@ function fbrkToast(message, ms = 2400) {
     q = q.trim().toLowerCase();
     if (!q) {
       results.innerHTML = data.slice(0, 5).map(toResultHtml).join('');
+      activeIndex = -1;
       return;
     }
     // Kick off lazy archive load on first non-empty query so search covers everything.
@@ -269,9 +288,11 @@ function fbrkToast(message, ms = 2400) {
     if (!matches.length) {
       results.innerHTML =
         '<div style="color:var(--color-text-muted); padding: var(--space-5) 0; font-size: var(--text-sm);">Ничего не найдено. Попробуйте другой запрос.</div>';
+      activeIndex = -1;
       return;
     }
     results.innerHTML = matches.map(toResultHtml).join('');
+    setActiveResult(0);
   }
   document.querySelectorAll('[data-search-open]').forEach((b) => b.addEventListener('click', open));
   overlay.querySelector('.search-close').addEventListener('click', close);
@@ -286,6 +307,23 @@ function fbrkToast(message, ms = 2400) {
     }
   });
   input.addEventListener('input', (e) => renderResults(e.target.value));
+  input.addEventListener('keydown', (e) => {
+    const links = resultLinks();
+    if (!links.length) return;
+    if (e.key === 'ArrowDown') {
+      e.preventDefault();
+      setActiveResult(activeIndex < 0 ? 0 : activeIndex + 1);
+    } else if (e.key === 'ArrowUp') {
+      e.preventDefault();
+      setActiveResult(activeIndex < 0 ? links.length - 1 : activeIndex - 1);
+    } else if (e.key === 'Enter') {
+      const target = links[activeIndex >= 0 ? activeIndex : 0];
+      if (target) {
+        e.preventDefault();
+        window.location.href = target.href;
+      }
+    }
+  });
   renderResults('');
 })();
 
