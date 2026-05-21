@@ -1,8 +1,8 @@
 # Runbook: new.fbrk.kz on dedicated KZ VPS
 
-Status date: 2026-05-18
+Status date: 2026-05-21
 
-Production status: cutover complete.
+Production status: cutover complete; static frontend is served by Docker.
 
 ## Purpose
 
@@ -17,8 +17,15 @@ account replaces the temporary Plesk File Manager static sync path.
 - Frontend IPv6: `2a00:5da0:2005:1::2d1`
 - Frontend web-root: `/var/www/new.fbrk.kz`
 - Frontend nginx site: `/etc/nginx/sites-available/new.fbrk.kz`
+- Frontend Docker compose: `/opt/new-fbrk-frontend/deploy/docker-compose.new-fbrk.yml`
+- Frontend container: `new-fbrk-frontend`
 - Public origin: `https://new.fbrk.kz`
 - Backend origin: `https://fbrk.qdev.run`
+
+Host nginx terminates TLS and proxies HTTPS traffic to the local Docker nginx
+container on `127.0.0.1:8088`. The container mounts
+`/var/www/new.fbrk.kz` read-only, so the existing backend-to-frontend sync keeps
+working without storing the canonical DB or admin secrets on the frontend VPS.
 
 Current authoritative DNS for `new.fbrk.kz` points to the separate frontend
 VPS in the same ps.kz account:
@@ -33,6 +40,39 @@ Legacy Plesk values were:
 
 Plesk File Manager sync remains a rollback/fallback path only. The active
 frontend is now the separate ps.kz VPS.
+
+## Docker frontend status
+
+Applied on 2026-05-21:
+
+- Docker installed from Ubuntu packages on the frontend VPS.
+- `new-fbrk-frontend` runs image `nginx:1.27-alpine`.
+- Published port: `127.0.0.1:8088 -> 8080/tcp`.
+- Restart policy: `unless-stopped`.
+- Container health: `/healthz` inside the container.
+- Host nginx config keeps ACME challenge handling on port `80` and proxies all
+  HTTPS page/static traffic to `127.0.0.1:8088`.
+
+Safety snapshot before Docker cutover:
+
+- `/opt/new-fbrk-frontend/snapshots/20260521T173643Z-pre-dockerize/web-root`
+- `/opt/new-fbrk-frontend/snapshots/20260521T173643Z-pre-dockerize/nginx-new.fbrk.kz.conf`
+
+Runtime files:
+
+- `/opt/new-fbrk-frontend/deploy/docker-compose.new-fbrk.yml`
+- `/opt/new-fbrk-frontend/deploy/nginx-new-fbrk-container.conf`
+- `/etc/nginx/sites-available/new.fbrk.kz`
+
+Operational commands on the frontend VPS:
+
+```bash
+cd /opt/new-fbrk-frontend/deploy
+docker compose -f docker-compose.new-fbrk.yml ps
+docker compose -f docker-compose.new-fbrk.yml logs --tail=80 frontend
+curl -fsS http://127.0.0.1:8088/healthz
+nginx -t
+```
 
 ## Sync command
 
@@ -126,7 +166,28 @@ curl -fsSI https://new.fbrk.kz/no-such-page | sed -n '1,20p'
 /opt/fbrk-admin/scripts/check_split_linkage.sh https://new.fbrk.kz https://fbrk.qdev.run --strict
 ```
 
+Docker verification:
+
+```bash
+ssh root@213.155.22.190 \
+  'docker inspect --format "status={{.State.Status}} health={{.State.Health.Status}}" new-fbrk-frontend'
+```
+
 ## Rollback
+
+Docker frontend rollback on the frontend VPS:
+
+```bash
+cp /opt/new-fbrk-frontend/snapshots/20260521T173643Z-pre-dockerize/nginx-new.fbrk.kz.conf \
+  /etc/nginx/sites-available/new.fbrk.kz
+nginx -t
+systemctl reload nginx
+cd /opt/new-fbrk-frontend/deploy
+docker compose -f docker-compose.new-fbrk.yml down
+```
+
+This returns `new.fbrk.kz` to direct host-nginx static serving from
+`/var/www/new.fbrk.kz`.
 
 DNS-only rollback:
 

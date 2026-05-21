@@ -1,0 +1,18 @@
+name: new-fbrk
+
+services:
+  frontend:
+    image: nginx:1.27-alpine
+    container_name: new-fbrk-frontend
+    restart: unless-stopped
+    ports:
+      - "127.0.0.1:${NEW_FBRK_FRONTEND_HOST_PORT:-8088}:8080"
+    volumes:
+      - /var/www/new.fbrk.kz:/usr/share/nginx/html:ro
+      - ./nginx-new-fbrk-container.conf:/etc/nginx/conf.d/default.conf:ro
+    healthcheck:
+      test: ["CMD-SHELL", "wget -q -O - http://127.0.0.1:8080/healthz | grep -q ok"]
+      interval: 30s
+      timeout: 5s
+      start_period: 10s
+      retries: 3
