@@ -194,6 +194,32 @@ captured before cutover.
 
 ## Later Step: ps.kz Frontend
 
-After `fbrk.qdev.run` backend is stable in Docker, containerize `new.fbrk.kz`
-as a static nginx container on the ps.kz VPS. It should receive only the split
-frontend package and never the canonical SQLite DB or admin secrets.
+Completed on 2026-05-21.
+
+`new.fbrk.kz` now runs as a static nginx container on the ps.kz frontend VPS:
+
+- container: `new-fbrk-frontend`
+- image: `nginx:1.27-alpine`
+- compose file on VPS: `/opt/new-fbrk-frontend/deploy/docker-compose.new-fbrk.yml`
+- published port: `127.0.0.1:8088 -> 8080/tcp`
+- restart policy: `unless-stopped`
+- host nginx: TLS terminator and reverse proxy to `127.0.0.1:8088`
+- mounted frontend package: `/var/www/new.fbrk.kz:/usr/share/nginx/html:ro`
+
+It receives only the split frontend package and never the canonical SQLite DB
+or admin secrets.
+
+Frontend safety snapshot before cutover:
+
+- `/opt/new-fbrk-frontend/snapshots/20260521T173643Z-pre-dockerize/web-root`
+- `/opt/new-fbrk-frontend/snapshots/20260521T173643Z-pre-dockerize/nginx-new.fbrk.kz.conf`
+
+Verified after frontend cutover:
+
+- `https://new.fbrk.kz/` -> `200`
+- representative static article `/a/<slug>` -> `200`
+- missing page -> `404`
+- `/js/data.js` keeps `no-cache, no-store, must-revalidate`
+- `/css/style.css` keeps `public, max-age=86400`
+- container health: `healthy`
+- nginx syntax check: `nginx -t`
