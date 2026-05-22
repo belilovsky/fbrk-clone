@@ -32,6 +32,33 @@ def _article(**overrides: object) -> dict:
 
 
 class PublicEntityTagsTest(unittest.TestCase):
+    def test_enrich_routes_deepseek_to_openai_compatible_provider(self) -> None:
+        calls: list[tuple[str, str, str]] = []
+        old = enrich._call_openai_compatible
+        old_key = enrich.DEEPSEEK_API_KEY
+        try:
+            enrich.DEEPSEEK_API_KEY = "test-deepseek-key"
+
+            def fake_call(text: str, model: str, *, api_key: str, base_url: str, provider: str) -> dict:
+                calls.append((model, base_url, provider))
+                return {"summary_short": "ok"}
+
+            enrich._call_openai_compatible = fake_call
+            enrich._call_model("текст", "deepseek-chat")
+        finally:
+            enrich._call_openai_compatible = old
+            enrich.DEEPSEEK_API_KEY = old_key
+
+        self.assertEqual(calls, [("deepseek-chat", "https://api.deepseek.com", "deepseek")])
+
+    def test_enrich_falls_back_from_deepseek_rate_limit_to_openai(self) -> None:
+        old_key = enrich.OPENAI_API_KEY
+        try:
+            enrich.OPENAI_API_KEY = "test-openai-key"
+            self.assertTrue(enrich._should_fallback_to_openai("deepseek-chat", "RuntimeError: deepseek 429: rate limit"))
+        finally:
+            enrich.OPENAI_API_KEY = old_key
+
     def test_fallback_does_not_promote_tags_to_entities(self) -> None:
         result = enrich._fallback_result(_article())
 

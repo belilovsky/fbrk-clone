@@ -77,6 +77,8 @@ def test_split_frontend_package_includes_video_data(tmp_path, monkeypatch):
             return b"const FBRK_DATA = {\"articles\":[]};"
         if url.endswith("/js/data-archive.js"):
             return b"const FBRK_ARCHIVE = {\"articles\":[]};"
+        if url.endswith("/js/search-index.js"):
+            return b"const FBRK_SEARCH_INDEX = {\"items\":[]};"
         if url.endswith("/robots.txt"):
             return b"User-agent: *\nAllow: /\n"
         if url.endswith("/sitemap.xml"):
@@ -100,4 +102,5 @@ def test_split_frontend_package_includes_video_data(tmp_path, monkeypatch):
 
     rel_paths = {path.relative_to(out_dir).as_posix() for path in uploaded}
     assert "data/videos.json" in rel_paths
+    assert "js/search-index.js" in rel_paths
     assert (out_dir / "data" / "videos.json").read_text(encoding="utf-8") == '[{"id":"demo"}]'

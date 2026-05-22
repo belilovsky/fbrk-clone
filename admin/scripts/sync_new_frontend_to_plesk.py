@@ -34,9 +34,19 @@ DEFAULT_PUBLIC_ORIGIN = "https://new.fbrk.kz"
 DEFAULT_BACKEND_ORIGIN = "https://fbrk.qdev.run"
 DEFAULT_WEB_ROOT = "/var/www/fbrk.qdev.run"
 DEFAULT_PLESK_ROOT = "/new.fbrk.kz"
-GENERATED_FILES = ("data.js", "data-archive.js", "article-full.js")
+GENERATED_FILES = ("data.js", "data-archive.js", "article-full.js", "search-index.js")
 DATA_FILES = ("videos.json",)
-ROOT_FILES = ("index.html", "archive.html", "about.html", "article.html", "404.html")
+ROOT_FILES = (
+    "index.html",
+    "archive.html",
+    "about.html",
+    "article.html",
+    "contacts.html",
+    "privacy.html",
+    "search.html",
+    "sitemap.html",
+    "404.html",
+)
 SEO_FILES = ("robots.txt", "sitemap.xml", "feed.xml")
 
 HTACCESS_TEXT = """# Pretty article URLs: /a/<slug> -> /article.html?id=<slug>&spa=1
@@ -60,7 +70,7 @@ RewriteRule ^a/([A-Za-z0-9_\\-]+)/?$ /article.html?id=$1&spa=1 [L,QSA]
     Header set Cache-Control "public, max-age=86400"
   </FilesMatch>
 
-  <FilesMatch "^(data|data-archive|article-full)\\.js$">
+  <FilesMatch "^(data|data-archive|article-full|search-index)\\.js$">
     Header set Cache-Control "no-cache, no-store, must-revalidate"
     Header set Pragma "no-cache"
     Header set Expires "0"

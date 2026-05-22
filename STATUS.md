@@ -16,6 +16,8 @@ Branch: `release/pre-prod-audit`
 - [x] Footer public AV DS version removed from new footer surfaces and kept as HTML comment where added.
 - [x] `/privacy.html` and functional cookie banner added.
 - [x] `about.html` legal/contact section expanded.
+- [x] FBRK enrichment supports DeepSeek primary (`DEEPSEEK_API_KEY`) with OpenAI fallback (`OPENAI_API_KEY`); live env is installed only on the active FBRK VPS, values are not committed.
+- [x] Plesk sync/package scripts include new pre-prod pages and `js/search-index.js`.
 
 ## P1/P2 carried forward
 

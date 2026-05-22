@@ -16,8 +16,9 @@ Usage:
     # Single article by id
     python3 /opt/fbrk-admin/enrich.py --only <article_id>
 
-Model defaults to gpt-4o-mini (cheap, good enough for RU). Override with
-FBRK_ENRICH_MODEL or --model.
+Model defaults to gemini-2.0-flash with OpenAI-compatible fallback. Override
+with FBRK_ENRICH_MODEL or --model. DeepSeek is supported via DEEPSEEK_API_KEY
+and OpenAI fallback via OPENAI_API_KEY.
 """
 from __future__ import annotations
 
@@ -45,6 +46,8 @@ OPENAI_API_KEY = os.environ.get("OPENAI_API_KEY", "")
 OPENAI_BASE = os.environ.get("OPENAI_BASE_URL", "https://api.openai.com/v1")
 GEMINI_API_KEY = os.environ.get("GEMINI_API_KEY", "")
 GEMINI_BASE = "https://generativelanguage.googleapis.com/v1beta"
+DEEPSEEK_API_KEY = os.environ.get("DEEPSEEK_API_KEY", "")
+DEEPSEEK_BASE = os.environ.get("DEEPSEEK_BASE_URL", "https://api.deepseek.com")
 
 # Max characters from the article body to send to the model (token budget guard)
 MAX_INPUT_CHARS = 9000
@@ -101,13 +104,13 @@ def _build_article_text(a: dict) -> str:
     return text
 
 
-def _call_openai(text: str, model: str) -> dict:
-    """Call OpenAI Chat Completions and return parsed JSON."""
+def _call_openai_compatible(text: str, model: str, *, api_key: str, base_url: str, provider: str) -> dict:
+    """Call an OpenAI-compatible Chat Completions endpoint and return parsed JSON."""
     import urllib.request
     import urllib.error
 
-    if not OPENAI_API_KEY:
-        raise RuntimeError("OPENAI_API_KEY not set")
+    if not api_key:
+        raise RuntimeError(f"{provider} API key not set")
 
     payload = {
         "model": model,
@@ -119,10 +122,10 @@ def _call_openai(text: str, model: str) -> dict:
         ],
     }
     req = urllib.request.Request(
-        f"{OPENAI_BASE}/chat/completions",
+        f"{base_url.rstrip('/')}/chat/completions",
         data=json.dumps(payload).encode("utf-8"),
         headers={
-            "Authorization": f"Bearer {OPENAI_API_KEY}",
+            "Authorization": f"Bearer {api_key}",
             "Content-Type": "application/json",
         },
         method="POST",
@@ -132,7 +135,7 @@ def _call_openai(text: str, model: str) -> dict:
             body = resp.read().decode("utf-8")
     except urllib.error.HTTPError as e:
         msg = e.read().decode("utf-8", errors="ignore")
-        raise RuntimeError(f"openai {e.code}: {msg[:500]}") from e
+        raise RuntimeError(f"{provider} {e.code}: {msg[:500]}") from e
 
     data = json.loads(body)
     content = data["choices"][0]["message"]["content"]
@@ -140,6 +143,28 @@ def _call_openai(text: str, model: str) -> dict:
         return json.loads(content)
     except Exception as e:
         raise RuntimeError(f"bad JSON from model: {e}; head={content[:200]}") from e
+
+
+def _call_openai(text: str, model: str) -> dict:
+    """Call OpenAI Chat Completions and return parsed JSON."""
+    return _call_openai_compatible(
+        text,
+        model,
+        api_key=OPENAI_API_KEY,
+        base_url=OPENAI_BASE,
+        provider="openai",
+    )
+
+
+def _call_deepseek(text: str, model: str) -> dict:
+    """Call DeepSeek's OpenAI-compatible Chat Completions endpoint."""
+    return _call_openai_compatible(
+        text,
+        model,
+        api_key=DEEPSEEK_API_KEY,
+        base_url=DEEPSEEK_BASE,
+        provider="deepseek",
+    )
 
 
 def _call_gemini(text: str, model: str) -> dict:
@@ -192,27 +217,39 @@ def _call_model(text: str, model: str) -> dict:
     m = (model or "").lower()
     if m.startswith("gemini"):
         return _call_gemini(text, model)
+    if m.startswith("deepseek"):
+        return _call_deepseek(text, model)
     return _call_openai(text, model)
 
 
-def _should_fallback_from_gemini(model: str, error_msg: str) -> bool:
-    """Retry with OpenAI when Gemini is unavailable/quota-blocked."""
+def _should_fallback_to_openai(model: str, error_msg: str) -> bool:
+    """Retry with OpenAI when the primary provider is unavailable/quota-blocked."""
     if not OPENAI_API_KEY:
         return False
-    if not (model or "").lower().startswith("gemini"):
+    if (model or "") == FALLBACK_MODEL:
         return False
+    m = (model or "").lower()
     em = (error_msg or "").lower()
     triggers = (
         "gemini 403",
         "gemini 429",
         "gemini 503",
+        "deepseek 401",
+        "deepseek 402",
+        "deepseek 408",
+        "deepseek 429",
+        "deepseek 500",
+        "deepseek 503",
         "denied access",
         "quota",
         "resource_exhausted",
         "unavailable",
         "high demand",
+        "rate limit",
+        "insufficient balance",
+        "timeout",
     )
-    return any(t in em for t in triggers)
+    return (m.startswith("gemini") or m.startswith("deepseek")) and any(t in em for t in triggers)
 
 
 def _sanitize_result(raw: dict) -> dict:
@@ -457,7 +494,7 @@ def run(limit: int | None = None, only_id: str | None = None,
             ok += 1
         except Exception as e:
             primary_msg = f"{type(e).__name__}: {e}"[:320]
-            if _should_fallback_from_gemini(model, primary_msg):
+            if _should_fallback_to_openai(model, primary_msg):
                 try:
                     print(
                         f"[enrich] RETRY {a['id']}: {model} failed, fallback={FALLBACK_MODEL}",
