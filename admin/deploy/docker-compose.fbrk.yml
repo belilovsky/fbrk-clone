@@ -29,7 +29,7 @@ services:
     container_name: fbrk-admin
     restart: unless-stopped
     ports:
-      - "127.0.0.1:${FBRK_ADMIN_HOST_PORT:-8788}:8787"
+      - "127.0.0.1:${FBRK_ADMIN_HOST_PORT:-8787}:8787"
 
   rss:
     <<: *fbrk-common

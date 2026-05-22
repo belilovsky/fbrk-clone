@@ -262,6 +262,18 @@ def test_admin_edit_page_shows_existing_nlp_metadata(tmp_path: Path) -> None:
         assert "+ статистика" in page.text
 
 
+def test_admin_editor_mutation_fetches_include_csrf_header(tmp_path: Path) -> None:
+    with _client(tmp_path) as client:
+        _login(client)
+        page = client.get("/admin/new")
+        assert page.status_code == 200
+        assert "function getAdminCsrfToken()" in page.text
+        assert "function csrfHeaders(extra = {})" in page.text
+        assert "additionalRequestHeaders: csrfHeaders()" in page.text
+        assert "headers: csrfHeaders({ 'Content-Type': 'application/json' })" in page.text
+        assert "fetch('/api/upload', { method: 'POST', headers: csrfHeaders(), body: fd })" in page.text
+
+
 def test_api_key_mutation_keeps_working_without_csrf(tmp_path: Path) -> None:
     with _client(tmp_path) as client:
         response = client.post(

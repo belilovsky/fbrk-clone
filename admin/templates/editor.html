@@ -131,6 +131,16 @@ const IS_NEW = {{ 'true' if is_new else 'false' }};
 const ARTICLE_ID = {{ article.id | tojson }};
 const INITIAL_BODY = {{ article.body | tojson }};
 
+function getAdminCsrfToken() {
+  const meta = document.querySelector('meta[name="csrf-token"]');
+  return meta ? (meta.getAttribute('content') || '') : '';
+}
+
+function csrfHeaders(extra = {}) {
+  const token = getAdminCsrfToken();
+  return token ? { ...extra, 'X-CSRF-Token': token } : { ...extra };
+}
+
 const editor = new EditorJS({
   holder: 'editorjs',
   placeholder: 'Начните писать…',
@@ -146,6 +156,7 @@ const editor = new EditorJS({
       class: ImageTool,
       config: {
         endpoints: { byFile: '/api/upload' },
+        additionalRequestHeaders: csrfHeaders(),
         captionPlaceholder: 'Подпись к изображению',
       },
     },
@@ -218,7 +229,7 @@ async function doSave(publishOverride = null) {
     const method = IS_NEW ? 'POST' : 'PUT';
     const res = await fetch(url, {
       method,
-      headers: { 'Content-Type': 'application/json' },
+      headers: csrfHeaders({ 'Content-Type': 'application/json' }),
       body: JSON.stringify(payload),
     });
     if (!res.ok) {
@@ -248,7 +259,7 @@ document.getElementById('f-coverFile').addEventListener('change', async (e) => {
   if (!f) return;
   const fd = new FormData(); fd.append('file', f);
   setStatus('Загружаем обложку…');
-  const res = await fetch('/api/upload', { method: 'POST', body: fd });
+  const res = await fetch('/api/upload', { method: 'POST', headers: csrfHeaders(), body: fd });
   if (!res.ok) { setStatus('Не удалось загрузить', false); return; }
   const data = await res.json();
   const url = data.thumb || (data.file && data.file.url);

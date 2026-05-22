@@ -121,6 +121,34 @@ The previous maintenance caveat is also closed in this branch: FastAPI startup
 now uses lifespan, and legacy admin/SSR template calls are normalized by the
 shared `AdminJinja2Templates` adapter.
 
+## Follow-up Pass 2026-05-22
+
+Additional container-era admin/editor check after backend Dockerization:
+
+- fixed `admin/templates/editor.html` so Editor.js save, cover upload and image
+  tool upload all send the session CSRF token expected by `/api/*` mutation
+  routes;
+- synced the production `admin` DB password hash with
+  `FBRK_ADMIN_PASSWORD` from `/etc/fbrk-admin/fbrk-admin.env` without exposing
+  the secret in logs or git;
+- corrected `admin/deploy/docker-compose.fbrk.yml` fallback host port to
+  `8787`, matching live nginx upstreams;
+- updated `README.md` to document the current Docker deployment instead of the
+  legacy systemd restart path;
+- detailed evidence is in
+  `docs/audit/FBRK_ADMIN_EDITOR_QA_2026-05-22.md`.
+
+Verification highlights:
+
+- local `.venv/bin/python -m pytest tests/test_admin_routes_smoke.py tests/test_admin_platform_primitives.py tests/test_public_entity_tags.py`
+  -> `19 passed`;
+- `node --test tests/article_js_filters.test.mjs` -> `1 passed`;
+- production `/admin/login` with env credential -> `302 /admin/`;
+- production temporary unpublished create/update/delete through session + CSRF
+  -> OK, no row residue, published count stable `4715 -> 4715`;
+- production image upload through session + CSRF -> OK, generated WebP URLs
+  returned `200`, smoke files/DB row removed after verification.
+
 ## Night Pass 2026-05-17
 
 Дополнительный спокойный проход по связке `new.fbrk.kz` + `fbrk.qdev.run`

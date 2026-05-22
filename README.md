@@ -43,13 +43,26 @@ fbrk/
 ## Деплой
 
 Backend VPS: `148.230.117.131`. Web-root: `/var/www/fbrk.qdev.run/`.
-Backend: systemd-юнит `fbrk-admin.service`, порт 8787 (uvicorn, www-data).
-DB: `/opt/fbrk-admin/fbrk.db`.
+Backend/admin работает в Docker-контейнере `fbrk-admin` из
+`admin/deploy/docker-compose.fbrk.yml`, порт `127.0.0.1:8787 -> 8787`.
+Legacy systemd-юнит `fbrk-admin.service` должен оставаться inactive/disabled.
+DB: `/opt/fbrk-admin/fbrk.db` монтируется в контейнер как
+`/host/fbrk-admin/fbrk.db`.
 
-После rsync/scp всегда:
+Перед любым прод-изменением:
 ```
-chown -R www-data:www-data /var/www/fbrk.qdev.run/...
-systemctl restart fbrk-admin
+TS=$(date -u +%Y%m%dT%H%M%SZ)
+sqlite3 /opt/fbrk-admin/fbrk.db ".backup '/opt/fbrk-admin/backups/fbrk-$TS-pre-<area>.db'"
+test -s /opt/fbrk-admin/backups/fbrk-$TS-pre-<area>.db
+rsync -a /var/www/fbrk.qdev.run/ /opt/fbrk-admin/web-snapshots/$TS-pre-<area>/
+```
+
+После копирования backend/admin файлов:
+```
+chown -R www-data:www-data /opt/fbrk-admin/...
+cd /opt/fbrk-admin/deploy
+docker compose -f docker-compose.fbrk.yml up -d --build admin
+docker inspect -f '{{.State.Health.Status}}' fbrk-admin
 ```
 
 Для split-схемы (`new.fbrk.kz` = статика, `fbrk.qdev.run` = backend/DB):
@@ -82,6 +95,13 @@ systemctl restart fbrk-admin
 */10 * * * * cd /opt/fbrk-admin && set -a && . /etc/fbrk-admin/fbrk-admin.env \
   && set +a && /usr/bin/python3 /opt/fbrk-admin/ingest_fbrk.py rss \
   >> /var/log/fbrk/rss-poll.log 2>&1
+```
+
+Синхронизация split-фронта `new.fbrk.kz`:
+
+```
+6,16,26,36,46,56 * * * * root /opt/fbrk-admin/scripts/sync_new_frontend_to_vps.sh \
+  >> /var/log/fbrk/new-vps-sync.log 2>&1
 ```
 
 ## Лицензия
