@@ -6,6 +6,7 @@
     <title>О нас — ФБРК</title>
     <meta name="description" content="О Фонде-бюро расследования коррупции. Независимое казахстанское СМИ, свидетельство о регистрации № KZ83VPY00075165." />
     <meta name="theme-color" content="#0C115F" />
+    <script>try{const t=localStorage.getItem("theme")||localStorage.getItem("fbrk_theme");document.documentElement.dataset.theme=t==="dark"||t==="light"?t:(matchMedia("(prefers-color-scheme: dark)").matches?"dark":"light");}catch(_){}</script>
     <link rel="canonical" href="https://fbrk.qdev.run/about.html" />
     <meta property="og:site_name" content="ФБРК" />
     <meta property="og:type" content="website" />
@@ -38,12 +39,12 @@
         <div class="site-header__actions">
           <div class="lang-switch" role="group" aria-label="Язык сайта">
             <button type="button" data-lang="ru" aria-pressed="true">RU</button>
-            <button type="button" data-lang="kk" aria-pressed="false">ҚАЗ</button>
+            <button type="button" data-lang="kk" aria-pressed="false" aria-disabled="true">ҚАЗ</button>
           </div>
           <span class="site-header__divider" aria-hidden="true"></span>
-          <button class="site-header__btn" type="button" data-search-open aria-label="Открыть поиск">
+          <a class="site-header__btn" href="/search.html" data-search-open aria-label="Открыть поиск">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="m21 21-4.35-4.35"/></svg>
-          </button>
+          </a>
           <button class="site-header__btn" type="button" data-theme-toggle aria-label="Переключить тему">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></svg>
           </button>
@@ -100,7 +101,12 @@
             <div class="about__block">
               <h2>Правовая информация</h2>
               <p>Издание действует в&nbsp;соответствии с&nbsp;законодательством Республики Казахстан о&nbsp;СМИ. Все материалы&nbsp;— авторские. Перепечатка допускается с&nbsp;обязательной ссылкой на&nbsp;источник.</p>
-              <p>Редакция находится в Астане.</p>
+              <p>Редакция находится в Астане. Свидетельство о регистрации СМИ № KZ83VPY00075165 от 21.08.2023.</p>
+              <p>Email редакции: <a href="mailto:redaktor@fbrk.kz">redaktor@fbrk.kz</a>. Полные юридические контакты: <a href="/contacts.html">/contacts.html</a>.</p>
+            </div>
+            <div class="about__block">
+              <h2>Контакты</h2>
+              <p>Для сообщений читателей и источников используйте Telegram-бот <a href="https://t.me/fund_kz_bot" target="_blank" rel="noopener">@fund_kz_bot</a> или страницу <a href="/contacts.html">Контакты</a>.</p>
             </div>
           </div>
         </div>
@@ -129,9 +135,10 @@
             <div class="site-footer__heading">Редакция</div>
             <ul class="site-footer__list" role="list">
               <li><a href="/about.html">О нас</a></li>
-              <li><a href="/about.html">Контакты</a></li>
+              <li><a href="/contacts.html">Контакты</a></li>
+              <li><a href="/privacy.html">Политика конфиденциальности</a></li>
               <li><a href="/feed.xml">RSS-лента</a></li>
-              <li><a href="/sitemap.xml">Карта сайта</a></li>
+              <li><a href="/sitemap.html">Карта сайта</a></li>
             </ul>
           </div>
           <div>
@@ -145,8 +152,6 @@
         <div class="site-footer__bottom">
           <div class="site-footer__legal">
             <span>© 2023–2026 ФБРК</span>
-            <span aria-hidden="true">·</span>
-            <span>AV DS 3.7.1</span>
             <span aria-hidden="true">·</span>
             <span>Астана, Казахстан</span>
           </div>

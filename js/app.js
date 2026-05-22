@@ -87,6 +87,46 @@ function articleHref(a) {
   });
 })();
 
+// Static utility pages can opt into the common shell by omitting duplicated
+// header/footer markup. Keep this before global controls initialize.
+(function ensureSiteShell() {
+  if (!document.querySelector('.site-header')) {
+    document.body.insertAdjacentHTML('afterbegin', `
+      <header class="site-header" role="banner">
+        <div class="container site-header__inner">
+          <a class="site-header__logo" href="/" aria-label="ФБРК — на главную"><span class="site-header__logo-mark">ФБРК</span><span class="site-header__logo-text">Фонд-бюро расследования коррупции</span></a>
+          <nav class="site-header__nav" aria-label="Основная навигация" data-site-nav>
+            <ul role="list"><li><a href="/" data-nav-link="home">Главная</a></li><li><a href="/archive.html?cat=investigation" data-nav-link="investigation">Расследования</a></li><li><a href="/archive.html?cat=news" data-nav-link="news">Новости</a></li><li><a href="/archive.html" data-nav-link="archive">Архив</a></li><li><a href="/about.html" data-nav-link="about">О нас</a></li></ul>
+          </nav>
+          <div class="site-header__actions">
+            <div class="lang-switch" role="group" aria-label="Язык сайта"><button type="button" data-lang="ru" aria-pressed="true">RU</button><button type="button" data-lang="kk" aria-pressed="false" aria-disabled="true">ҚАЗ</button></div>
+            <span class="site-header__divider" aria-hidden="true"></span>
+            <a class="site-header__btn" href="/search.html" data-search-open aria-label="Открыть поиск"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="m21 21-4.35-4.35"/></svg></a>
+            <button class="site-header__btn" type="button" data-theme-toggle aria-label="Переключить тему"></button>
+            <a class="site-header__btn site-header__btn--social" href="https://t.me/fund_kz_bot" target="_blank" rel="noopener" aria-label="Telegram-бот"><svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M9.78 18.65l.28-4.23 7.68-6.92c.34-.31-.07-.46-.52-.19L7.74 13.3 3.64 12c-.88-.25-.89-.86.2-1.3l15.97-6.16c.73-.33 1.43.18 1.15 1.3l-2.72 12.81c-.19.91-.74 1.13-1.5.71L12.6 16.3l-1.99 1.93c-.23.23-.42.42-.83.42z"/></svg></a>
+            <button class="site-header__btn site-header__menu-btn" type="button" data-menu-toggle aria-label="Меню" aria-expanded="false"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="18" x2="21" y2="18"/></svg></button>
+          </div>
+        </div>
+      </header>
+    `);
+  }
+  if (!document.querySelector('.site-footer')) {
+    document.body.insertAdjacentHTML('beforeend', `
+      <footer class="site-footer" role="contentinfo">
+        <div class="container">
+          <div class="site-footer__top">
+            <div class="site-footer__brand-block"><div class="site-footer__brand"><span class="site-footer__brand-name">ФБРК</span></div><p class="site-footer__about">Фонд-бюро расследования коррупции — независимое сетевое издание. Свидетельство СМИ № KZ83VPY00075165 от 21.08.2023.</p></div>
+            <div><div class="site-footer__heading">Разделы</div><ul class="site-footer__list" role="list"><li><a href="/">Главная</a></li><li><a href="/archive.html?cat=investigation">Расследования</a></li><li><a href="/archive.html?cat=news">Новости</a></li><li><a href="/archive.html">Архив</a></li></ul></div>
+            <div><div class="site-footer__heading">Редакция</div><ul class="site-footer__list" role="list"><li><a href="/about.html">О нас</a></li><li><a href="/contacts.html">Контакты</a></li><li><a href="/privacy.html">Политика конфиденциальности</a></li><li><a href="/feed.xml">RSS-лента</a></li><li><a href="/sitemap.html">Карта сайта</a></li></ul></div>
+          </div>
+          <div class="site-footer__bottom"><div class="site-footer__legal"><span>© 2023–2026 ФБРК</span><span>Астана, Казахстан</span></div></div>
+        </div>
+        <!-- AV DS 3.7.1 -->
+      </footer>
+    `);
+  }
+})();
+
 // ---------- date formatting (used everywhere; defined first) ----------
 // Genitive month names («22 апреля» / «22 апр»)
 var _RU_MONTHS_FULL = ['января','февраля','марта','апреля','мая','июня','июля','августа','сентября','октября','ноября','декабря'];
@@ -115,10 +155,10 @@ function fmtDateShort(iso) {
 (function () {
   const root = document.documentElement;
   const stored = (function () {
-    try { return localStorage.getItem('fbrk_theme'); } catch (_) { return null; }
+    try { return localStorage.getItem('theme') || localStorage.getItem('fbrk_theme'); } catch (_) { return null; }
   })();
-  // Default to LIGHT (only honour user-chosen preference)
-  let current = stored === 'dark' ? 'dark' : 'light';
+  const prefersDark = window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches;
+  let current = stored === 'dark' || stored === 'light' ? stored : (prefersDark ? 'dark' : 'light');
   root.setAttribute('data-theme', current);
 
   const sun =
@@ -138,7 +178,10 @@ function fmtDateShort(iso) {
     btn.addEventListener('click', () => {
       current = current === 'dark' ? 'light' : 'dark';
       root.setAttribute('data-theme', current);
-      try { localStorage.setItem('fbrk_theme', current); } catch (_) {}
+      try {
+        localStorage.setItem('theme', current);
+        localStorage.setItem('fbrk_theme', current);
+      } catch (_) {}
       document.querySelectorAll('[data-theme-toggle]').forEach(render);
     });
   });
@@ -167,10 +210,14 @@ function fbrkToast(message, ms = 2400) {
   const buttons = document.querySelectorAll('.lang-switch [data-lang]');
   if (!buttons.length) return;
   buttons.forEach((btn) => {
+    if (btn.dataset.lang === 'kk') {
+      btn.setAttribute('aria-disabled', 'true');
+      btn.setAttribute('title', 'Қазақша нұсқасы жақын арада');
+    }
     btn.addEventListener('click', () => {
       const lang = btn.dataset.lang;
       if (lang === 'kk') {
-        fbrkToast('Қазақша нұсқасы жақын арада қол жетімді болады');
+        btn.setAttribute('aria-pressed', 'false');
         return;
       }
       // Set RU active
@@ -184,14 +231,48 @@ function fbrkToast(message, ms = 2400) {
   const btn = document.querySelector('[data-menu-toggle]');
   const nav = document.querySelector('[data-site-nav]');
   if (!btn || !nav) return;
-  btn.addEventListener('click', () => {
-    const open = nav.classList.toggle('is-open');
+  let lastFocus = null;
+  function setOpen(open) {
+    nav.classList.toggle('is-open', open);
     btn.setAttribute('aria-expanded', String(open));
+    document.body.style.overflow = open ? 'hidden' : '';
+    if (open) {
+      lastFocus = document.activeElement;
+      const first = nav.querySelector('a, button, [tabindex]:not([tabindex="-1"])');
+      setTimeout(() => first?.focus(), 20);
+    } else if (lastFocus && typeof lastFocus.focus === 'function') {
+      lastFocus.focus();
+    }
+  }
+  btn.addEventListener('click', () => {
+    setOpen(!nav.classList.contains('is-open'));
   });
   nav.addEventListener('click', (e) => {
     if (e.target.closest('a')) {
-      nav.classList.remove('is-open');
-      btn.setAttribute('aria-expanded', 'false');
+      setOpen(false);
+    }
+    if (e.target === nav) {
+      setOpen(false);
+    }
+  });
+  document.addEventListener('keydown', (e) => {
+    if (!nav.classList.contains('is-open')) return;
+    if (e.key === 'Escape') {
+      setOpen(false);
+      return;
+    }
+    if (e.key !== 'Tab') return;
+    const focusables = Array.from(nav.querySelectorAll('a, button, [tabindex]:not([tabindex="-1"])'))
+      .filter((el) => !el.disabled && el.offsetParent !== null);
+    if (!focusables.length) return;
+    const first = focusables[0];
+    const last = focusables[focusables.length - 1];
+    if (e.shiftKey && document.activeElement === first) {
+      e.preventDefault();
+      last.focus();
+    } else if (!e.shiftKey && document.activeElement === last) {
+      e.preventDefault();
+      first.focus();
     }
   });
 })();
@@ -205,10 +286,18 @@ function fbrkToast(message, ms = 2400) {
   let active = null;
   if (path === '/' || path === '/index.html') active = 'home';
   else if (path.startsWith('/about')) active = 'about';
+  else if (path.startsWith('/contacts')) active = 'about';
   else if (path.startsWith('/archive')) {
     if (cat === 'investigation') active = 'investigation';
     else if (cat === 'news') active = 'news';
     else active = 'archive';
+  } else if (path.startsWith('/a/')) {
+    const slug = decodeURIComponent(path.split('/').filter(Boolean).pop() || '');
+    const items = []
+      .concat((typeof FBRK_DATA !== 'undefined' && FBRK_DATA.articles) ? FBRK_DATA.articles : [])
+      .concat((typeof ARTICLES_ARCHIVE !== 'undefined' && ARTICLES_ARCHIVE.articles) ? ARTICLES_ARCHIVE.articles : []);
+    const article = items.find((a) => a && (a.slug === slug || a.id === slug));
+    active = article && article.category === 'investigation' ? 'investigation' : 'news';
   }
   if (active) {
     links.forEach((l) => {
@@ -342,11 +431,44 @@ function fbrkToast(message, ms = 2400) {
 
 // ---------- Helper: prefer full cover for hero ----------
 function fullCover(a) {
+  const meta = imageMeta(a);
+  const image = meta.url;
   // swap /covers/thumb/ -> /covers/web/ for larger rendering
-  if (a.image && a.image.includes('/covers/thumb/')) {
-    return a.image.replace('/covers/thumb/', '/covers/web/');
+  if (image && image.includes('/covers/thumb/')) {
+    return image.replace('/covers/thumb/', '/covers/web/');
   }
-  return a.image;
+  return image;
+}
+
+function imageMeta(a) {
+  const image = a && a.image;
+  const meta = image && typeof image === 'object' ? image : {};
+  const rawUrl = typeof image === 'string' ? image : (meta.url || meta.src || '');
+  const url = String(rawUrl || '');
+  let kind = String(a?.imageKind || meta.kind || '').toLowerCase();
+  if (!kind) {
+    if (/chatgpt|dall|midjourney|ai[-_%20]?image/i.test(url)) kind = 'ai';
+    else if (/infographic|info[-_%20]?graphic|chart|diagram/i.test(url)) kind = 'infographic';
+    else kind = 'photo';
+  }
+  const source = String(a?.imageSource || meta.source || '').trim();
+  const hasRealPerson = Boolean(a?.imageHasRealPerson || meta.hasRealPerson);
+  return { url, kind, source, hasRealPerson };
+}
+
+function imageKindClass(a) {
+  return `image-kind-${imageMeta(a).kind}`;
+}
+
+function imageCaptionHtml(a) {
+  const meta = imageMeta(a);
+  if (meta.kind === 'ai' && meta.hasRealPerson) {
+    return '<span class="image-caption image-caption--ai">Иллюстрация ИИ. Не является фотоматериалом</span>';
+  }
+  if (meta.kind === 'photo' && meta.source) {
+    return `<span class="image-caption">Фото: ${escapeHtml(meta.source)}</span>`;
+  }
+  return '';
 }
 
 // Importance badge — shown only for AI-rated articles with importance >= 4 (out of 5)
@@ -393,7 +515,7 @@ function liveBadgeHtml(a) {
   const featured = all.find((a) => a.featured) || all[0];
 
   leadRoot.innerHTML = `
-    <a class="lead__media" href="${articleHref(featured)}" aria-label="${escapeHtml(featured.title)}">
+    <a class="lead__media ${imageKindClass(featured)}" href="${articleHref(featured)}" aria-label="${escapeHtml(featured.title)}">
       <img src="${fullCover(featured)}" alt="${escapeHtml(featured.title)}" width="1200" height="800" loading="eager"/>
     </a>
     <div class="lead__body">
@@ -433,7 +555,7 @@ function liveBadgeHtml(a) {
         return `
       <article class="${cardCls}">
         <a href="${articleHref(a)}">
-          <div class="card__media">
+          <div class="card__media ${imageKindClass(a)}">
             ${mediaInner}
             <span class="card__date-badge">${fmtDateShort(a.dateIso) || a.date}</span>
             ${importanceBadgeHtml(a)}${liveBadgeHtml(a)}
@@ -459,7 +581,7 @@ function liveBadgeHtml(a) {
         : `<span class="latest__thumb-mark">ФБРК</span>`;
       return `
       <li class="latest__item">
-        <a class="${thumbCls}" href="${articleHref(a)}">
+        <a class="${thumbCls} ${imageKindClass(a)}" href="${articleHref(a)}">
           ${thumbInner}
           ${importanceBadgeHtml(a)}${liveBadgeHtml(a)}
         </a>
@@ -727,8 +849,9 @@ function liveBadgeHtml(a) {
         </div>
         ${shareHtml}
       </header>
-      <div class="article__cover">
+      <div class="article__cover ${imageKindClass(a)}">
         <img src="${fullCover(a)}" alt="${escapeHtml(a.title)}" width="1440" height="810" loading="eager"/>
+        ${imageCaptionHtml(a)}
       </div>
       ${tldrHtml}
       <div class="article__body">
@@ -761,7 +884,7 @@ function liveBadgeHtml(a) {
                 return `
             <article class="${cardCls}">
               <a href="${articleHref(x)}">
-                <div class="card__media">
+                <div class="card__media ${imageKindClass(x)}">
                   ${mediaInner}
                   <span class="card__date-badge">${fmtDateShort(x.dateIso) || x.date}</span>
                   ${importanceBadgeHtml(x)}${liveBadgeHtml(x)}
@@ -946,7 +1069,8 @@ function renderArticleTags(tags) {
   const title = `${a.title} — ФБРК`;
   const desc = (a.dek || '').slice(0, 200);
   const url = articleUrl(a.slug || a.id);
-  const img = (a.image || '').startsWith('http') ? a.image : absSiteUrl(a.image || '/img/og-default.jpg');
+  const imageUrl = imageMeta(a).url || '/img/og-default.jpg';
+  const img = imageUrl.startsWith('http') ? imageUrl : absSiteUrl(imageUrl);
   titleEl.textContent = title;
   const descEl = document.querySelector('[data-article-desc]');
   if (descEl) descEl.setAttribute('content', desc);
@@ -1015,7 +1139,7 @@ function renderArticleTags(tags) {
   if (!el || typeof FBRK_DATA === 'undefined') return;
   // Prefer totalCount published by data.js (full archive size), fall back to slice length.
   const n = (typeof FBRK_DATA.totalCount === 'number' ? FBRK_DATA.totalCount : FBRK_DATA.articles.length);
-  el.textContent = n >= 1000 ? (n/1000).toFixed(1).replace('.0','') + 'k+' : String(n);
+  el.textContent = n >= 1000 ? `${new Intl.NumberFormat('ru-KZ').format(Math.floor(n / 100) * 100)}+` : String(n);
 })();
 
 // ---------- Search overlay: live counter ----------
@@ -1090,9 +1214,9 @@ function renderArticleTags(tags) {
   // Update page title based on filter
   function updateHeader(cat) {
     if (!titleEl) return;
-    if (cat === 'investigation') { titleEl.textContent = 'Расследования'; if (kickerEl) kickerEl.textContent = 'Архив'; }
-    else if (cat === 'news') { titleEl.textContent = 'Новости'; if (kickerEl) kickerEl.textContent = 'Архив'; }
-    else { titleEl.textContent = 'Архив материалов'; if (kickerEl) kickerEl.textContent = 'Архив'; }
+    if (cat === 'investigation') { titleEl.textContent = 'Расследования'; if (kickerEl) kickerEl.textContent = 'Расследования'; document.title = 'Расследования — ФБРК'; }
+    else if (cat === 'news') { titleEl.textContent = 'Новости'; if (kickerEl) kickerEl.textContent = 'Новости'; document.title = 'Новости — ФБРК'; }
+    else { titleEl.textContent = 'Архив материалов'; if (kickerEl) kickerEl.textContent = 'Архив'; document.title = 'Архив материалов — ФБРК'; }
   }
 
   let rendered = 0;
@@ -1117,7 +1241,7 @@ function renderArticleTags(tags) {
     });
     rendered = 0;
     grid.innerHTML = '';
-    if (countEl) countEl.textContent = `Найдено материалов: ${filtered.length}`;
+    if (countEl) countEl.textContent = `Найдено материалов: ${new Intl.NumberFormat('ru-KZ').format(filtered.length)}`;
     if (!filtered.length) {
       if (emptyEl) emptyEl.hidden = false;
       if (moreBtn) moreBtn.style.display = 'none';
@@ -1132,19 +1256,19 @@ function renderArticleTags(tags) {
     if (month) next.set('month', month);
     if (q) next.set('q', q);
     const qs = next.toString();
-    history.replaceState(null, '', qs ? `?${qs}` : location.pathname);
+    history.pushState(null, '', qs ? `?${qs}` : location.pathname);
   }
 
   function itemHtml(a) {
-    const hasImg = !!(a.image && String(a.image).trim());
+    const hasImg = !!imageMeta(a).url;
     const cardCls = hasImg ? 'card' : 'card card--no-image';
     const mediaInner = hasImg
-      ? `<img src="${a.image}" alt="${escapeHtml(a.title)}" width="600" height="400" loading="lazy"/>`
+      ? `<img src="${imageMeta(a).url}" alt="${escapeHtml(a.title)}" width="600" height="400" loading="lazy" decoding="async"/>`
       : '';
     return `
       <article class="${cardCls}">
         <a href="${articleHref(a)}">
-          <div class="card__media">
+          <div class="card__media ${imageKindClass(a)}">
             ${mediaInner}
             <span class="card__date-badge">${fmtDateShort(a.dateIso) || a.date}</span>
             ${importanceBadgeHtml(a)}${liveBadgeHtml(a)}
@@ -1174,7 +1298,14 @@ function renderArticleTags(tags) {
     let t;
     qInput.addEventListener('input', () => { clearTimeout(t); t = setTimeout(filter, 120); });
   }
-  if (moreBtn) moreBtn.addEventListener('click', renderMore);
+  if (moreBtn) moreBtn.addEventListener('click', () => {
+    moreBtn.disabled = true;
+    moreBtn.textContent = 'Загрузка...';
+    requestAnimationFrame(() => {
+      renderMore();
+      moreBtn.disabled = false;
+    });
+  });
   if (resetBtn) resetBtn.addEventListener('click', () => {
     if (catSel) catSel.value = '';
     if (yearSel) yearSel.value = '';
@@ -1184,4 +1315,109 @@ function renderArticleTags(tags) {
   });
 
   filter();
+})();
+
+// ---------- Search page ----------
+(function () {
+  const root = document.querySelector('[data-search-page]');
+  if (!root) return;
+  const input = document.querySelector('[data-search-page-q]');
+  const catSel = document.querySelector('[data-search-page-cat]');
+  const results = document.querySelector('[data-search-page-results]');
+  const empty = document.querySelector('[data-search-page-empty]');
+  const reset = document.querySelector('[data-search-page-reset]');
+  const count = document.querySelector('[data-search-page-count]');
+  const data = (typeof FBRK_SEARCH_INDEX !== 'undefined' && Array.isArray(FBRK_SEARCH_INDEX.items))
+    ? FBRK_SEARCH_INDEX.items
+    : ((typeof ARTICLES_ARCHIVE !== 'undefined' && ARTICLES_ARCHIVE.articles) ? ARTICLES_ARCHIVE.articles : FBRK_DATA.articles);
+
+  const params = new URLSearchParams(location.search);
+  if (input) input.value = params.get('q') || '';
+  if (catSel) catSel.value = params.get('cat') || '';
+
+  function highlight(text, q) {
+    const value = escapeHtml(text || '');
+    const term = String(q || '').trim();
+    if (!term) return value;
+    const safe = term.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+    return value.replace(new RegExp(`(${safe})`, 'ig'), '<mark>$1</mark>');
+  }
+
+  function searchable(a) {
+    return String([a.title, a.dek, a.description, a.body, (a.tags || []).join(' ')].join(' ')).toLowerCase();
+  }
+
+  function render() {
+    const q = (input?.value || '').trim();
+    const cat = catSel?.value || '';
+    const qLower = q.toLowerCase();
+    const matches = data.filter((a) => {
+      if (cat && a.category !== cat) return false;
+      if (!qLower) return true;
+      return searchable(a).includes(qLower);
+    }).slice(0, 80);
+    if (count) {
+      const formatted = new Intl.NumberFormat('ru-KZ').format(matches.length);
+      count.textContent = q ? `Найдено: ${formatted}` : `Материалов в индексе: ${new Intl.NumberFormat('ru-KZ').format(data.length)}`;
+    }
+    if (!matches.length) {
+      if (results) results.innerHTML = '';
+      if (empty) {
+        empty.hidden = false;
+        const text = empty.querySelector('[data-empty-query]');
+        if (text) text.textContent = q;
+      }
+    } else {
+      if (empty) empty.hidden = true;
+      if (results) {
+        results.innerHTML = matches.map((a) => `
+          <article class="search-page-result">
+            <a href="${articleHref(a)}">
+              <div class="search-page-result__meta">${escapeHtml(a.categoryLabel || '')} · ${fmtDateLong(a.dateIso) || a.date || ''}</div>
+              <h2>${highlight(a.title, q)}</h2>
+              <p>${highlight(a.dek || a.description || '', q)}</p>
+            </a>
+          </article>
+        `).join('');
+      }
+    }
+    const next = new URLSearchParams();
+    if (q) next.set('q', q);
+    if (cat) next.set('cat', cat);
+    history.replaceState(null, '', next.toString() ? `?${next}` : location.pathname);
+  }
+  input?.addEventListener('input', render);
+  catSel?.addEventListener('change', render);
+  reset?.addEventListener('click', () => {
+    if (input) input.value = '';
+    if (catSel) catSel.value = '';
+    render();
+    input?.focus();
+  });
+  render();
+})();
+
+// ---------- Functional cookie notice ----------
+(function () {
+  if (document.querySelector('[data-cookie-banner]')) return;
+  let accepted = false;
+  try { accepted = localStorage.getItem('cookie-consent') === 'ok'; } catch (_) {}
+  if (accepted) return;
+  const banner = document.createElement('div');
+  banner.className = 'cookie-banner';
+  banner.setAttribute('data-cookie-banner', '');
+  banner.setAttribute('role', 'status');
+  banner.innerHTML = `
+    <p>Сайт использует функциональные cookie.</p>
+    <div class="cookie-banner__actions">
+      <a class="btn--secondary" href="/privacy.html">Подробнее</a>
+      <button class="btn--primary" type="button" data-cookie-ok>OK</button>
+    </div>
+  `;
+  document.body.appendChild(banner);
+  requestAnimationFrame(() => banner.classList.add('is-visible'));
+  banner.querySelector('[data-cookie-ok]')?.addEventListener('click', () => {
+    try { localStorage.setItem('cookie-consent', 'ok'); } catch (_) {}
+    banner.classList.remove('is-visible');
+  });
 })();
