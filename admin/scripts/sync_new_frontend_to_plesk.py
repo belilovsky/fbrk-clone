@@ -131,6 +131,15 @@ def url_sha(origin: str, path: str, *, cache_bust: bool = True) -> str:
     return sha256(fetch_bytes(f"{origin.rstrip('/')}/{path.lstrip('/')}", cache_bust=cache_bust))
 
 
+def url_sha_or_missing(origin: str, path: str, *, cache_bust: bool = True) -> str:
+    try:
+        return url_sha(origin, path, cache_bust=cache_bust)
+    except urllib.error.HTTPError as exc:
+        if exc.code == 404:
+            return "missing"
+        raise
+
+
 def rewrite_public(text: str, public_origin: str, asset_version: str) -> str:
     text = text.replace(DEFAULT_BACKEND_ORIGIN, public_origin)
     text = text.replace("http://fbrk.qdev.run", public_origin)
@@ -526,7 +535,7 @@ def main(argv: list[str] | None = None) -> int:
     domain_id = os.environ.get("PLESK_DOMAIN_ID", "1507")
 
     backend_hashes = {name: url_sha(backend_origin, f"js/{name}") for name in GENERATED_FILES}
-    public_hashes = {name: url_sha(public_origin, f"js/{name}") for name in GENERATED_FILES}
+    public_hashes = {name: url_sha_or_missing(public_origin, f"js/{name}") for name in GENERATED_FILES}
     drift = [name for name in GENERATED_FILES if backend_hashes[name] != public_hashes[name]]
 
     print(f"PUBLIC_ORIGIN={public_origin}")

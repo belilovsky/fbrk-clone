@@ -1,5 +1,6 @@
 import importlib.util
 import json
+import urllib.error
 from pathlib import Path
 
 
@@ -104,3 +105,14 @@ def test_split_frontend_package_includes_video_data(tmp_path, monkeypatch):
     assert "data/videos.json" in rel_paths
     assert "js/search-index.js" in rel_paths
     assert (out_dir / "data" / "videos.json").read_text(encoding="utf-8") == '[{"id":"demo"}]'
+
+
+def test_split_sync_treats_missing_public_generated_file_as_drift(monkeypatch):
+    sync = load_sync_module()
+
+    def fake_fetch_bytes(url, *, timeout=45, cache_bust=False):
+        raise urllib.error.HTTPError(url, 404, "Not Found", hdrs=None, fp=None)
+
+    monkeypatch.setattr(sync, "fetch_bytes", fake_fetch_bytes)
+
+    assert sync.url_sha_or_missing("https://new.fbrk.kz", "js/search-index.js") == "missing"
