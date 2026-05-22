@@ -1,6 +1,4 @@
 User-agent: *
 Allow: /
-Disallow: /admin/
-Disallow: /api/
 
-Sitemap: https://fbrk.qdev.run/sitemap.xml
+Sitemap: https://fbrk.kz/sitemap.xml
