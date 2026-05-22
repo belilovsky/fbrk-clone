@@ -231,6 +231,24 @@ function fbrkToast(message, ms = 2400) {
   const btn = document.querySelector('[data-menu-toggle]');
   const nav = document.querySelector('[data-site-nav]');
   if (!btn || !nav) return;
+  if (!nav.querySelector('[data-mobile-menu-panel]')) {
+    nav.insertAdjacentHTML('beforeend', `
+      <div class="site-header__mobile-panel" data-mobile-menu-panel>
+        <div class="site-header__mobile-controls">
+          <button class="site-header__btn site-header__mobile-theme" type="button" data-mobile-theme aria-label="Переключить тему">Тема</button>
+          <div class="lang-switch site-header__mobile-lang" role="group" aria-label="Язык сайта">
+            <button type="button" data-mobile-lang="ru" aria-pressed="true">RU</button>
+            <button type="button" data-mobile-lang="kk" aria-pressed="false" aria-disabled="true" title="Қазақша нұсқасы жақын арада">ҚАЗ</button>
+          </div>
+        </div>
+        <div class="site-header__mobile-socials" aria-label="Социальные сети">
+          <a href="https://t.me/fund_kz_bot" target="_blank" rel="noopener" aria-label="Telegram-бот">Telegram</a>
+          <a href="https://www.youtube.com/@fbrk_news" target="_blank" rel="noopener" aria-label="YouTube">YouTube</a>
+        </div>
+        <button class="site-header__mobile-close" type="button" data-menu-close aria-label="Закрыть меню">Закрыть</button>
+      </div>
+    `);
+  }
   let lastFocus = null;
   function setOpen(open) {
     nav.classList.toggle('is-open', open);
@@ -246,6 +264,21 @@ function fbrkToast(message, ms = 2400) {
   }
   btn.addEventListener('click', () => {
     setOpen(!nav.classList.contains('is-open'));
+  });
+  nav.querySelector('[data-menu-close]')?.addEventListener('click', () => setOpen(false));
+  nav.querySelector('[data-mobile-theme]')?.addEventListener('click', () => {
+    document.querySelector('.site-header__actions [data-theme-toggle]')?.click();
+  });
+  nav.querySelectorAll('[data-mobile-lang]').forEach((langBtn) => {
+    langBtn.addEventListener('click', () => {
+      if (langBtn.dataset.mobileLang === 'kk') {
+        langBtn.setAttribute('aria-pressed', 'false');
+        return;
+      }
+      nav.querySelectorAll('[data-mobile-lang]').forEach((item) => {
+        item.setAttribute('aria-pressed', item === langBtn ? 'true' : 'false');
+      });
+    });
   });
   nav.addEventListener('click', (e) => {
     if (e.target.closest('a')) {

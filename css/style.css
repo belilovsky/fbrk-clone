@@ -2748,8 +2748,45 @@ button:focus-visible, a:focus-visible { outline-offset: 3px; }
     padding: var(--space-3) var(--space-4);
     font-size: 1.0625rem;
   }
+  .site-header__mobile-panel {
+    display: grid;
+    gap: var(--space-5);
+    margin-top: var(--space-8);
+    padding-top: var(--space-5);
+  }
+  .site-header__mobile-controls,
+  .site-header__mobile-socials {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: var(--space-3);
+  }
+  .site-header__mobile-theme,
+  .site-header__mobile-socials a,
+  .site-header__mobile-close {
+    min-height: 44px;
+    border-radius: 999px;
+    padding: 0 var(--space-4);
+    background: rgba(255, 255, 255, 0.10);
+    color: #fff;
+    text-decoration: none;
+    border: 0;
+    font: inherit;
+    font-weight: 600;
+  }
+  .site-header__mobile-socials a {
+    display: inline-flex;
+    align-items: center;
+  }
+  .site-header__mobile-close {
+    justify-self: start;
+    cursor: pointer;
+  }
   .site-header__menu-btn { display: inline-flex; }
   .site-header__actions .site-header__btn--social { display: none; }
+}
+@media (min-width: 1101px) {
+  .site-header__mobile-panel { display: none; }
 }
 
 /* Toast for "soon" notice */
