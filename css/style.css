@@ -254,7 +254,6 @@ input {
 }
 .section {
   padding-block: clamp(var(--space-8), 4vw, var(--space-12));
-  border-top: 1px solid var(--color-divider);
 }
 .section__header {
   display: flex;
@@ -933,8 +932,7 @@ input {
   color: var(--color-text-faint);
   letter-spacing: 0;
   font-weight: 500;
-  padding-top: var(--space-5);
-  border-top: 1px solid var(--color-divider);
+  padding-top: 0;
 }
 .article__meta__dot::before {
   content: '·';
@@ -1074,8 +1072,7 @@ input {
 .related {
   max-width: var(--content-default);
   margin: var(--space-16) auto 0;
-  padding-top: var(--space-10);
-  border-top: 1px solid var(--color-divider);
+  padding-top: 0;
 }
 .related__title {
   font-size: var(--text-lg);
@@ -1160,7 +1157,6 @@ input {
 .footer {
   margin-top: var(--space-20);
   background: var(--color-surface-offset);
-  border-top: 1px solid var(--color-divider);
   color: var(--color-text-muted);
 }
 .footer .container {
@@ -1224,8 +1220,7 @@ input {
 }
 .footer__bottom {
   margin-top: var(--space-10);
-  padding-top: var(--space-5);
-  border-top: 1px solid var(--color-divider);
+  padding-top: 0;
   display: flex;
   justify-content: space-between;
   gap: var(--space-4);
@@ -1921,8 +1916,7 @@ input {
 }
 .archive__head {
   margin-bottom: var(--space-8);
-  padding-bottom: var(--space-6);
-  border-bottom: 1px solid var(--color-border);
+  padding-bottom: 0;
 }
 .archive__title {
   font-family: var(--font-display);
@@ -2460,8 +2454,7 @@ button:focus-visible, a:focus-visible { outline-offset: 3px; }
 .entity-chips {
   max-width: var(--content-narrow);
   margin: var(--space-10) auto var(--space-6);
-  padding-top: var(--space-6);
-  border-top: 1px solid var(--color-divider);
+  padding-top: 0;
 }
 .entity-chips__title {
   font-size: var(--text-xs);
@@ -2797,8 +2790,7 @@ button:focus-visible, a:focus-visible { outline-offset: 3px; }
   display: grid;
   grid-template-columns: 1.4fr 1fr 1fr 1fr;
   gap: clamp(24px, 3vw, 48px);
-  padding-bottom: 40px;
-  border-bottom: 1px solid rgba(255, 255, 255, 0.10);
+  padding-bottom: 24px;
 }
 .site-footer__brand {
   display: flex;

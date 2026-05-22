@@ -11,6 +11,7 @@ function makeElement() {
     content: { childNodes: [] },
     dataset: {},
     getAttribute() { return ''; },
+    insertAdjacentHTML() {},
     setAttribute() {},
     addEventListener() {},
     appendChild() {},
@@ -25,6 +26,7 @@ const context = {
   Date,
   URL,
   URLSearchParams,
+  requestAnimationFrame(callback) { return setTimeout(callback, 0); },
   setTimeout,
   clearTimeout,
   location: { href: 'https://fbrk.qdev.run/a/sample', origin: 'https://fbrk.qdev.run', pathname: '/a/sample', search: '' },
@@ -63,5 +65,28 @@ test('article entities hide fallback other tags and duplicates with tags', () =>
   assert.equal(
     JSON.stringify(context.articleTags({ tags: ['БНР', 'Казахстан', 'статистика'] }, entities.map((e) => e.name))),
     JSON.stringify(['БНР', 'Казахстан', 'статистика']),
+  );
+});
+
+test('article hero dek hides long imported investigation body duplicates', () => {
+  const longDek = [
+    'Редакция ФБРК с конца прошлого года анализирует динамику изменения площадей крупнейших землепользователей Казахстана.',
+    'Напомним, в редакцию ФБРК массово поступают жалобы из регионов на некорректное изъятие.',
+    'После нашей публикации, шымкентский филиал Правительства для граждан все же выслал запрашиваемую информацию.',
+  ].join('\n\n');
+
+  assert.equal(
+    context.articleHeroDek({ dek: longDek }, [{ h: '', p: longDek }]),
+    '',
+  );
+});
+
+test('article hero dek keeps concise editorial lead', () => {
+  assert.equal(
+    context.articleHeroDek(
+      { dek: 'Короткий редакционный лид для статьи.' },
+      [{ h: '', p: 'Основной текст начинается другим предложением.' }],
+    ),
+    'Короткий редакционный лид для статьи.',
   );
 });

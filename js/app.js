@@ -809,7 +809,7 @@ function liveBadgeHtml(a) {
     .filter(Boolean)
     .map((p) => ({ h: '', p }));
   const bodySections = sectionItems.length ? sectionItems : fallbackParagraphs;
-  const heroDek = sectionItems.length ? String(a.dek || '').trim() : '';
+  const heroDek = articleHeroDek(a, sectionItems);
 
   document.title = `${a.title} — ФБРК`;
 
@@ -969,6 +969,25 @@ function renderArticleParagraphs(raw) {
     .filter(Boolean)
     .map((part) => `<p>${sanitizeArticleInlineHtml(part).replace(/\n/g, '<br>')}</p>`)
     .join('');
+}
+
+function normalizedArticleText(value) {
+  return String(value || '')
+    .replace(/<[^>]*>/g, ' ')
+    .replace(/\s+/g, ' ')
+    .trim();
+}
+
+function articleHeroDek(a, sectionItems = []) {
+  const dek = String((a && a.dek) || '').trim();
+  if (!dek || !Array.isArray(sectionItems) || !sectionItems.length) return '';
+  if (dek.length > 420 || /\n\s*\n/.test(dek)) return '';
+
+  const normalizedDek = normalizedArticleText(dek);
+  const firstSectionText = normalizedArticleText(`${sectionItems[0]?.h || ''} ${sectionItems[0]?.p || ''}`);
+  if (normalizedDek && firstSectionText.startsWith(normalizedDek)) return '';
+
+  return dek;
 }
 
 function articleTags(a, excludedNames = []) {

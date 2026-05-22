@@ -204,6 +204,37 @@ def test_session_api_mutation_requires_csrf_and_updates_frontend_data(tmp_path: 
         assert "Уникальное описание related" not in ssr.text
 
 
+def test_ssr_article_omits_long_imported_dek_from_header(tmp_path: Path) -> None:
+    with _client(tmp_path) as client:
+        _login(client)
+        token = _csrf_from(client.get("/admin/").text)
+        payload = _article_payload("codex-long-dek")
+        payload["category"] = "investigation"
+        payload["categoryLabel"] = "Расследование"
+        payload["dek"] = "\n\n".join(
+            [
+                "Редакция ФБРК анализирует динамику изменения площадей крупнейших землепользователей Казахстана.",
+                "Напомним, в редакцию ФБРК массово поступают жалобы из регионов на некорректное изъятие.",
+                "Изначально редакция ФБРК направляла обращения в областные акиматы и профильные ведомства.",
+            ]
+        )
+        payload["body"] = {
+            "blocks": [
+                {
+                    "type": "paragraph",
+                    "data": {"text": payload["dek"]},
+                }
+            ]
+        }
+        created = client.post("/api/articles", json=payload, headers={"X-CSRF-Token": token})
+        assert created.status_code == 200
+
+        ssr = client.get("/a/codex-long-dek")
+        assert ssr.status_code == 200
+        assert '<p class="article__dek"' not in ssr.text
+        assert "динамику изменения площадей" in ssr.text
+
+
 def test_admin_articles_list_keeps_scripts_out_of_title_and_has_csrf(tmp_path: Path) -> None:
     with _client(tmp_path) as client:
         _login(client)

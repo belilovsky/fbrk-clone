@@ -148,7 +148,7 @@ __╱╲╲╲╲╲╲╲╲╲╲╲╲╲╲╲__╱╲╲╲╲╲╲╲╲�
             {% if meta.region %}<span class="article__kicker-sep" aria-hidden="true">·</span><span>{{ meta.region|e }}</span>{% endif %}
           </div>
           <h1 class="article__title" itemprop="headline">{{ title|e }}</h1>
-          {% if a.dek %}<p class="article__dek" itemprop="description">{{ a.dek|e }}</p>{% endif %}
+          {% if header_dek %}<p class="article__dek" itemprop="description">{{ header_dek|e }}</p>{% endif %}
         </header>
 
         {% if image %}

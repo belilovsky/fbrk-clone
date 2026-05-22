@@ -157,6 +157,20 @@ def _sections_to_plain(sections: list) -> str:
     return "\n\n".join(p for p in parts if p)
 
 
+def _header_dek(dek: str, sections: list) -> str:
+    value = _strip_html(dek or "").strip()
+    if not value or not sections:
+        return ""
+    if len(value) > 420 or "\n\n" in value:
+        return ""
+
+    first = sections[0] if isinstance(sections[0], dict) else {}
+    first_text = _strip_html(f"{first.get('h') or ''} {first.get('p') or ''}")
+    if first_text.startswith(value):
+        return ""
+    return value
+
+
 def _sections_to_html(sections: list, site_url: str) -> str:
     """Render sections as clean semantic HTML for SSR body + RSS content:encoded."""
     out: list[str] = []
@@ -364,8 +378,10 @@ def ssr_article(slug: str, request: Request):
 
     url = f"{site_url}/a/{a['slug']}"
     title = a["title"]
-    dek = _strip_html(a.get("dek") or "")
+    raw_dek = a.get("dek") or ""
+    dek = _strip_html(raw_dek)
     plain_body = _sections_to_plain(a.get("sections") or [])
+    header_dek = _header_dek(raw_dek, a.get("sections") or [])
     # Prefer AI short summary when available (tighter, better for SEO/LLMs)
     desc = (meta.get("summary_short") or dek or plain_body[:240]).strip()[:240]
     image = _abs_url(a.get("image") or "", site_url)
@@ -466,6 +482,7 @@ def ssr_article(slug: str, request: Request):
         "url": url,
         "title": title,
         "desc": desc,
+        "header_dek": header_dek,
         "image": image,
         "body_html": body_html,
         "date_iso": date_iso,
