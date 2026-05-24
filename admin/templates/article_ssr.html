@@ -34,6 +34,14 @@ __╱╲╲╲╲╲╲╲╲╲╲╲╲╲╲╲__╱╲╲╲╲╲╲╲╲�
     <meta name="geo.region" content="KZ" />
     <meta name="geo.placename" content="Kazakhstan" />
     <meta name="content-language" content="ru" />
+    <script>
+      try {
+        const t = localStorage.getItem('theme') || localStorage.getItem('fbrk_theme');
+        document.documentElement.dataset.theme = t === 'dark' || t === 'light'
+          ? t
+          : (matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light');
+      } catch (_) {}
+    </script>
     <link rel="canonical" href="{{ url }}" />
     <link rel="alternate" hreflang="ru" href="{{ url }}" />
     <link rel="alternate" hreflang="ru-KZ" href="{{ url }}" />
