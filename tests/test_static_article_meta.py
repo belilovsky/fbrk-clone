@@ -116,3 +116,26 @@ def test_split_sync_treats_missing_public_generated_file_as_drift(monkeypatch):
     monkeypatch.setattr(sync, "fetch_bytes", fake_fetch_bytes)
 
     assert sync.url_sha_or_missing("https://new.fbrk.kz", "js/search-index.js") == "missing"
+
+
+def test_publish_derives_image_meta_for_public_payload():
+    from admin.app import publish
+
+    raw = {
+        "id": "test-id",
+        "slug": "test-slug",
+        "title": "Тест",
+        "dek": "Тестовый лид",
+        "date": "1 мая 2026",
+        "dateIso": "2026-05-01",
+        "category": "news",
+        "categoryLabel": "Новости",
+        "image": "/img/covers/preview.webp",
+        "tags": [],
+    }
+
+    shape = publish._article_full_shape(raw)
+
+    assert shape["imageSource"] == "cover"
+    assert shape["imageKind"] == "photo"
+    assert shape["imageHasRealPerson"] is False

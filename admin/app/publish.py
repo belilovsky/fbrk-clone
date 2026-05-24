@@ -70,6 +70,40 @@ def _unique_strings(*groups: list, limit: int = 16) -> list[str]:
     return out
 
 
+def _derive_image_meta(url: str) -> dict[str, object]:
+    """Normalize image display metadata for public payloads."""
+    if not url:
+        return {
+            "imageKind": "other",
+            "imageSource": "",
+            "imageHasRealPerson": False,
+        }
+
+    lowered = str(url).lower().strip()
+    if "chatgpt" in lowered or "midjourney" in lowered or "dall" in lowered or "stable" in lowered or "openai" in lowered:
+        kind = "ai"
+    else:
+        kind = "photo"
+
+    if lowered.startswith("/"):
+        if "/img/covers/" in lowered:
+            source = "cover"
+        elif "/img/" in lowered:
+            source = "upload"
+        else:
+            source = "internal"
+    elif lowered.startswith("data:"):
+        source = "inline"
+    else:
+        source = "external"
+
+    return {
+        "imageKind": kind,
+        "imageSource": source,
+        "imageHasRealPerson": False,
+    }
+
+
 def _manual_public_tags(
     raw: list,
     auto_raw: list,
@@ -181,6 +215,19 @@ def _public_shape(a: dict) -> dict:
         "tags": a["tags"],
         **({"featured": True} if a.get("featured") else {}),
     }
+
+    source_override = str(a.get("imageSource") or "").strip()
+    shape["imageSource"] = source_override or _derive_image_meta(a.get("image") or "")["imageSource"]
+
+    kind_override = str(a.get("imageKind") or "").strip().lower()
+    shape["imageKind"] = kind_override or _derive_image_meta(a.get("image") or "")["imageKind"]
+
+    has_person_override = a.get("imageHasRealPerson")
+    if isinstance(has_person_override, bool):
+        shape["imageHasRealPerson"] = bool(has_person_override)
+    else:
+        shape["imageHasRealPerson"] = bool(_derive_image_meta(a.get("image") or "").get("imageHasRealPerson"))
+
     imp = a.get("_meta_importance")
     if imp is not None and imp != 0:
         shape["importance"] = int(imp)
