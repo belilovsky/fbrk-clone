@@ -197,12 +197,20 @@ def _trim_summary_short(text: str, maxlen: int = SUMMARY_SHORT_MAX_CHARS) -> str
         if last_comma >= 90:
             candidate = candidate[:last_comma].rstrip(" ,;:-—").strip()
         if candidate and candidate[-1] not in ".!?":
-            candidate = candidate.rstrip(" ,;:-—").strip() + "."
+            candidate = candidate.rstrip(" ,;:-—").strip()
+            if len(candidate) >= maxlen:
+                candidate = candidate[: maxlen - 1].rstrip(" ,;:-—").strip()
+            if candidate:
+                candidate = candidate + "."
 
     if len(candidate) > maxlen:
         candidate = candidate[:maxlen].rstrip(" ,;:-—").strip()
         if candidate and candidate[-1] not in ".!?":
-            candidate = candidate.rstrip(" ,;:-—").strip() + "."
+            candidate = candidate.rstrip(" ,;:-—").strip()
+            if len(candidate) >= maxlen:
+                candidate = candidate[: maxlen - 1].rstrip(" ,;:-—").strip()
+            if candidate:
+                candidate = candidate + "."
         if len(candidate) > maxlen:
             candidate = candidate[:maxlen].rstrip(" ,;:-—").strip()
 
@@ -242,8 +250,11 @@ def _guess_entity_type(name: str) -> str:
 def _needs_quality_rerun(title: str, summary_short: str, model: str) -> bool:
     if (model or "").strip() == "fallback-local":
         return True
-    normalized = _strip_source_prefix(summary_short)
+    raw = _strip(summary_short)
+    normalized = _normalize_summary_short(raw, fallback=title)
     if not normalized:
+        return True
+    if normalized != raw:
         return True
     if normalized == (title or "").strip():
         return True

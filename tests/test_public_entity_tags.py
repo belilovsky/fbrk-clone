@@ -121,6 +121,13 @@ class PublicEntityTagsTest(unittest.TestCase):
                 "deepseek-chat",
             )
         )
+        self.assertTrue(
+            enrich._needs_quality_rerun(
+                "Заголовок",
+                "Краткое описание статьи без финальной точки",
+                "deepseek-chat",
+            )
+        )
 
     def test_trim_summary_short_keeps_hard_cap_when_period_lands_at_181(self) -> None:
         text = (
@@ -131,6 +138,19 @@ class PublicEntityTagsTest(unittest.TestCase):
         trimmed = enrich._trim_summary_short(text)
 
         self.assertLessEqual(len(trimmed), 180)
+
+    def test_trim_summary_short_adds_period_even_at_exact_hard_cap(self) -> None:
+        text = (
+            "В 20 социально-значимых пассажирских поездах выявлено 284 нарушения, включая отсутствие "
+            "кондиционеров и несоответствие санитарным нормам, общая сумма штрафов превысила 10 млн тенге"
+        )
+
+        self.assertEqual(len(text), 180)
+
+        trimmed = enrich._trim_summary_short(text)
+
+        self.assertLessEqual(len(trimmed), 180)
+        self.assertTrue(trimmed.endswith("."))
 
     def test_public_shape_keeps_manual_tags_only_and_hides_noisy_other_entities(self) -> None:
         article = _article(
