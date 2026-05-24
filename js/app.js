@@ -54,6 +54,22 @@ function articleHref(a) {
   return articleUrl(a.slug || a.id);
 }
 
+function articleLookupKeys(rawId) {
+  const value = String(rawId || '').trim();
+  if (!value) return [];
+  const keys = [value];
+  const legacySlug = value.replace(/-\d{4}-\d{2}-\d{2}-\d{2}_\d{2}_\d{2}$/, '');
+  if (legacySlug && legacySlug !== value) keys.push(legacySlug);
+  return keys;
+}
+
+function findArticleByKeys(list, rawId) {
+  if (!Array.isArray(list) || !list.length) return null;
+  const keys = articleLookupKeys(rawId);
+  if (!keys.length) return null;
+  return list.find((item) => item && keys.some((key) => item.id === key || item.slug === key)) || null;
+}
+
 // Align static SEO tags with runtime public origin in split-hosting mode.
 (function normalizeStaticSeoHost() {
   const base = siteOrigin();
@@ -504,6 +520,13 @@ function imageCaptionHtml(a) {
   return '';
 }
 
+function truncateText(text, maxLength) {
+  const clean = String(text || '').trim();
+  if (!clean) return '';
+  if (clean.length <= maxLength) return clean;
+  return `${clean.slice(0, maxLength).trim()}…`;
+}
+
 // Importance badge — shown only for AI-rated articles with importance >= 4 (out of 5)
 function importanceBadgeHtml(a) {
   const imp = Number(a && a.importance);
@@ -556,7 +579,7 @@ function liveBadgeHtml(a) {
       <h1 class="lead__title">
         <a href="${articleHref(featured)}">${escapeHtml(featured.title)}</a>
       </h1>
-      <p class="lead__dek">${escapeHtml(featured.dek)}</p>
+      <p class="lead__dek">${escapeHtml(articleHeroDek(featured, []))}</p>
       <div class="lead__meta">
         <span>${fmtDateLong(featured.dateIso) || featured.date}</span>
       </div>
@@ -816,9 +839,8 @@ function liveBadgeHtml(a) {
   const archive = (typeof ARTICLES_ARCHIVE !== 'undefined' && Array.isArray(ARTICLES_ARCHIVE.articles))
     ? ARTICLES_ARCHIVE.articles
     : [];
-  const findById = (list) => list.find((x) => x && (x.id === id || x.slug === id));
-  const compactArticle = findById(primary) || findById(archive);
-  const fullArticle = findById(fullArticles);
+  const compactArticle = findArticleByKeys(primary, id) || findArticleByKeys(archive, id);
+  const fullArticle = findArticleByKeys(fullArticles, id);
   const a = fullArticle
     ? { ...(compactArticle || {}), ...fullArticle }
     : compactArticle;
@@ -830,6 +852,11 @@ function liveBadgeHtml(a) {
       location.replace(absBackendUrl(`/a/${encodeURIComponent(id)}`) + (location.hash || ''));
     }
     return;
+  }
+
+  const canonicalSlug = String(a.slug || a.id || '').trim();
+  if (pathMatch && canonicalSlug && canonicalSlug !== id) {
+    history.replaceState(null, '', `${articleUrl(canonicalSlug)}${location.hash || ''}`);
   }
 
   const sectionItems = Array.isArray(a.sections)
@@ -1014,9 +1041,16 @@ function normalizedArticleText(value) {
 function articleHeroDek(a, sectionItems = []) {
   const dek = String((a && a.dek) || '').trim();
   const summaryShort = String((a && a.summaryShort) || '').trim();
-  if (!dek || !Array.isArray(sectionItems) || !sectionItems.length) return '';
-  const firstSectionText = normalizedArticleText(`${sectionItems[0]?.h || ''} ${sectionItems[0]?.p || ''}`);
+  const normalizedSections = Array.isArray(sectionItems) ? sectionItems : [];
   const firstParagraph = dek.split(/\n{2,}/)[0]?.trim() || '';
+
+  if (!dek) return '';
+
+  if (!normalizedSections.length) {
+    return truncateText(summaryShort || firstParagraph || dek, 420);
+  }
+
+  const firstSectionText = normalizedArticleText(`${sectionItems[0]?.h || ''} ${sectionItems[0]?.p || ''}`);
   const candidates = [
     dek,
     firstParagraph,
@@ -1122,9 +1156,9 @@ function renderArticleTags(tags) {
   const archive = (typeof ARTICLES_ARCHIVE !== 'undefined' && Array.isArray(ARTICLES_ARCHIVE.articles))
     ? ARTICLES_ARCHIVE.articles
     : [];
-  const compactArticle = primary.find((x) => x.id === id || x.slug === id)
-    || archive.find((x) => x.id === id || x.slug === id);
-  const fullArticle = fullArticles.find((x) => x.id === id || x.slug === id);
+  const compactArticle = findArticleByKeys(primary, id)
+    || findArticleByKeys(archive, id);
+  const fullArticle = findArticleByKeys(fullArticles, id);
   const a = fullArticle
     ? { ...(compactArticle || {}), ...fullArticle }
     : compactArticle;

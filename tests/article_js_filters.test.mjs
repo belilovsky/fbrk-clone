@@ -90,3 +90,55 @@ test('article hero dek keeps concise editorial lead', () => {
     'Короткий редакционный лид для статьи.',
   );
 });
+
+test('article hero dek falls back to summary for duplicated long investigation import', () => {
+  const importedDek = [
+    'Редакция ФБРК с конца прошлого года анализирует динамику изменения площадей крупнейших землепользователей Казахстана.',
+    'Нашей целью было выяснить, сколько земель было изъято у крупнейших собственников.',
+    'После нашей публикации шымкентский филиал все же выслал запрашиваемую информацию.',
+  ].join('\n\n');
+
+  assert.equal(
+    context.articleHeroDek(
+      {
+        dek: importedDek,
+        summaryShort: 'Шымкент впервые раскрыл данные по крупнейшим землепользователям после серии запросов ФБРК.',
+      },
+      [{ h: '', p: importedDek }],
+    ),
+    'Шымкент впервые раскрыл данные по крупнейшим землепользователям после серии запросов ФБРК.',
+  );
+});
+
+test('article hero dek uses summary when compact cards do not have sections yet', () => {
+  assert.equal(
+    context.articleHeroDek(
+      {
+        dek: 'Очень длинный импортированный лид.\n\nВторой абзац повторяет структуру старого материала.',
+        summaryShort: 'Короткий lead для компактной карточки.',
+      },
+      [],
+    ),
+    'Короткий lead для компактной карточки.',
+  );
+});
+
+test('article lookup keys keep legacy timestamp slug compatible', () => {
+  assert.equal(
+    JSON.stringify(context.articleLookupKeys('latifundisty-kazakhstana-glava-9-shymkent-2026-05-23-00_30_44')),
+    JSON.stringify([
+      'latifundisty-kazakhstana-glava-9-shymkent-2026-05-23-00_30_44',
+      'latifundisty-kazakhstana-glava-9-shymkent',
+    ]),
+  );
+});
+
+test('article lookup finds canonical article by legacy timestamp slug', () => {
+  assert.deepEqual(
+    context.findArticleByKeys(
+      [{ slug: 'latifundisty-kazakhstana-glava-9-shymkent', title: 'Шымкент' }],
+      'latifundisty-kazakhstana-glava-9-shymkent-2026-05-23-00_30_44',
+    ),
+    { slug: 'latifundisty-kazakhstana-glava-9-shymkent', title: 'Шымкент' },
+  );
+});

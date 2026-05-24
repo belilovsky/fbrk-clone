@@ -25,6 +25,7 @@ Branch: `release/pre-prod-audit`
 - [x] Mobile menu parity: navigation overlay includes theme, language, social links and close control.
 - [x] Full card/video/archive/detail visual polish pass.
 - [x] Investigation lead fallback now recovers for long or multi-paragraph `dek` using `summaryShort`.
+- [x] Legacy investigation URLs with timestamp suffix now resolve to canonical slug on the split frontend.
 - [x] Reduced excessive horizontal separators in latest-list and search overlay blocks.
 - [x] RSS validation smoke passes as XML/RSS 2.0.
 - [x] `image.kind`, `image.source`, `image.hasRealPerson` now generated on publish pipeline and serialized into public payload.
