@@ -501,3 +501,76 @@ Verification:
   - representative article on `new.fbrk.kz`: `overflow=false`,
     header action group fully visible.
   - `https://fbrk.qdev.run/admin/login`: renders cleanly with no overflow.
+
+## 2026-05-24 AI summary and entity quality pass
+
+The next production-facing gap was not layout but content quality inside the AI
+layer that powers article summary metadata, TTS copy, and public entity chips.
+A live DB audit on the active backend host showed that all `4,727` published
+articles already had `article_meta` rows, but a historical fallback wave from
+`2026-05-14` had left a long tail of weak outputs:
+
+- `589` rows still marked `model=fallback-local`;
+- `621` short summaries were longer than the intended `180` characters;
+- `508` short summaries simply echoed `dek`;
+- `586` rows exposed entity lists typed entirely as `other`;
+- a small tail of broken endings, title copies, or empty entities remained.
+
+That was enough drift to justify a targeted rerun instead of pretending the AI
+surface was "good enough".
+
+Changes:
+
+- added short-summary normalization helpers in `admin/enrich.py`:
+  stripping source/date boilerplate, sentence-aware trimming, punctuation
+  repair, and a hard `180`-character target for `summary_short`;
+- added heuristic entity typing for fallback output so obvious `gov`, `org`,
+  `place`, and `person` names no longer collapse into `other`;
+- added `--quality-rerun`, which reselects only rows with
+  `fallback-local`, overlong summaries, or title-copy short summaries;
+- updated split static article rendering so `summaryShort` is now the first
+  source for `<meta name="description">`, Open Graph, Twitter, and JSON-LD
+  article descriptions instead of stale or overly long `dek`.
+
+Verification:
+
+- local tests:
+  - `./.venv/bin/python -m pytest tests/test_public_entity_tags.py tests/test_static_article_meta.py -q`
+    -> `14 passed`;
+  - `python3 -m py_compile admin/enrich.py admin/scripts/sync_new_frontend_to_plesk.py`
+    -> OK;
+  - `./scripts/verify_preprod.sh` -> OK, including strict split linkage.
+- live safety prep:
+  - DB backup:
+    `/opt/fbrk-admin/backups/fbrk-20260524T120742Z-pre-enrich-quality.db`;
+  - code snapshot:
+    `/opt/fbrk-admin/code-snapshots/20260524T120742Z-enrich-quality/enrich.py`.
+- live rerun:
+  - smoke batch:
+    `python3 /opt/fbrk-admin/enrich.py --quality-rerun --limit 5 --model deepseek-chat --sleep 0.4`
+    -> `ok=5 err=0`;
+  - full batch:
+    `python3 /opt/fbrk-admin/enrich.py --quality-rerun --model deepseek-chat --sleep 0.1`
+    -> `DONE ok=918 err=0 total=918`.
+- live end state after rerun and final normalization of the last two edge rows:
+  - `fallback_local=0`
+  - `long_summary=0`
+  - `all_other=0`
+  - `empty_summary=0`
+  - `empty_entities=0`
+  - `quality_queue_remaining=0`
+- split publication:
+  - regenerated `data.js` on backend and re-ran
+    `/opt/fbrk-admin/scripts/sync_new_frontend_to_vps.sh`;
+  - backend/new hashes matched for `data.js`, `data-archive.js`,
+    `article-full.js`, and `search-index.js`;
+  - curl-confirmed article HTML on `https://new.fbrk.kz/a/<slug>/` now exposes
+    the cleaned AI summary in meta description, Open Graph, Twitter, and
+    JSON-LD output.
+
+Residual note:
+
+- `region` is still empty on `1,193` rows. This is intentionally not treated as
+  a blocker here because many national, broad, or non-local materials do not
+  have a single defensible region label. The current pass focused on summary and
+  entity quality, not forcing synthetic geography.

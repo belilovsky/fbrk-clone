@@ -98,6 +98,31 @@ docker inspect -f '{{.State.Health.Status}}' fbrk-admin
 - `FBRK_SITE_URL` — fallback base URL для SEO/publish ссылок (`/sitemap.xml`, `/feed.xml`, `/robots.txt`, RSS item links) когда `Host` недоступен
 - LLM-ключи для AI-обогащения
 
+## AI-обогащение
+
+Основной воркер: `admin/enrich.py`.
+
+Типовые операционные режимы:
+
+```
+cd /opt/fbrk-admin
+set -a && . /etc/fbrk-admin/fbrk-admin.env && . ./.env && set +a
+
+# обычный догон новых материалов
+./.venv/bin/python3 enrich.py --limit 20
+
+# точечный повтор проблемных/ошибочных строк
+./.venv/bin/python3 enrich.py --retry-errors
+
+# quality pass только по слабому хвосту summary/entities
+./.venv/bin/python3 enrich.py --quality-rerun --model deepseek-chat --sleep 0.1
+```
+
+`--quality-rerun` не трогает весь архив подряд: он выбирает только строки с
+`fallback-local`, слишком длинным `summary_short` или явно плохим short-summary
+контрактом. После AI-перезапуска нужно заново сгенерировать публичные payload'ы
+и прогнать штатную синхронизацию split-фронта.
+
 ## Cron
 
 ```

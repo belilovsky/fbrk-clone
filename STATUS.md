@@ -50,3 +50,14 @@ Branch: `release/pre-prod-audit`
 - [x] `./scripts/verify_preprod.sh` passes after the final CSS pass (`29 passed`, compile checks OK, strict split linkage `STATUS=ok`).
 - [x] Live browser smoke on `https://new.fbrk.kz/`, representative `/a/<slug>`, and `https://fbrk.qdev.run/admin/login` passes on desktop (`1280px`) with `overflow=false`; both public social buttons remain visible.
 - [x] Local browser smoke on home/article/admin at `390px` passes with no horizontal overflow.
+
+## AI enrichment quality pass 2026-05-24
+
+- [x] Live `article_meta` coverage checked for all `4,727` published articles; rows without meta: `0`.
+- [x] DeepSeek primary path verified live on backend VPS (`FBRK_ENRICH_MODEL=deepseek-chat`); OpenAI fallback remains available but is no longer present in current article output tail.
+- [x] Added `--quality-rerun` mode to `admin/enrich.py` so reruns target only rows with `fallback-local`, overlong `summary_short`, or title-copy short summaries.
+- [x] Re-ran the full live quality queue with DeepSeek: `918/918` rows completed successfully, `err=0`.
+- [x] Post-rerun quality tail reduced to zero for the tracked failure modes: `fallback_local=0`, `long_summary=0`, `all_other=0`, `empty_summary=0`, `empty_entities=0`, `quality_queue_remaining=0`.
+- [x] Static split article shells now prefer `summaryShort` over `dek` for meta description, Open Graph, Twitter, and JSON-LD fields.
+- [x] Live curl smoke on representative `https://new.fbrk.kz/a/<slug>/` pages confirms corrected AI summaries in HTML head metadata; browser-visible article leads also render correctly.
+- [ ] `region` remains empty on `1,193` rows; this is tracked as normal mixed coverage rather than a current blocker because national or non-local materials may legitimately have no single region.
