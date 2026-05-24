@@ -23,7 +23,7 @@ Branch: `release/pre-prod-audit`
 
 - [ ] Full Lighthouse/LHCI run for staging pages.
 - [x] Mobile menu parity: navigation overlay includes theme, language, social links and close control.
-- [ ] Full card/video/archive/detail visual polish pass.
+- [x] Full card/video/archive/detail visual polish pass.
 - [x] Investigation lead fallback now recovers for long or multi-paragraph `dek` using `summaryShort`.
 - [x] Reduced excessive horizontal separators in latest-list and search overlay blocks.
 - [x] RSS validation smoke passes as XML/RSS 2.0.
@@ -39,3 +39,4 @@ Branch: `release/pre-prod-audit`
 - [x] Local checks pass: Python test suite, article JS tests, `node --check js/app.js`, Python compile checks, RSS/XML parse checks.
 - [ ] LHCI desktop metrics are still pending because this workstation has no usable `npm`/`npx` toolchain in the current shell.
 - [x] `npx` отсутствует в рабочем окружении этой машины; LHCI планируется выполнить после восстановления CLI toolchain.
+- [x] Локальная визуальная проверка Playwright (375/768/1024/1440/1920, key pages) пройдена после правки стилей; горизонтального overflow на `127.0.0.1:8888` не обнаружено.
