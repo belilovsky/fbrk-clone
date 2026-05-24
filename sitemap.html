@@ -13,8 +13,8 @@
     <meta property="og:description" content="Основные разделы и последние материалы ФБРК." />
     <meta property="og:url" content="https://fbrk.qdev.run/sitemap.html" />
     <link rel="icon" type="image/png" sizes="32x32" href="/img/brand/favicon-32.png" />
-    <link rel="stylesheet" href="/fonts/avds/avds-fonts.css?v=202605230105" />
-    <link rel="stylesheet" href="/css/style.css?v=202605230105" />
+    <link rel="stylesheet" href="/fonts/avds/avds-fonts.css?v=20260524060925" />
+    <link rel="stylesheet" href="/css/style.css?v=20260524060925" />
   </head>
   <body>
     <a class="skip-link" href="#main">Перейти к содержимому</a>
@@ -51,13 +51,13 @@
         </div>
       </div>
     </main>
-    <script src="/js/data.js?v=202605230105"></script>
+    <script src="/js/data.js?v=20260524060925"></script>
     <script>
       const root = document.querySelector('[data-sitemap-latest]');
       if (root && window.FBRK_DATA) {
         root.innerHTML = FBRK_DATA.articles.slice(0, 50).map((a) => `<li><a href="/a/${encodeURIComponent(a.slug || a.id)}">${a.title}</a></li>`).join('');
       }
     </script>
-    <script src="/js/app.js?v=202605230105"></script>
+    <script src="/js/app.js?v=20260524060925"></script>
   </body>
 </html>
