@@ -219,13 +219,14 @@ def render_static_article_shell(template: str, article: dict, public_origin: str
 
     title = str(article.get("title") or "Материал").strip()
     dek = str(article.get("dek") or "").strip()
+    summary_short = str(article.get("summaryShort") or "").strip()
     category = str(article.get("categoryLabel") or article.get("category") or "Материал").strip()
     date_iso = str(article.get("dateIso") or "").strip()
     image = absolute_public_url(public_origin, str(article.get("image") or ""))
     article_url = f"{public_origin}/a/{slug}"
 
     title_text = f"{title} — ФБРК"
-    description = dek or f"{category} ФБРК."
+    description = summary_short or dek or f"{category} ФБРК."
 
     page = template
     page = replace_meta(

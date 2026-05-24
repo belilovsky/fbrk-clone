@@ -51,13 +51,92 @@ DEEPSEEK_BASE = os.environ.get("DEEPSEEK_BASE_URL", "https://api.deepseek.com")
 
 # Max characters from the article body to send to the model (token budget guard)
 MAX_INPUT_CHARS = 9000
+SUMMARY_SHORT_MAX_CHARS = 180
+SUMMARY_SHORT_HARD_CAP = 220
+
+SOURCE_PREFIX_RE = re.compile(
+    r"^\(\s*[^)]{0,220}?(?:источник|source)\s*:\s*[^)]{1,160}\)\s*",
+    re.IGNORECASE,
+)
+PLACE_HINTS = (
+    "астана",
+    "алматы",
+    "шымкент",
+    "актау",
+    "актобе",
+    "атырау",
+    "караганда",
+    "караганд",
+    "костанай",
+    "кызылорд",
+    "кокшетау",
+    "павлодар",
+    "петропавлов",
+    "семей",
+    "талгар",
+    "тарaз",
+    "тараз",
+    "туркестан",
+    "уральск",
+    "усть-каменогор",
+    "щучинск",
+    "жанаозен",
+    "жетісу",
+    "жетысу",
+    "область",
+    "области",
+    "район",
+    "районе",
+    "село ",
+    "город ",
+)
+GOV_HINTS = (
+    "акимат",
+    "агентств",
+    "антикор",
+    "департамент",
+    "комитет",
+    "маслихат",
+    "министер",
+    "минвод",
+    "минюст",
+    "мвд",
+    "мчс",
+    "мсх",
+    "правительств",
+    "прокуратур",
+    "сенат",
+    "служб",
+    "суд",
+    "управлен",
+    "цик",
+    "кнб",
+    "афм",
+)
+ORG_HINTS = (
+    "air astana",
+    "bank",
+    "bbc",
+    "chec",
+    "company",
+    "corp",
+    "group",
+    "holding",
+    "llc",
+    "llp",
+    "ltd",
+    "mikrafon",
+    "osdp",
+    "qazaq kaolin",
+    "tesla",
+)
 
 
 SYSTEM_PROMPT = """Ты — редактор независимого казахстанского издания ФБРК. Тебе нужно обогатить карточку статьи для SEO/Schema.org/AEO.
 
 Строго верни ОДИН JSON-объект без пояснений. Схема:
 {
-  "summary_short": "Одно предложение, до 180 символов, по-русски, суть статьи.",
+  "summary_short": "Одно законченное предложение, до 180 символов, по-русски, без служебных пометок вроде даты и источника.",
   "summary_tts": "2-4 предложения, гладкий разговорный русский — это зачитается голосом.",
   "key_points": ["3-5 коротких буллета, каждый <= 140 символов"],
   "importance": 1-5,   // 1 = проходная заметка, 3 = средняя новость, 5 = крупное расследование/скандал
@@ -85,6 +164,90 @@ def _strip(s: str) -> str:
     s = html.unescape(s)
     s = re.sub(r"\s+", " ", s).strip()
     return s
+
+
+def _strip_source_prefix(text: str) -> str:
+    text = _strip(text)
+    cleaned = SOURCE_PREFIX_RE.sub("", text).strip(" -—:|")
+    return cleaned or text
+
+
+def _trim_summary_short(text: str, maxlen: int = SUMMARY_SHORT_MAX_CHARS) -> str:
+    text = _strip(text)
+    if len(text) <= maxlen:
+        candidate = text
+    else:
+        first_sentence = re.split(r"(?<=[.!?])\s+", text, maxsplit=1)[0].strip()
+        if 60 <= len(first_sentence) <= maxlen:
+            candidate = first_sentence
+        else:
+            window = text[: maxlen + 1]
+            last_sentence_end = max(window.rfind("."), window.rfind("!"), window.rfind("?"))
+            if last_sentence_end >= 80:
+                candidate = window[: last_sentence_end + 1].strip()
+            else:
+                cut = window.rfind(" ", 0, maxlen - 1)
+                if cut >= 80:
+                    candidate = window[:cut].rstrip(" ,;:-—").strip()
+                else:
+                    candidate = text[:maxlen].rstrip(" ,;:-—").strip()
+
+    if candidate and candidate[-1] not in ".!?":
+        last_comma = candidate.rfind(",")
+        if last_comma >= 90:
+            candidate = candidate[:last_comma].rstrip(" ,;:-—").strip()
+        if candidate and candidate[-1] not in ".!?":
+            candidate = candidate.rstrip(" ,;:-—").strip() + "."
+
+    if len(candidate) > maxlen:
+        candidate = candidate[:maxlen].rstrip(" ,;:-—").strip()
+        if candidate and candidate[-1] not in ".!?":
+            candidate = candidate.rstrip(" ,;:-—").strip() + "."
+        if len(candidate) > maxlen:
+            candidate = candidate[:maxlen].rstrip(" ,;:-—").strip()
+
+    return candidate
+
+
+def _normalize_summary_short(text: str, fallback: str = "") -> str:
+    candidate = _strip_source_prefix(text)
+    if candidate == _strip(text):
+        candidate = _strip(text)
+    if not candidate and fallback:
+        candidate = _strip_source_prefix(fallback)
+    if not candidate:
+        candidate = _strip(fallback)
+    return _trim_summary_short(candidate, SUMMARY_SHORT_MAX_CHARS)
+
+
+def _guess_entity_type(name: str) -> str:
+    raw = (name or "").strip()
+    if not raw:
+        return "other"
+    low = raw.casefold()
+    if any(hint in low for hint in PLACE_HINTS):
+        return "place"
+    if any(hint in low for hint in GOV_HINTS):
+        return "gov"
+    if any(hint in low for hint in ORG_HINTS):
+        return "org"
+    if raw.isupper() and 2 <= len(raw) <= 10:
+        return "org"
+    capitalized_words = re.findall(r"[A-ZА-ЯЁ][A-Za-zА-Яа-яЁё-]{1,}", raw)
+    if len(capitalized_words) >= 2:
+        return "person"
+    return "other"
+
+
+def _needs_quality_rerun(title: str, summary_short: str, model: str) -> bool:
+    if (model or "").strip() == "fallback-local":
+        return True
+    normalized = _strip_source_prefix(summary_short)
+    if not normalized:
+        return True
+    if normalized == (title or "").strip():
+        return True
+    return len(normalized) > SUMMARY_SHORT_MAX_CHARS
 
 
 def _build_article_text(a: dict) -> str:
@@ -252,7 +415,7 @@ def _should_fallback_to_openai(model: str, error_msg: str) -> bool:
     return (m.startswith("gemini") or m.startswith("deepseek")) and any(t in em for t in triggers)
 
 
-def _sanitize_result(raw: dict) -> dict:
+def _sanitize_result(raw: dict, article: dict | None = None) -> dict:
     def _str(x, maxlen=500):
         if not isinstance(x, str):
             return ""
@@ -279,7 +442,7 @@ def _sanitize_result(raw: dict) -> dict:
         if name:
             entities.append({
                 "name": name,
-                "type": etype,
+                "type": etype if etype != "other" else _guess_entity_type(name),
                 "wikidata": _str(e.get("wikidata"), 20) or None,
                 "wiki_url": _str(e.get("wiki_url"), 300) or None,
             })
@@ -299,8 +462,15 @@ def _sanitize_result(raw: dict) -> dict:
     if category_auto not in {"news", "investigation", "analysis", "opinion"}:
         category_auto = ""
 
+    fallback_summary = ""
+    if article:
+        fallback_summary = _strip_source_prefix(article.get("dek") or "") or (article.get("title") or "")
+
     return {
-        "summary_short": _str(raw.get("summary_short"), 220),
+        "summary_short": _normalize_summary_short(
+            _str(raw.get("summary_short"), SUMMARY_SHORT_HARD_CAP),
+            fallback=fallback_summary,
+        ),
         "summary_tts": _str(raw.get("summary_tts"), 600),
         "key_points": _list_str(raw.get("key_points"), 160, 5),
         "importance": importance,
@@ -324,9 +494,11 @@ def _fallback_result(a: dict) -> dict:
             if p:
                 paragraphs.append(p)
 
-    lead = dek or (paragraphs[0] if paragraphs else "")
-    summary_short = (lead or title)[:220]
-    summary_tts = " ".join(x for x in [dek, paragraphs[0] if paragraphs else ""] if x).strip()
+    lead = _strip_source_prefix(dek) or _strip_source_prefix(paragraphs[0] if paragraphs else "")
+    summary_short = _normalize_summary_short(lead or title, fallback=title)
+    summary_tts = " ".join(
+        x for x in [_strip_source_prefix(dek), _strip_source_prefix(paragraphs[0] if paragraphs else "")] if x
+    ).strip()
     if not summary_tts:
         summary_tts = summary_short
     summary_tts = summary_tts[:600]
@@ -334,7 +506,7 @@ def _fallback_result(a: dict) -> dict:
     key_points: list[str] = []
     for chunk in [dek, *paragraphs[:6]]:
         for sent in re.split(r"(?<=[.!?])\s+", chunk or ""):
-            s = _strip(sent).strip(" .")
+            s = _strip_source_prefix(sent).strip(" .")
             if len(s) < 40:
                 continue
             s = s[:160]
@@ -349,7 +521,7 @@ def _fallback_result(a: dict) -> dict:
 
     entities: list[dict] = []
     seen: set[str] = set()
-    blob = " ".join(x for x in [title, dek] if x)
+    blob = " ".join(x for x in [title, _strip_source_prefix(dek)] if x)
     for m in re.finditer(
         r"\b[A-ZА-ЯЁ][A-Za-zА-Яа-яЁё0-9-]{2,}(?:\s+[A-ZА-ЯЁ][A-Za-zА-Яа-яЁё0-9-]{2,}){0,2}\b",
         blob,
@@ -361,7 +533,12 @@ def _fallback_result(a: dict) -> dict:
         if lk in {"новости", "расследование", "казахстан", "республика"}:
             continue
         seen.add(lk)
-        entities.append({"name": name, "type": "other", "wikidata": None, "wiki_url": None})
+        entities.append({
+            "name": name,
+            "type": _guess_entity_type(name),
+            "wikidata": None,
+            "wiki_url": None,
+        })
         if len(entities) >= 12:
             break
 
@@ -391,12 +568,21 @@ def _fallback_result(a: dict) -> dict:
     }
 
 
-def _select_pending(limit: int | None, only_id: str | None, retry_errors: bool) -> list[dict]:
+def _select_pending(limit: int | None, only_id: str | None, retry_errors: bool,
+                    quality_rerun: bool = False) -> list[dict]:
     with db() as conn:
         if only_id:
             rows = conn.execute(
                 "SELECT * FROM articles WHERE id = ? OR slug = ? LIMIT 1",
                 (only_id, only_id),
+            ).fetchall()
+        elif quality_rerun:
+            rows = conn.execute(
+                "SELECT a.*, m.summary_short AS _meta_summary_short, m.model AS _meta_model "
+                "FROM articles a "
+                "JOIN article_meta m ON a.id = m.article_id "
+                "WHERE a.published=1 "
+                "ORDER BY a.date_iso DESC"
             ).fetchall()
         elif retry_errors:
             q = (
@@ -418,7 +604,20 @@ def _select_pending(limit: int | None, only_id: str | None, retry_errors: bool) 
             if limit:
                 q += f" LIMIT {int(limit)}"
             rows = conn.execute(q).fetchall()
-    return [row_to_article(r) for r in rows]
+    articles = [row_to_article(r) for r in rows]
+    if quality_rerun and not only_id:
+        filtered: list[dict] = []
+        for art, row in zip(articles, rows):
+            if _needs_quality_rerun(
+                art.get("title", ""),
+                row["_meta_summary_short"] or "",
+                row["_meta_model"] or "",
+            ):
+                filtered.append(art)
+        articles = filtered
+    if limit:
+        articles = articles[: int(limit)]
+    return articles
 
 
 def _upsert_meta(aid: str, result: dict, model: str, input_chars: int, error: str = "") -> None:
@@ -465,10 +664,11 @@ def _upsert_meta(aid: str, result: dict, model: str, input_chars: int, error: st
 
 
 def run(limit: int | None = None, only_id: str | None = None,
-        retry_errors: bool = False, model: str = DEFAULT_MODEL,
+        retry_errors: bool = False, quality_rerun: bool = False,
+        model: str = DEFAULT_MODEL,
         sleep_between: float = 0.3) -> dict:
     ensure_meta_schema()
-    articles = _select_pending(limit, only_id, retry_errors)
+    articles = _select_pending(limit, only_id, retry_errors, quality_rerun=quality_rerun)
     total = len(articles)
     print(f"[enrich] to process: {total} (model={model})", flush=True)
     ok = 0
@@ -489,7 +689,7 @@ def run(limit: int | None = None, only_id: str | None = None,
             continue
         try:
             raw = _call_model(text, model)
-            result = _sanitize_result(raw)
+            result = _sanitize_result(raw, article=a)
             _upsert_meta(a["id"], result, model=model, input_chars=len(text))
             ok += 1
         except Exception as e:
@@ -501,7 +701,7 @@ def run(limit: int | None = None, only_id: str | None = None,
                         flush=True,
                     )
                     raw = _call_model(text, FALLBACK_MODEL)
-                    result = _sanitize_result(raw)
+                    result = _sanitize_result(raw, article=a)
                     _upsert_meta(a["id"], result, model=FALLBACK_MODEL, input_chars=len(text))
                     ok += 1
                     continue
@@ -541,10 +741,16 @@ def main():
     p.add_argument("--limit", type=int, default=None, help="Max articles to process")
     p.add_argument("--only", type=str, default=None, help="Process a single article id/slug")
     p.add_argument("--retry-errors", action="store_true", help="Only re-run rows with error set")
+    p.add_argument(
+        "--quality-rerun",
+        action="store_true",
+        help="Re-run rows with fallback-local output or out-of-spec short summaries",
+    )
     p.add_argument("--model", type=str, default=DEFAULT_MODEL, help="OpenAI model id")
     p.add_argument("--sleep", type=float, default=0.3, help="Sleep between calls (s)")
     args = p.parse_args()
     run(limit=args.limit, only_id=args.only, retry_errors=args.retry_errors,
+        quality_rerun=args.quality_rerun,
         model=args.model, sleep_between=args.sleep)
 
 

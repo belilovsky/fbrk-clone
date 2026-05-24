@@ -40,6 +40,7 @@ def test_static_article_shell_gets_specific_metadata(tmp_path):
                 "slug": "test-slug",
                 "title": "Тест <заголовок>",
                 "dek": "Описание & лид",
+                "summaryShort": "Короткое AI-описание.",
                 "dateIso": "2026-05-18",
                 "categoryLabel": "Новости",
                 "image": "/img/test.png",
@@ -58,7 +59,7 @@ def test_static_article_shell_gets_specific_metadata(tmp_path):
     assert "<title data-article-title>Тест &lt;заголовок&gt; — ФБРК</title>" in html
     assert '<link rel="canonical" href="https://new.fbrk.kz/a/test-slug" data-article-canonical />' in html
     assert '<meta property="og:url" content="https://new.fbrk.kz/a/test-slug" data-article-og-url />' in html
-    assert "Описание &amp; лид" in html
+    assert "Короткое AI-описание." in html
     assert "data-static-article-jsonld" in html
 
 

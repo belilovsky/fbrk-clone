@@ -68,6 +68,70 @@ class PublicEntityTagsTest(unittest.TestCase):
         self.assertTrue(entity_names.isdisjoint(tag_names))
         self.assertEqual(result["tags_auto"][:3], ["БНР", "мясопотребление", "Казахстан"])
 
+    def test_sanitize_result_trims_summary_and_keeps_meaningful_sentence(self) -> None:
+        raw = {
+            "summary_short": (
+                "В Казахстане реализуют длинную реформу регулирования частных детективов, "
+                "которая устанавливает квалификационные требования, порядок лицензирования "
+                "и расширенный перечень ограничений для участников рынка."
+            ),
+            "summary_tts": "ok",
+            "entities": [{"name": "Министерство юстиции", "type": "other"}],
+        }
+
+        result = enrich._sanitize_result(raw, article=_article())
+
+        self.assertLessEqual(len(result["summary_short"]), 180)
+        self.assertTrue(result["summary_short"].endswith((".", "!", "?")))
+        self.assertEqual(result["entities"][0]["type"], "gov")
+
+    def test_fallback_result_strips_source_prefix_and_guesses_entity_types(self) -> None:
+        article = _article(
+            title="МВД сообщило о задержании в Алматы",
+            dek="(27 февраля 2026 | Источник: BES.media) МВД задержало подозреваемого в Алматы после спецоперации.",
+            tags=["МВД", "Алматы"],
+        )
+
+        result = enrich._fallback_result(article)
+
+        self.assertFalse(result["summary_short"].startswith("("))
+        entity_types = {item["name"]: item["type"] for item in result["entities"]}
+        self.assertEqual(entity_types.get("МВД"), "gov")
+        self.assertEqual(entity_types.get("Алматы"), "place")
+
+    def test_quality_rerun_marks_fallback_and_long_summary_rows(self) -> None:
+        self.assertTrue(
+            enrich._needs_quality_rerun(
+                "Заголовок",
+                "Нормальная строка",
+                "fallback-local",
+            )
+        )
+        self.assertTrue(
+            enrich._needs_quality_rerun(
+                "Заголовок",
+                "Это очень длинное краткое описание " + "слово " * 40,
+                "deepseek-chat",
+            )
+        )
+        self.assertFalse(
+            enrich._needs_quality_rerun(
+                "Заголовок",
+                "Краткое описание статьи без мусора и в пределах разумной длины.",
+                "deepseek-chat",
+            )
+        )
+
+    def test_trim_summary_short_keeps_hard_cap_when_period_lands_at_181(self) -> None:
+        text = (
+            "В 20 социально-значимых пассажирских поездах выявлено 284 нарушения, включая отсутствие "
+            "кондиционеров и несоответствие санитарным нормам, общая сумма штрафов превысила 10 млн тенге."
+        )
+
+        trimmed = enrich._trim_summary_short(text)
+
+        self.assertLessEqual(len(trimmed), 180)
+
     def test_public_shape_keeps_manual_tags_only_and_hides_noisy_other_entities(self) -> None:
         article = _article(
             _meta_entities_json=json.dumps(
