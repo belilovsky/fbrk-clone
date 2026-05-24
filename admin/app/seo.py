@@ -239,7 +239,7 @@ def _hidden_entity_names(raw: list) -> set[str]:
     return out
 
 
-def _visible_entities(raw: list, exclude_names: set[str] | None = None, limit: int = 32) -> list[dict]:
+def _visible_entities(raw: list, exclude_names: set[str] | None = None, limit: int = 12) -> list[dict]:
     """Return public-facing named entities, excluding topic tags and fallback noise."""
     excluded = {str(x or "").strip().casefold() for x in (exclude_names or set()) if str(x or "").strip()}
     out: list[dict] = []

@@ -2738,8 +2738,15 @@ button:focus-visible, a:focus-visible { outline-offset: 3px; }
   }
 }
 
+@media (min-width: 1600px) {
+  .site-header .container {
+    max-width: 1560px;
+  }
+}
+
 /* Mobile nav toggle */
 .site-header__menu-btn { display: none; }
+.site-header__mobile-panel { display: none; }
 @media (max-width: 1100px) {
   .site-header__inner {
     grid-template-columns: auto 1fr auto;
@@ -2807,9 +2814,6 @@ button:focus-visible, a:focus-visible { outline-offset: 3px; }
   .site-header__menu-btn { display: inline-flex; }
   .site-header__actions .lang-switch,
   .site-header__actions .site-header__btn--social { display: none; }
-}
-@media (min-width: 1101px) {
-  .site-header__mobile-panel { display: none; }
 }
 
 /* Toast for "soon" notice */

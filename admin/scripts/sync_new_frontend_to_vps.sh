@@ -14,6 +14,14 @@ TARGET_ROOT="${NEW_FBRK_VPS_ROOT:-/var/www/new.fbrk.kz}"
 TARGET="${TARGET_USER}@${TARGET_HOST}"
 WORKDIR="${NEW_FBRK_SYNC_WORKDIR:-/tmp}"
 ASSET_VERSION="${ASSET_VERSION:-$(date -u +%Y%m%d%H%M%S)}"
+SSH_RSH="ssh -o BatchMode=yes -o StrictHostKeyChecking=accept-new"
+SSH_KEY_PATH="${NEW_FBRK_SSH_KEY:-}"
+if [[ -z "${SSH_KEY_PATH}" && -f "${HOME}/.ssh/fbrk_new_frontend_sync" ]]; then
+  SSH_KEY_PATH="${HOME}/.ssh/fbrk_new_frontend_sync"
+fi
+if [[ -n "${SSH_KEY_PATH}" ]]; then
+  SSH_RSH="${SSH_RSH} -i ${SSH_KEY_PATH}"
+fi
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 PLESK_BUILDER="${SCRIPT_DIR}/sync_new_frontend_to_plesk.py"
 
@@ -52,6 +60,9 @@ fi
 # by the referenced-asset packager above.
 rsync -a --exclude '/uploads/' "${FBRK_WEB_ROOT}/img/" "${package_dir}/img/"
 
+# Keep macOS metadata out of the deployed static tree.
+find "${package_dir}" \( -name '.DS_Store' -o -name '._*' \) -delete
+
 # Historical 404.html used /favicon.ico while the AV DS site uses brand PNGs.
 # Keep this defensive replace here so older generated packages do not ship a
 # missing favicon on a clean VPS.
@@ -68,10 +79,10 @@ text = text.replace(
 path.write_text(text, encoding="utf-8")
 PY
 
-ssh -o BatchMode=yes "${TARGET}" "mkdir -p '${TARGET_ROOT}'"
-rsync -az "${package_dir}/" "${TARGET}:${TARGET_ROOT}/"
-ssh -o BatchMode=yes "${TARGET}" \
-  "chown -R www-data:www-data '${TARGET_ROOT}' && nginx -t && systemctl reload nginx"
+${SSH_RSH} "${TARGET}" "mkdir -p '${TARGET_ROOT}'"
+rsync -az -e "${SSH_RSH}" "${package_dir}/" "${TARGET}:${TARGET_ROOT}/"
+${SSH_RSH} "${TARGET}" \
+  "find '${TARGET_ROOT}' \\( -name '.DS_Store' -o -name '._*' \\) -delete && chown -R www-data:www-data '${TARGET_ROOT}' && nginx -t && systemctl reload nginx"
 
 echo "STATUS=synced"
 echo "TARGET=${TARGET}:${TARGET_ROOT}"
