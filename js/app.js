@@ -1013,14 +1013,26 @@ function normalizedArticleText(value) {
 
 function articleHeroDek(a, sectionItems = []) {
   const dek = String((a && a.dek) || '').trim();
+  const summaryShort = String((a && a.summaryShort) || '').trim();
   if (!dek || !Array.isArray(sectionItems) || !sectionItems.length) return '';
-  if (dek.length > 420 || /\n\s*\n/.test(dek)) return '';
-
-  const normalizedDek = normalizedArticleText(dek);
   const firstSectionText = normalizedArticleText(`${sectionItems[0]?.h || ''} ${sectionItems[0]?.p || ''}`);
-  if (normalizedDek && firstSectionText.startsWith(normalizedDek)) return '';
+  const firstParagraph = dek.split(/\n{2,}/)[0]?.trim() || '';
+  const candidates = [
+    dek,
+    firstParagraph,
+    summaryShort,
+  ];
 
-  return dek;
+  for (const candidate of candidates) {
+    const text = String(candidate || '').trim();
+    if (!text || text.length > 420) continue;
+    if (/\n\s*\n/.test(text)) continue;
+    const normalizedDek = normalizedArticleText(text);
+    if (normalizedDek && firstSectionText.startsWith(normalizedDek)) continue;
+    return text;
+  }
+
+  return '';
 }
 
 function articleTags(a, excludedNames = []) {
