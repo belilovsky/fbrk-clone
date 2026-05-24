@@ -30,7 +30,7 @@ import re
 import sys
 import time
 import traceback
-from datetime import datetime
+from datetime import datetime, timezone
 from pathlib import Path
 
 # Make the app package importable when run as script from /opt/fbrk-admin
@@ -53,6 +53,8 @@ DEEPSEEK_BASE = os.environ.get("DEEPSEEK_BASE_URL", "https://api.deepseek.com")
 MAX_INPUT_CHARS = 9000
 SUMMARY_SHORT_MAX_CHARS = 180
 SUMMARY_SHORT_HARD_CAP = 220
+ENTITY_MIN_COUNT = 2
+ENTITY_MAX_COUNT = 12
 
 SOURCE_PREFIX_RE = re.compile(
     r"^\(\s*[^)]{0,220}?(?:источник|source)\s*:\s*[^)]{1,160}\)\s*",
@@ -247,7 +249,44 @@ def _guess_entity_type(name: str) -> str:
     return "other"
 
 
-def _needs_quality_rerun(title: str, summary_short: str, model: str) -> bool:
+def _entity_count(raw: str | None) -> int:
+    if not raw:
+        return 0
+    try:
+        value = json.loads(raw)
+    except (TypeError, ValueError, json.JSONDecodeError):
+        return 0
+    return len(value) if isinstance(value, list) else 0
+
+
+def _fallback_entities_from_texts(*texts: str, limit: int = ENTITY_MAX_COUNT) -> list[dict]:
+    entities: list[dict] = []
+    seen: set[str] = set()
+    blob = " ".join(_strip_source_prefix(text or "") for text in texts if text)
+    for m in re.finditer(
+        r"\b[A-ZА-ЯЁ][A-Za-zА-Яа-яЁё0-9-]{2,}(?:\s+[A-ZА-ЯЁ][A-Za-zА-Яа-яЁё0-9-]{2,}){0,2}\b",
+        blob,
+    ):
+        name = m.group(0).strip()[:120]
+        lk = name.lower()
+        if lk in seen:
+            continue
+        if lk in {"новости", "расследование", "казахстан", "республика"}:
+            continue
+        seen.add(lk)
+        entities.append({
+            "name": name,
+            "type": _guess_entity_type(name),
+            "wikidata": None,
+            "wiki_url": None,
+        })
+        if len(entities) >= limit:
+            break
+    return entities
+
+
+def _needs_quality_rerun(title: str, summary_short: str, model: str,
+                         entities_json: str | None = None) -> bool:
     if (model or "").strip() == "fallback-local":
         return True
     raw = _strip(summary_short)
@@ -257,6 +296,9 @@ def _needs_quality_rerun(title: str, summary_short: str, model: str) -> bool:
     if normalized != raw:
         return True
     if normalized == (title or "").strip():
+        return True
+    entity_count = _entity_count(entities_json)
+    if entity_count < ENTITY_MIN_COUNT or entity_count > ENTITY_MAX_COUNT:
         return True
     return len(normalized) > SUMMARY_SHORT_MAX_CHARS
 
@@ -443,7 +485,7 @@ def _sanitize_result(raw: dict, article: dict | None = None) -> dict:
 
     entities_in = raw.get("entities") if isinstance(raw.get("entities"), list) else []
     entities: list[dict] = []
-    for e in entities_in[:20]:
+    for e in entities_in[: ENTITY_MAX_COUNT * 2]:
         if not isinstance(e, dict):
             continue
         name = _str(e.get("name"), 120)
@@ -457,6 +499,8 @@ def _sanitize_result(raw: dict, article: dict | None = None) -> dict:
                 "wikidata": _str(e.get("wikidata"), 20) or None,
                 "wiki_url": _str(e.get("wiki_url"), 300) or None,
             })
+            if len(entities) >= ENTITY_MAX_COUNT:
+                break
 
     importance = raw.get("importance")
     try:
@@ -476,12 +520,26 @@ def _sanitize_result(raw: dict, article: dict | None = None) -> dict:
     fallback_summary = ""
     if article:
         fallback_summary = _strip_source_prefix(article.get("dek") or "") or (article.get("title") or "")
+    summary_short = _normalize_summary_short(
+        _str(raw.get("summary_short"), SUMMARY_SHORT_HARD_CAP),
+        fallback=fallback_summary,
+    )
+    if article and len(entities) < ENTITY_MIN_COUNT:
+        existing = {str(item.get("name") or "").casefold() for item in entities}
+        for extra in _fallback_entities_from_texts(
+            article.get("title") or "",
+            article.get("dek") or "",
+            summary_short,
+        ):
+            if extra["name"].casefold() in existing:
+                continue
+            entities.append(extra)
+            existing.add(extra["name"].casefold())
+            if len(entities) >= ENTITY_MIN_COUNT:
+                break
 
     return {
-        "summary_short": _normalize_summary_short(
-            _str(raw.get("summary_short"), SUMMARY_SHORT_HARD_CAP),
-            fallback=fallback_summary,
-        ),
+        "summary_short": summary_short,
         "summary_tts": _str(raw.get("summary_tts"), 600),
         "key_points": _list_str(raw.get("key_points"), 160, 5),
         "importance": importance,
@@ -530,28 +588,7 @@ def _fallback_result(a: dict) -> dict:
     if not key_points and summary_short:
         key_points = [summary_short[:160]]
 
-    entities: list[dict] = []
-    seen: set[str] = set()
-    blob = " ".join(x for x in [title, _strip_source_prefix(dek)] if x)
-    for m in re.finditer(
-        r"\b[A-ZА-ЯЁ][A-Za-zА-Яа-яЁё0-9-]{2,}(?:\s+[A-ZА-ЯЁ][A-Za-zА-Яа-яЁё0-9-]{2,}){0,2}\b",
-        blob,
-    ):
-        name = m.group(0).strip()[:120]
-        lk = name.lower()
-        if lk in seen:
-            continue
-        if lk in {"новости", "расследование", "казахстан", "республика"}:
-            continue
-        seen.add(lk)
-        entities.append({
-            "name": name,
-            "type": _guess_entity_type(name),
-            "wikidata": None,
-            "wiki_url": None,
-        })
-        if len(entities) >= 12:
-            break
+    entities = _fallback_entities_from_texts(title, dek, summary_short, limit=ENTITY_MAX_COUNT)
 
     category_auto = (a.get("category") or "").strip().lower()
     if category_auto not in {"news", "investigation"}:
@@ -589,7 +626,8 @@ def _select_pending(limit: int | None, only_id: str | None, retry_errors: bool,
             ).fetchall()
         elif quality_rerun:
             rows = conn.execute(
-                "SELECT a.*, m.summary_short AS _meta_summary_short, m.model AS _meta_model "
+                "SELECT a.*, m.summary_short AS _meta_summary_short, m.model AS _meta_model, "
+                "m.entities_json AS _meta_entities_json "
                 "FROM articles a "
                 "JOIN article_meta m ON a.id = m.article_id "
                 "WHERE a.published=1 "
@@ -623,6 +661,7 @@ def _select_pending(limit: int | None, only_id: str | None, retry_errors: bool,
                 art.get("title", ""),
                 row["_meta_summary_short"] or "",
                 row["_meta_model"] or "",
+                row["_meta_entities_json"] or "",
             ):
                 filtered.append(art)
         articles = filtered
@@ -668,7 +707,7 @@ def _upsert_meta(aid: str, result: dict, model: str, input_chars: int, error: st
                 json.dumps(result.get("tags_auto", []), ensure_ascii=False),
                 model,
                 input_chars,
-                datetime.utcnow().isoformat(timespec="seconds"),
+                datetime.now(timezone.utc).isoformat(timespec="seconds"),
                 error,
             ),
         )

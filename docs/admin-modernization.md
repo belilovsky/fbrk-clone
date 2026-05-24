@@ -502,6 +502,55 @@ Verification:
     header action group fully visible.
   - `https://fbrk.qdev.run/admin/login`: renders cleanly with no overflow.
 
+## 2026-05-24 Entity chips harmonization pass
+
+После доработки AI-контента осталось техническое рассогласование: на карточках и
+в SEO-инфо блоке сущности по-разному отрезались (32 в некоторых местах,
+12 в других), плюс отсутствовала защита по количеству сущностей при
+критических краях (0 / >12). Пробежались все публичные и SSR-пути и выровняли
+лимиты.
+
+Изменения:
+
+- `admin/app/publish.py`
+  - публичный лимит сущностей в `_public_entities` и сборке `_article_full_shape`
+    поставлен в `12`.
+- `admin/app/seo.py`
+  - `_visible_entities` теперь лимитирует выдачу до `12`.
+- `admin/enrich.py`
+  - `_sanitize_result` жёстко режет AI-выход по `12` сущностям;
+  - `--quality-rerun` теперь пересобирает записи с менее чем `2` или более чем
+    `12` сущностями;
+  - дата времени теперь в UTC-формате через `datetime.now(timezone.utc)`.
+- `admin/templates/article_ssr.html` и `js/app.js`
+  - отрисовка чипов сущностей унифицирована до `12`.
+
+Проверка:
+
+- `python3 -m pytest` -> `37 passed`.
+- `article_full_shape` и `_visible_entities` теперь возвращают максимум `12` элементов
+  в тестах.
+
+## 2026-05-24 Split sync stabilization
+
+Во время финального прохода обнаружилось, что актуальный live backend уже
+смотрит не на старый VPS `62.72.32.112`, а на `148.230.117.131`, тогда как
+`new.fbrk.kz` живёт на `213.155.22.190`. Из-за этого ручные проверки на старом
+хосте могли давать ложное чувство, что правка уже в проде.
+
+Что закрыто:
+
+- live operational mapping перепроверен по DNS и HTTP;
+- `sync_new_frontend_to_vps.sh` теперь:
+  - принимает новый host key через `StrictHostKeyChecking=accept-new`;
+  - автоматически использует `~/.ssh/fbrk_new_frontend_sync`, если ключ
+    присутствует на backend host;
+  - вычищает `.DS_Store` и `._*` из package и target tree;
+- на live backend VPS `148.230.117.131` создан выделенный SSH key для sync на
+  `213.155.22.190` и добавлен в `authorized_keys` frontend VPS;
+- после этого штатный backend -> new frontend sync завершился `STATUS=synced`;
+- финальный `scripts/verify_preprod.sh` прошёл зелёно (`STATUS=ok`).
+
 ## 2026-05-24 AI summary and entity quality pass
 
 The next production-facing gap was not layout but content quality inside the AI
@@ -574,3 +623,44 @@ Residual note:
   a blocker here because many national, broad, or non-local materials do not
   have a single defensible region label. The current pass focused on summary and
   entity quality, not forcing synthetic geography.
+
+Follow-up entity pass:
+
+The first rerun fixed summary quality and raw entity typing, but a second audit
+showed two narrower tails still worth closing:
+
+- `516` rows still matched the stricter quality selector because they had
+  entity counts outside the desired `2..12` range;
+- public `article-full.js` still contained `18` articles with fewer than two
+  visible entity chips after public-type filtering.
+
+Changes:
+
+- expanded `--quality-rerun` selection in `admin/enrich.py` so it also requeues
+  rows with `<2` or `>12` stored entities;
+- capped sanitized model output to `12` stored entities;
+- added small deterministic entity backfill from article context when the model
+  still returns only one entity;
+- capped public chip rendering to `12` across SSR and split static article
+  pages;
+- added a publication-layer supplement in `admin/app/publish.py` so obvious
+  public entities such as money figures or clear org/place names can still
+  appear when the raw stored entity list is too thin after public filtering,
+  while explicitly avoiding awkward partial place fragments.
+
+Verification:
+
+- second live rerun:
+  `python3 /opt/fbrk-admin/enrich.py --quality-rerun --model deepseek-chat --sleep 0.1`
+  -> `DONE ok=516 err=0 total=516`;
+- final DB state:
+  - `entities_lt_2=0`
+  - `entities_gt_12=0`
+  - `summary_equals_dek=0`
+  - `summary_ends_badly=0`
+  - `region_empty=1111`
+- final public state after regenerate + VPS sync:
+  - `public_entities_lt_2=4`
+  - `public_entities_gt_12=0`
+  - split linkage strict smoke still passes with matching backend/new hashes and
+    `STATUS=ok`.

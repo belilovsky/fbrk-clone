@@ -184,7 +184,7 @@ __╱╲╲╲╲╲╲╲╲╲╲╲╲╲╲╲__╱╲╲╲╲╲╲╲╲�
         <div class="entity-chips" aria-label="Упомянуты в тексте">
           <h3 class="entity-chips__title">Упоминания</h3>
           <div class="entity-chips__row">
-            {% for e in meta.entities %}
+            {% for e in meta.entities[:12] %}
             <span class="entity-chip entity-chip--{{ e.type }}">{{ e.name|e }}</span>
             {% endfor %}
           </div>

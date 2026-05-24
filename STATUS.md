@@ -60,4 +60,7 @@ Branch: `release/pre-prod-audit`
 - [x] Post-rerun quality tail reduced to zero for the tracked failure modes: `fallback_local=0`, `long_summary=0`, `all_other=0`, `empty_summary=0`, `empty_entities=0`, `quality_queue_remaining=0`.
 - [x] Static split article shells now prefer `summaryShort` over `dek` for meta description, Open Graph, Twitter, and JSON-LD fields.
 - [x] Live curl smoke on representative `https://new.fbrk.kz/a/<slug>/` pages confirms corrected AI summaries in HTML head metadata; browser-visible article leads also render correctly.
+- [x] Second live DeepSeek pass reprocessed the remaining entity-quality queue (`516/516 ok`, `err=0`) and removed entity-count outliers from `article_meta`: `entities_lt_2=0`, `entities_gt_12=0`.
+- [x] Public article payload now caps visible entity chips at `12` and supplements obvious missing public entities from title/dek/summary context when that can be done cleanly.
+- [x] After the public payload refresh and split sync, `new.fbrk.kz/js/article-full.js` dropped from `18` public single-entity articles to `4`; the remaining four are intentionally left as-is because a second public entity is not extractable without introducing awkward fragments.
 - [ ] `region` remains empty on `1,193` rows; this is tracked as normal mixed coverage rather than a current blocker because national or non-local materials may legitimately have no single region.

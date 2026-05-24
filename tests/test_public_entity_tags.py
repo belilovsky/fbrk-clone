@@ -11,6 +11,7 @@ sys.path.insert(0, str(ROOT / "admin"))
 
 import enrich  # noqa: E402
 from app.publish import _article_full_shape  # noqa: E402
+from app.seo import _visible_entities  # noqa: E402
 
 
 def _article(**overrides: object) -> dict:
@@ -85,6 +86,22 @@ class PublicEntityTagsTest(unittest.TestCase):
         self.assertTrue(result["summary_short"].endswith((".", "!", "?")))
         self.assertEqual(result["entities"][0]["type"], "gov")
 
+    def test_sanitize_result_backfills_second_entity_from_article_context(self) -> None:
+        raw = {
+            "summary_short": "В Атырау прошёл форум по правовой культуре и безопасности молодёжи.",
+            "summary_tts": "ok",
+            "entities": [{"name": "Атырау", "type": "place"}],
+        }
+        article = _article(
+            title="Форум по правовой культуре прошёл в Атырау",
+            dek="В Атырау обсудили безопасность молодёжи и роль прокуратуры.",
+        )
+
+        result = enrich._sanitize_result(raw, article=article)
+
+        self.assertGreaterEqual(len(result["entities"]), 2)
+        self.assertIn("Атырау", {item["name"] for item in result["entities"]})
+
     def test_fallback_result_strips_source_prefix_and_guesses_entity_types(self) -> None:
         article = _article(
             title="МВД сообщило о задержании в Алматы",
@@ -119,6 +136,13 @@ class PublicEntityTagsTest(unittest.TestCase):
                 "Заголовок",
                 "Краткое описание статьи без мусора и в пределах разумной длины.",
                 "deepseek-chat",
+                json.dumps(
+                    [
+                        {"name": "Астана", "type": "place"},
+                        {"name": "Минфин", "type": "gov"},
+                    ],
+                    ensure_ascii=False,
+                ),
             )
         )
         self.assertTrue(
@@ -126,6 +150,22 @@ class PublicEntityTagsTest(unittest.TestCase):
                 "Заголовок",
                 "Краткое описание статьи без финальной точки",
                 "deepseek-chat",
+            )
+        )
+        self.assertTrue(
+            enrich._needs_quality_rerun(
+                "Заголовок",
+                "Краткое описание статьи без мусора и в пределах разумной длины.",
+                "deepseek-chat",
+                json.dumps([{"name": f"Entity {i}", "type": "org"} for i in range(13)], ensure_ascii=False),
+            )
+        )
+        self.assertTrue(
+            enrich._needs_quality_rerun(
+                "Заголовок",
+                "Краткое описание статьи без мусора и в пределах разумной длины.",
+                "deepseek-chat",
+                json.dumps([{"name": "Астана", "type": "place"}], ensure_ascii=False),
             )
         )
 
@@ -179,6 +219,61 @@ class PublicEntityTagsTest(unittest.TestCase):
             shape["tags"],
             ["статистика"],
         )
+
+    def test_sanitize_result_caps_entities_at_twelve(self) -> None:
+        raw = {
+            "summary_short": "Краткое описание статьи без мусора и в пределах разумной длины.",
+            "summary_tts": "ok",
+            "entities": [{"name": f"Entity {i}", "type": "org"} for i in range(20)],
+        }
+
+        result = enrich._sanitize_result(raw, article=_article())
+
+        self.assertEqual(len(result["entities"]), 12)
+
+    def test_public_shape_limits_entity_chips_to_twelve(self) -> None:
+        article = _article(
+            _meta_entities_json=json.dumps(
+                [{"name": f"Entity {i}", "type": "org"} for i in range(20)],
+                ensure_ascii=False,
+            ),
+            _meta_tags_auto=json.dumps([], ensure_ascii=False),
+        )
+
+        shape = _article_full_shape(article)
+
+        self.assertEqual(len(shape["entities"]), 12)
+
+    def test_public_shape_backfills_second_visible_entity_from_summary(self) -> None:
+        article = _article(
+            title="Казспецэкспорт продает аварийный самолёт АН-26",
+            dek="Стоимость лота выросла до 26 млн тенге, но торги отменили.",
+            _meta_summary_short="Казспецэкспорт выставил на торги аварийный самолёт АН-26, цена выросла до 26 млн тенге.",
+            _meta_entities_json=json.dumps(
+                [{"name": "Казспецэкспорт", "type": "org"}],
+                ensure_ascii=False,
+            ),
+            _meta_tags_auto=json.dumps([], ensure_ascii=False),
+        )
+
+        shape = _article_full_shape(article)
+
+        self.assertGreaterEqual(len(shape["entities"]), 2)
+        self.assertEqual(shape["entities"][0], {"name": "Казспецэкспорт", "type": "org"})
+
+    def test_visible_entities_defaults_to_twelve(self) -> None:
+        raw = [
+            {"name": "Астана", "type": "place"},
+            {"name": "Минфин", "type": "gov"},
+        ] + [
+            {"name": f"Entity {i}", "type": "org"} for i in range(20)
+        ] + [{"name": "Таблица", "type": "other"}]
+
+        entities = _visible_entities(raw)
+
+        self.assertEqual(len(entities), 12)
+        self.assertTrue(all(item["type"] in {"person", "org", "gov", "place", "law", "case", "money"} for item in entities))
+        self.assertEqual([item["name"] for item in entities], [e["name"] for e in raw[:12] if e["type"] in {"person", "org", "gov", "place", "law", "case", "money"}][:12])
 
     def test_auto_topics_are_not_rendered_as_manual_tags(self) -> None:
         article = _article(

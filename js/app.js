@@ -1104,7 +1104,7 @@ function articleEntities(entities, excludedNames = []) {
     seen.add(key);
     items.push({ name, type });
   });
-  return items.slice(0, 32);
+  return items.slice(0, 12);
 }
 
 function renderArticleTldr(a) {
@@ -1127,7 +1127,7 @@ function renderArticleEntities(entities) {
     <div class="entity-chips" aria-label="Упомянуты в тексте">
       <h3 class="entity-chips__title">Упоминания</h3>
       <div class="entity-chips__row">
-        ${entities.slice(0, 32).map((e) => `<span class="entity-chip entity-chip--${escapeHtml(e.type)}">${escapeHtml(e.name)}</span>`).join('')}
+        ${entities.slice(0, 12).map((e) => `<span class="entity-chip entity-chip--${escapeHtml(e.type)}">${escapeHtml(e.name)}</span>`).join('')}
       </div>
     </div>
   `;

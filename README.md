@@ -82,7 +82,8 @@ docker inspect -f '{{.State.Health.Status}}' fbrk-admin
 - `admin/deploy/plesk-new-fbrk-split-proxy.conf`
 - `admin/scripts/sync_new_frontend_to_vps.sh` — штатный backend → frontend VPS
   sync через SSH/rsync; на backend VPS установлен cron
-  `/etc/cron.d/fbrk-new-vps-sync`.
+  `/etc/cron.d/fbrk-new-vps-sync`. Скрипт автоматически использует
+  `~/.ssh/fbrk_new_frontend_sync`, если этот deploy-key присутствует на host.
 - `admin/scripts/build_new_frontend_static_package.sh` — delta-пакет для ручной
   синхронизации Plesk-статики; после cutover 2026-05-18 это fallback/rollback
   путь, а не основной production-hosting.
@@ -119,9 +120,10 @@ set -a && . /etc/fbrk-admin/fbrk-admin.env && . ./.env && set +a
 ```
 
 `--quality-rerun` не трогает весь архив подряд: он выбирает только строки с
-`fallback-local`, слишком длинным `summary_short` или явно плохим short-summary
-контрактом. После AI-перезапуска нужно заново сгенерировать публичные payload'ы
-и прогнать штатную синхронизацию split-фронта.
+`fallback-local`, слишком длинным `summary_short`, плохим short-summary
+контрактом или аномальным количеством сущностей. После AI-перезапуска нужно
+заново сгенерировать публичные payload'ы и прогнать штатную синхронизацию
+split-фронта.
 
 ## Cron
 
