@@ -466,3 +466,38 @@ Verification:
   home, archive, and article render through `https://new.fbrk.kz`; article
   title, share URLs, `Упоминания`/`Материалы по теме`, and `AV DS 3.7.1` footer
   are present.
+
+## 2026-05-24 final frontend polish
+
+The final pre-prod/front-facing pass found one real desktop regression that was
+worth closing before calling the split frontend finished: around `1280px` wide,
+the public header grid was slightly wider than the viewport, so the right-side
+action group could clip one of the social buttons even though mobile and full
+desktop widths looked acceptable.
+
+Changes:
+
+- added a safer `minmax(0, 1fr)` middle track for `.site-header__inner`;
+- allowed the nav cluster to shrink cleanly instead of pushing the action group
+  off-canvas;
+- added an intermediate desktop breakpoint (`max-width: 1320px`) that hides the
+  long logo text, tightens nav pill padding, and reduces action spacing before
+  the dedicated mobile breakpoint;
+- bumped public asset references to `20260524115400` across public shells and
+  `admin/templates/article_ssr.html` so the CSS fix is not lost behind browser
+  cache.
+
+Verification:
+
+- Local verifier: `./scripts/verify_preprod.sh` -> OK, including `29 passed`,
+  Python compile checks, and strict split linkage `STATUS=ok`.
+- Local browser smoke:
+  - `http://127.0.0.1:5057/` at `1280px`: `scrollWidth == clientWidth`,
+    both social buttons visible, no header clipping.
+  - `390px` home/article/admin: no horizontal overflow.
+- Live browser smoke:
+  - `https://new.fbrk.kz/` at `1280px`: `overflow=false`,
+    `socialCount=2`, `/css/style.css?v=20260524115400`.
+  - representative article on `new.fbrk.kz`: `overflow=false`,
+    header action group fully visible.
+  - `https://fbrk.qdev.run/admin/login`: renders cleanly with no overflow.

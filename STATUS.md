@@ -42,3 +42,11 @@ Branch: `release/pre-prod-audit`
 - [ ] LHCI desktop metrics are still pending because this workstation has no usable `npm`/`npx` toolchain in the current shell.
 - [x] `npx` отсутствует в рабочем окружении этой машины; LHCI планируется выполнить после восстановления CLI toolchain.
 - [x] Локальная визуальная проверка Playwright (375/768/1024/1440/1920, key pages) пройдена после правки стилей; горизонтального overflow на `127.0.0.1:8888` не обнаружено.
+
+## Final frontend polish 2026-05-24
+
+- [x] Desktop header no longer clips right-side actions around 1280px; grid sizing now shrinks safely before the mobile breakpoint.
+- [x] Public asset version bumped to `20260524115400` for public shells and SSR article template so the header fix is not hidden behind stale CSS cache.
+- [x] `./scripts/verify_preprod.sh` passes after the final CSS pass (`29 passed`, compile checks OK, strict split linkage `STATUS=ok`).
+- [x] Live browser smoke on `https://new.fbrk.kz/`, representative `/a/<slug>`, and `https://fbrk.qdev.run/admin/login` passes on desktop (`1280px`) with `overflow=false`; both public social buttons remain visible.
+- [x] Local browser smoke on home/article/admin at `390px` passes with no horizontal overflow.
