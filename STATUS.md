@@ -29,6 +29,7 @@ Branch: `release/pre-prod-audit`
 - [x] Reduced excessive horizontal separators in latest-list and search overlay blocks.
 - [x] RSS validation smoke passes as XML/RSS 2.0.
 - [x] `image.kind`, `image.source`, `image.hasRealPerson` now generated on publish pipeline and serialized into public payload.
+- [x] Local pre-prod verifier script added: `./scripts/verify_preprod.sh` runs JS checks, repo `.venv` tests, compile checks, and strict split linkage.
 
 ## Production smoke 2026-05-23
 

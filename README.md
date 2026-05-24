@@ -65,6 +65,15 @@ docker compose -f docker-compose.fbrk.yml up -d --build admin
 docker inspect -f '{{.State.Health.Status}}' fbrk-admin
 ```
 
+Локальная pre-prod проверка из репозитория:
+```
+./scripts/verify_preprod.sh
+```
+
+Примечание: полный Python smoke-набор нужно запускать через repo `.venv`
+(`.venv/bin/python`). Системный `python3` на этой машине может не содержать
+зависимости админки, включая `PyJWT`.
+
 Для split-схемы (`new.fbrk.kz` = статика, `fbrk.qdev.run` = backend/DB):
 - `docs/audit/NEW_FBRK_VPS_FRONTEND_RUNBOOK.md` — текущая целевая схема:
   отдельный KZ VPS в том же ps.kz-аккаунте (`213.155.22.190`) отдаёт
