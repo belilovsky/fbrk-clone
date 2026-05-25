@@ -382,11 +382,13 @@ def ssr_article(slug: str, request: Request):
     dek = _strip_html(raw_dek)
     plain_body = _sections_to_plain(a.get("sections") or [])
     header_dek = _header_dek(raw_dek, a.get("sections") or [])
+    hero_dek = (meta.get("summary_short") or header_dek or "").strip()
     # Prefer AI short summary when available (tighter, better for SEO/LLMs)
     desc = (meta.get("summary_short") or dek or plain_body[:240]).strip()[:240]
     image = _abs_url(a.get("image") or "", site_url)
     body_html = _sections_to_html(a.get("sections") or [], site_url)
     word_count = len((plain_body or "").split())
+    read_min = max(1, round(len((" ".join(part for part in [hero_dek, plain_body] if part)).split()) / 180))
 
     date_iso = a.get("dateIso") or ""
     date_label = a.get("date") or ""
@@ -451,7 +453,6 @@ def ssr_article(slug: str, request: Request):
             "cssSelector": [
                 ".article__title",
                 ".article__dek",
-                ".article__lead",
                 ".article__tldr-list",
             ],
         },
@@ -483,10 +484,12 @@ def ssr_article(slug: str, request: Request):
         "title": title,
         "desc": desc,
         "header_dek": header_dek,
+        "hero_dek": hero_dek,
         "image": image,
         "body_html": body_html,
         "date_iso": date_iso,
         "date_label": date_label,
+        "read_min": read_min,
         "published_iso": published_iso,
         "modified_iso": modified_iso,
         "category_label": category_label,

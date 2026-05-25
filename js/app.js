@@ -870,6 +870,7 @@ function liveBadgeHtml(a) {
     .map((p) => ({ h: '', p }));
   const bodySections = sectionItems.length ? sectionItems : fallbackParagraphs;
   const heroDek = articleHeroDek(a, sectionItems);
+  const articleDateLabel = fmtDateLong(a.dateIso) || a.date || '';
 
   document.title = `${a.title} — ФБРК`;
 
@@ -885,7 +886,7 @@ function liveBadgeHtml(a) {
     { label: 'Telegram', href: `https://t.me/share/url?url=${shareUrl}&text=${shareTitle}`, icon: '<svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M9.78 18.65l.28-4.23 7.68-6.92c.34-.31-.07-.46-.52-.19L7.74 13.3 3.64 12c-.88-.25-.89-.86.2-1.3l15.97-6.16c.73-.33 1.43.18 1.15 1.3l-2.72 12.81c-.19.91-.74 1.13-1.5.71L12.6 16.3l-1.99 1.93c-.23.23-.42.42-.83.42z"/></svg>' },
     { label: 'X', href: `https://twitter.com/intent/tweet?url=${shareUrl}&text=${shareTitle}`, icon: '<svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 21.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z"/></svg>' },
     { label: 'ВКонтакте', href: `https://vk.com/share.php?url=${shareUrl}&title=${shareTitle}`, icon: '<svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M12.785 16.241s.288-.032.435-.194c.136-.148.132-.427.132-.427s-.02-1.304.576-1.496c.588-.19 1.342 1.26 2.141 1.818.605.422 1.064.33 1.064.33l2.137-.03s1.117-.071.588-.964c-.043-.073-.308-.66-1.588-1.87-1.337-1.266-1.158-1.06.453-3.27.98-1.345 1.374-2.164 1.251-2.515-.118-.334-.848-.245-.848-.245l-2.434.016s-.18-.025-.314.056c-.13.08-.215.264-.215.264s-.377 1.022-.882 1.89c-1.064 1.832-1.49 1.929-1.664 1.814-.403-.267-.302-1.08-.302-1.658 0-1.806.27-2.558-.528-2.756-.264-.066-.459-.11-1.135-.116-.867-.009-1.6.003-2.016.209-.277.137-.49.443-.36.46.162.022.528.1.722.368.25.345.241 1.122.241 1.122s.144 2.135-.336 2.4c-.33.181-.782-.189-1.731-1.852-.486-.852-.853-1.794-.853-1.794s-.07-.175-.2-.269c-.156-.114-.374-.15-.374-.15l-2.313.015s-.348.01-.476.163c-.113.136-.009.418-.009.418s1.812 4.288 3.864 6.449c1.882 1.982 4.019 1.852 4.019 1.852z"/></svg>' },
-    { label: 'Copy', href: '#', icon: '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>', copy: true },
+    { label: 'Скопировать ссылку', href: '#', icon: '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>', copy: true },
   ];
   const shareHtml = `<div class="article__share" role="group" aria-label="Поделиться">
     <span class="article__share__label">Поделиться:</span>
@@ -900,20 +901,19 @@ function liveBadgeHtml(a) {
   root.innerHTML = `
     <article class="article container">
       <header class="article__head">
-        <div class="kicker article__kicker">${a.categoryLabel}</div>
+        <div class="kicker article__kicker">
+          <span>${escapeHtml(a.categoryLabel || 'Материал')}</span>
+          ${articleDateLabel ? `<span class="article__kicker-sep" aria-hidden="true">·</span><time datetime="${escapeHtml(a.dateIso || '')}">${escapeHtml(articleDateLabel)}</time>` : ''}
+          <span class="article__kicker-sep" aria-hidden="true">·</span>
+          <span class="article__kicker-meta">${readMin} мин чтения</span>
+        </div>
         <h1 class="article__title">${escapeHtml(a.title)}</h1>
         ${heroDek ? `<p class="article__dek">${escapeHtml(heroDek)}</p>` : ''}
-        <div class="article__meta">
-          <span>${fmtDateLong(a.dateIso) || a.date}</span>
-          <span class="article__meta__dot">${readMin} мин чтения</span>
-        </div>
-        ${shareHtml}
       </header>
       <div class="article__cover ${imageKindClass(a)}">
         <img src="${fullCover(a)}" alt="${escapeHtml(a.title)}" width="1440" height="810" loading="eager"/>
         ${imageCaptionHtml(a)}
       </div>
-      ${tldrHtml}
       <div class="article__body">
         ${bodySections.map((s) => {
           const h = String((s && s.h) || '').trim();
@@ -923,13 +923,15 @@ function liveBadgeHtml(a) {
           return hHtml + pHtml;
         }).join('')}
       </div>
+      ${tldrHtml}
       ${entitiesHtml}
+      ${shareHtml}
       ${tagsHtml}
-                ${a.source && !a.source.includes('fbrk.kz') ? `<div class="article_source">Источник: <a href="${a.source}" target="_blank" rel="noopener">${new URL(a.source).hostname}</a></div>` : ''}
+      ${a.source && !a.source.includes('fbrk.kz') ? `<div class="article__source">Источник: <a href="${a.source}" target="_blank" rel="noopener">${new URL(a.source).hostname}</a></div>` : ''}
 
-          <div class="ad-block ad-block--article" data-ad-slot="article-bottom"></div>
+      <div class="ad-block ad-block--article" data-ad-slot="article-bottom"></div>
       <section class="related">
-                    <h2 class="related__title">Материалы по теме</h2>
+        <h2 class="related__title">Материалы по теме</h2>
         <div class="card-grid">
           ${FBRK_DATA.articles
             .filter((x) => x.id !== a.id)
@@ -958,21 +960,9 @@ function liveBadgeHtml(a) {
             .join('')}
         </div>
       </section>
-                <div class="ad-block ad-block--footer" data-ad-slot="article-footer"></div>
+      <div class="ad-block ad-block--footer" data-ad-slot="article-footer"></div>
     </article>
   `;
-
-  // Copy-link handler
-  root.addEventListener('click', (e) => {
-    const btn = e.target.closest('[data-copy]');
-    if (!btn) return;
-    e.preventDefault();
-    navigator.clipboard?.writeText(location.href).then(() => {
-      const prev = btn.innerHTML;
-      btn.innerHTML = '<span style="font-size:.85em">Скопировано</span>';
-      setTimeout(() => { btn.innerHTML = prev; }, 1600);
-    });
-  });
 })();
 
 // ---------- util ----------
@@ -1044,6 +1034,10 @@ function articleHeroDek(a, sectionItems = []) {
   const normalizedSections = Array.isArray(sectionItems) ? sectionItems : [];
   const firstParagraph = dek.split(/\n{2,}/)[0]?.trim() || '';
 
+  if (summaryShort) {
+    return truncateText(summaryShort, 240);
+  }
+
   if (!dek) return '';
 
   if (!normalizedSections.length) {
@@ -1108,18 +1102,27 @@ function articleEntities(entities, excludedNames = []) {
 }
 
 function renderArticleTldr(a) {
-  const summary = String((a && a.summaryShort) || '').trim();
   const points = Array.isArray(a && a.keyPoints)
     ? a.keyPoints.map((x) => String(x || '').trim()).filter(Boolean).slice(0, 5)
     : [];
-  if (!summary && !points.length) return '';
+  if (!points.length) return '';
   return `
     <aside class="article__tldr" aria-label="Кратко">
-      ${summary ? `<p class="article__lead">${escapeHtml(summary)}</p>` : ''}
       ${points.length ? `<ul class="article__tldr-list">${points.map((p) => `<li>${escapeHtml(p)}</li>`).join('')}</ul>` : ''}
     </aside>
   `;
 }
+
+document.addEventListener('click', (e) => {
+  const btn = e.target.closest('[data-copy]');
+  if (!btn) return;
+  e.preventDefault();
+  navigator.clipboard?.writeText(location.href).then(() => {
+    const prev = btn.innerHTML;
+    btn.innerHTML = '<span style="font-size:.85em">Скопировано</span>';
+    setTimeout(() => { btn.innerHTML = prev; }, 1600);
+  });
+});
 
 function renderArticleEntities(entities) {
   if (!Array.isArray(entities) || !entities.length) return '';
@@ -1165,7 +1168,7 @@ function renderArticleTags(tags) {
   if (!a) return;
   const base = siteOrigin();
   const title = `${a.title} — ФБРК`;
-  const desc = (a.dek || '').slice(0, 200);
+  const desc = (a.summaryShort || a.dek || '').slice(0, 200);
   const url = articleUrl(a.slug || a.id);
   const imageUrl = imageMeta(a).url || '/img/og-default.jpg';
   const img = imageUrl.startsWith('http') ? imageUrl : absSiteUrl(imageUrl);
@@ -1212,7 +1215,7 @@ function renderArticleTags(tags) {
     inLanguage: 'ru',
     isAccessibleForFree: true,
     keywords: Array.isArray(a.tags) && a.tags.length ? a.tags.join(', ') : undefined,
-    speakable: { '@type': 'SpeakableSpecification', cssSelector: ['.article__title', '.article__dek', '.article__lead'] },
+    speakable: { '@type': 'SpeakableSpecification', cssSelector: ['.article__title', '.article__dek', '.article__tldr-list'] },
   });
   document.head.appendChild(ld);
 

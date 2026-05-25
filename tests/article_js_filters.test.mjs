@@ -91,6 +91,19 @@ test('article hero dek keeps concise editorial lead', () => {
   );
 });
 
+test('article hero dek prefers ai summary when it exists', () => {
+  assert.equal(
+    context.articleHeroDek(
+      {
+        dek: 'Исходный редакционный лид для статьи.',
+        summaryShort: 'Сжатое AI-описание для шапки материала.',
+      },
+      [{ h: '', p: 'Основной текст статьи.' }],
+    ),
+    'Сжатое AI-описание для шапки материала.',
+  );
+});
+
 test('article hero dek falls back to summary for duplicated long investigation import', () => {
   const importedDek = [
     'Редакция ФБРК с конца прошлого года анализирует динамику изменения площадей крупнейших землепользователей Казахстана.',
@@ -107,6 +120,24 @@ test('article hero dek falls back to summary for duplicated long investigation i
       [{ h: '', p: importedDek }],
     ),
     'Шымкент впервые раскрыл данные по крупнейшим землепользователям после серии запросов ФБРК.',
+  );
+});
+
+test('article tldr renders only key points and hides duplicated summary lead', () => {
+  const html = context.renderArticleTldr({
+    summaryShort: 'AI lead that should move into article dek.',
+    keyPoints: ['Первый пункт.', 'Второй пункт.'],
+  });
+
+  assert.ok(html.includes('article__tldr-list'));
+  assert.ok(html.includes('Первый пункт.'));
+  assert.ok(!html.includes('article__lead'));
+});
+
+test('article tldr stays hidden when there are no key points', () => {
+  assert.equal(
+    context.renderArticleTldr({ summaryShort: 'Есть только summary.' }),
+    '',
   );
 });
 
