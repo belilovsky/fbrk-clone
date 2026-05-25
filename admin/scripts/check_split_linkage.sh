@@ -149,6 +149,13 @@ extract_canonical() {
   echo "$canon"
 }
 
+extract_cache_control() {
+  local url="$1"
+  curl_url "$url" -sSI \
+    | tr -d '\r' \
+    | awk 'tolower($1) == "cache-control:" {sub(/^[^:]*:[[:space:]]*/, "", $0); print; exit}'
+}
+
 ts="$(date -u +%Y-%m-%dT%H:%M:%SZ)"
 new_total="$(extract_total_count "$NEW_ORIGIN")"
 backend_total="$(extract_total_count "$BACKEND_ORIGIN")"
@@ -176,6 +183,8 @@ backend_health_code="$(http_code "${BACKEND_ORIGIN}/admin/healthz")"
 
 new_canonical_home="$(extract_canonical "${NEW_ORIGIN}/")"
 new_canonical_article="$(extract_canonical "${NEW_ORIGIN}/a/${first_slug}")"
+new_home_cache_control="$(extract_cache_control "${NEW_ORIGIN}/")"
+new_article_cache_control="$(extract_cache_control "${NEW_ORIGIN}/a/${first_slug}")"
 
 echo "CHECK_TS_UTC=${ts}"
 echo "NEW_ORIGIN=${NEW_ORIGIN}"
@@ -202,6 +211,8 @@ echo "HTTP_BACKEND_HOME=${backend_home_code}"
 echo "HTTP_BACKEND_ADMIN_HEALTHZ=${backend_health_code}"
 echo "NEW_CANONICAL_HOME=${new_canonical_home}"
 echo "NEW_CANONICAL_ARTICLE=${new_canonical_article}"
+echo "NEW_HOME_CACHE_CONTROL=${new_home_cache_control:-missing}"
+echo "NEW_ARTICLE_CACHE_CONTROL=${new_article_cache_control:-missing}"
 
 if [ "$STRICT" = "--strict" ]; then
   if [ "$backend_health_code" != "200" ]; then
@@ -236,6 +247,22 @@ if [ "$STRICT" = "--strict" ]; then
     echo "FAIL: new data/videos.json hash differs from backend" >&2
     fail=1
   fi
+  new_home_cache_control_lc="$(printf '%s' "${new_home_cache_control}" | tr '[:upper:]' '[:lower:]')"
+  new_article_cache_control_lc="$(printf '%s' "${new_article_cache_control}" | tr '[:upper:]' '[:lower:]')"
+  case "${new_home_cache_control_lc}" in
+    *no-cache*|*no-store*) : ;;
+    *)
+      echo "FAIL: new home shell is missing no-cache cache-control" >&2
+      fail=1
+      ;;
+  esac
+  case "${new_article_cache_control_lc}" in
+    *no-cache*|*no-store*) : ;;
+    *)
+      echo "FAIL: new article shell is missing no-cache cache-control" >&2
+      fail=1
+      ;;
+  esac
   case "$new_canonical_home" in
     "${NEW_ORIGIN}"/*) : ;;
     *)
