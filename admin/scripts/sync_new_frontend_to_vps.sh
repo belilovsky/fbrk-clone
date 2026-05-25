@@ -11,6 +11,9 @@ FBRK_WEB_ROOT="${FBRK_WEB_ROOT:-/var/www/fbrk.qdev.run}"
 TARGET_HOST="${NEW_FBRK_VPS_HOST:-213.155.22.190}"
 TARGET_USER="${NEW_FBRK_VPS_USER:-root}"
 TARGET_ROOT="${NEW_FBRK_VPS_ROOT:-/var/www/new.fbrk.kz}"
+STATE_ROOT="${NEW_FBRK_VPS_STATE_ROOT:-/opt/new-fbrk-frontend/state}"
+GUARD_ROOT="${NEW_FBRK_VPS_GUARD_ROOT:-/opt/new-fbrk-frontend/guard}"
+SYSTEMD_ROOT="${NEW_FBRK_VPS_SYSTEMD_ROOT:-/etc/systemd/system}"
 TARGET="${TARGET_USER}@${TARGET_HOST}"
 WORKDIR="${NEW_FBRK_SYNC_WORKDIR:-/tmp}"
 ASSET_VERSION="${ASSET_VERSION:-$(date -u +%Y%m%d%H%M%S)}"
@@ -24,11 +27,22 @@ if [[ -n "${SSH_KEY_PATH}" ]]; then
 fi
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 PLESK_BUILDER="${SCRIPT_DIR}/sync_new_frontend_to_plesk.py"
+DEPLOY_DIR="$(cd "${SCRIPT_DIR}/../deploy" && pwd)"
+GUARD_SCRIPT_SOURCE="${DEPLOY_DIR}/new-fbrk-frontend-guard.sh"
+GUARD_SERVICE_SOURCE="${DEPLOY_DIR}/new-fbrk-frontend-guard.service"
+GUARD_TIMER_SOURCE="${DEPLOY_DIR}/new-fbrk-frontend-guard.timer"
 
 if [[ ! -x "${PLESK_BUILDER}" && ! -f "${PLESK_BUILDER}" ]]; then
   echo "ERROR: package builder not found: ${PLESK_BUILDER}" >&2
   exit 1
 fi
+
+for required_file in "${GUARD_SCRIPT_SOURCE}" "${GUARD_SERVICE_SOURCE}" "${GUARD_TIMER_SOURCE}"; do
+  if [[ ! -f "${required_file}" ]]; then
+    echo "ERROR: required deploy file not found: ${required_file}" >&2
+    exit 1
+  fi
+done
 
 log_file="$(mktemp)"
 package_dir=""
@@ -79,10 +93,22 @@ text = text.replace(
 path.write_text(text, encoding="utf-8")
 PY
 
-${SSH_RSH} "${TARGET}" "mkdir -p '${TARGET_ROOT}'"
+${SSH_RSH} "${TARGET}" "mkdir -p '${TARGET_ROOT}' '${STATE_ROOT}/last-good-web-root' '${GUARD_ROOT}'"
 rsync -az -e "${SSH_RSH}" "${package_dir}/" "${TARGET}:${TARGET_ROOT}/"
+rsync -az -e "${SSH_RSH}" "${GUARD_SCRIPT_SOURCE}" "${TARGET}:${GUARD_ROOT}/new-fbrk-frontend-guard.sh"
+rsync -az -e "${SSH_RSH}" "${GUARD_SERVICE_SOURCE}" "${TARGET}:${SYSTEMD_ROOT}/new-fbrk-frontend-guard.service"
+rsync -az -e "${SSH_RSH}" "${GUARD_TIMER_SOURCE}" "${TARGET}:${SYSTEMD_ROOT}/new-fbrk-frontend-guard.timer"
 ${SSH_RSH} "${TARGET}" \
-  "find '${TARGET_ROOT}' \\( -name '.DS_Store' -o -name '._*' \\) -delete && chown -R www-data:www-data '${TARGET_ROOT}' && nginx -t && systemctl reload nginx"
+  "find '${TARGET_ROOT}' \\( -name '.DS_Store' -o -name '._*' \\) -delete \
+    && chmod 0755 '${GUARD_ROOT}/new-fbrk-frontend-guard.sh' \
+    && rsync -a --delete '${TARGET_ROOT}/' '${STATE_ROOT}/last-good-web-root/' \
+    && shasum -a 256 '${TARGET_ROOT}/js/app.js' | cut -d ' ' -f 1 > '${STATE_ROOT}/expected-app-sha256' \
+    && printf '%s\n' '${ASSET_VERSION}' > '${STATE_ROOT}/expected-asset-version' \
+    && chown -R www-data:www-data '${TARGET_ROOT}' \
+    && systemctl daemon-reload \
+    && systemctl enable --now new-fbrk-frontend-guard.timer \
+    && nginx -t \
+    && systemctl reload nginx"
 
 echo "STATUS=synced"
 echo "TARGET=${TARGET}:${TARGET_ROOT}"
