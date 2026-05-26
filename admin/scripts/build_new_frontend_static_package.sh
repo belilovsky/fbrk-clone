@@ -19,7 +19,7 @@ mkdir -p "${OUT_DIR}/css" "${OUT_DIR}/js" "${OUT_DIR}/fonts/avds"
 rewrite_public_html() {
   sed -E \
     -e "s#https://fbrk.qdev.run#${PUBLIC_ORIGIN}#g" \
-    -e "s#\\?v=[0-9]{12}#?v=${ASSET_VERSION}#g"
+    -e "s#\\?v=[0-9]{12,14}#?v=${ASSET_VERSION}#g"
 }
 
 cd "${REPO_ROOT}"

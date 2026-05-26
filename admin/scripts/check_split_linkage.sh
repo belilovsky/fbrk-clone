@@ -5,6 +5,8 @@ NEW_ORIGIN="https://new.fbrk.kz"
 BACKEND_ORIGIN="https://fbrk.qdev.run"
 STRICT=""
 FBRK_NEW_RESOLVE_IP="${FBRK_NEW_RESOLVE_IP:-}"
+CURL_CONNECT_TIMEOUT="${CURL_CONNECT_TIMEOUT:-8}"
+CURL_MAX_TIME="${CURL_MAX_TIME:-30}"
 new_origin_set=0
 backend_origin_set=0
 
@@ -51,9 +53,9 @@ curl_url() {
   local url="$1"
   shift
   if [[ "$url" == "${NEW_ORIGIN}"* ]] && [ "${#CURL_NEW_RESOLVE_ARGS[@]}" -gt 0 ]; then
-    curl "${CURL_NEW_RESOLVE_ARGS[@]}" "$@" "$url"
+    curl --connect-timeout "${CURL_CONNECT_TIMEOUT}" --max-time "${CURL_MAX_TIME}" "${CURL_NEW_RESOLVE_ARGS[@]}" "$@" "$url"
   else
-    curl "$@" "$url"
+    curl --connect-timeout "${CURL_CONNECT_TIMEOUT}" --max-time "${CURL_MAX_TIME}" "$@" "$url"
   fi
 }
 
