@@ -1,10 +1,36 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-NEW_ORIGIN="${1:-https://new.fbrk.kz}"
-BACKEND_ORIGIN="${2:-https://fbrk.qdev.run}"
-STRICT="${3:-}"
+NEW_ORIGIN="https://new.fbrk.kz"
+BACKEND_ORIGIN="https://fbrk.qdev.run"
+STRICT=""
 FBRK_NEW_RESOLVE_IP="${FBRK_NEW_RESOLVE_IP:-}"
+new_origin_set=0
+backend_origin_set=0
+
+for arg in "$@"; do
+  case "$arg" in
+    --strict)
+      STRICT="--strict"
+      ;;
+    http://*|https://*)
+      if [ "$new_origin_set" -eq 0 ]; then
+        NEW_ORIGIN="${arg%/}"
+        new_origin_set=1
+      elif [ "$backend_origin_set" -eq 0 ]; then
+        BACKEND_ORIGIN="${arg%/}"
+        backend_origin_set=1
+      else
+        echo "ERROR: unexpected origin argument: ${arg}" >&2
+        exit 2
+      fi
+      ;;
+    *)
+      echo "ERROR: unexpected argument: ${arg}" >&2
+      exit 2
+      ;;
+  esac
+done
 
 fail=0
 CURL_NEW_RESOLVE_ARGS=()

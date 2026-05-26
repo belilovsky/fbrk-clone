@@ -102,6 +102,7 @@ ${SSH_RSH} "${TARGET}" \
   "find '${TARGET_ROOT}' \\( -name '.DS_Store' -o -name '._*' \\) -delete \
     && chmod 0755 '${GUARD_ROOT}/new-fbrk-frontend-guard.sh' \
     && rsync -a --delete '${TARGET_ROOT}/' '${STATE_ROOT}/last-good-web-root/' \
+    && (cd '${TARGET_ROOT}' && shasum -a 256 js/app.js js/data.js js/data-archive.js js/article-full.js js/search-index.js data/videos.json > '${STATE_ROOT}/expected-sha256s') \
     && shasum -a 256 '${TARGET_ROOT}/js/app.js' | cut -d ' ' -f 1 > '${STATE_ROOT}/expected-app-sha256' \
     && printf '%s\n' '${ASSET_VERSION}' > '${STATE_ROOT}/expected-asset-version' \
     && chown -R www-data:www-data '${TARGET_ROOT}' \
