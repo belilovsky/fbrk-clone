@@ -1101,15 +1101,23 @@ function articleEntities(entities, excludedNames = []) {
 }
 
 function renderArticleTldr(a) {
-  const points = Array.isArray(a && a.keyPoints)
-    ? a.keyPoints.map(tidyKeyPoint).filter(Boolean).slice(0, 5)
-    : [];
+  const points = articleTldrPoints(a);
   if (!points.length) return '';
   return `
     <aside class="article__tldr" aria-label="Кратко">
       ${points.length ? `<ul class="article__tldr-list">${points.map((p) => `<li>${escapeHtml(p)}</li>`).join('')}</ul>` : ''}
     </aside>
   `;
+}
+
+function articleTldrPoints(a) {
+  const keyPoints = Array.isArray(a && a.keyPoints)
+    ? a.keyPoints.map(tidyKeyPoint).filter(Boolean).slice(0, 5)
+    : [];
+  if (keyPoints.length && !looksLikeTruncatedKeyPoints(keyPoints)) {
+    return keyPoints;
+  }
+  return articleTldrFallbackPoints(a).slice(0, 5);
 }
 
 function tidyKeyPoint(value) {
@@ -1125,6 +1133,49 @@ function tidyKeyPoint(value) {
   }
 
   return text;
+}
+
+function looksLikeTruncatedKeyPoints(points) {
+  if (!Array.isArray(points) || !points.length) return false;
+  let suspicious = 0;
+  points.forEach((point) => {
+    const text = String(point || '').trim();
+    if (!text || /[.!?…)"»]$/.test(text)) return;
+    const words = text.split(/\s+/);
+    const lastWord = words[words.length - 1].replace(/[^\p{L}\p{N}-]+/gu, '');
+    if (text.length >= 36 && lastWord && lastWord.length <= 6) suspicious += 1;
+  });
+  return suspicious >= 2;
+}
+
+function articleTldrFallbackPoints(a) {
+  const sectionItems = Array.isArray(a && a.sections) ? a.sections : [];
+  const seen = new Set();
+  const points = [];
+
+  sectionItems.forEach((section) => {
+    String((section && section.p) || '')
+      .replace(/\r\n/g, '\n')
+      .split(/\n{2,}/)
+      .map(normalizedArticleText)
+      .forEach((part) => {
+        if (!part || part.length < 48 || points.length >= 5) return;
+        const sentence = firstArticleSentence(part);
+        const key = sentence.toLocaleLowerCase('ru-RU');
+        if (!sentence || seen.has(key)) return;
+        seen.add(key);
+        points.push(sentence);
+      });
+  });
+
+  return points;
+}
+
+function firstArticleSentence(text) {
+  const value = String(text || '').replace(/\s+/g, ' ').trim();
+  if (!value) return '';
+  const match = value.match(/^(.{24,220}?[.!?])(?:\s|$)/);
+  return (match ? match[1] : truncateText(value, 220)).trim();
 }
 
 document.addEventListener('click', (e) => {
