@@ -93,7 +93,9 @@ text = text.replace(
 path.write_text(text, encoding="utf-8")
 PY
 
-${SSH_RSH} "${TARGET}" "mkdir -p '${TARGET_ROOT}' '${STATE_ROOT}/last-good-web-root' '${GUARD_ROOT}'"
+${SSH_RSH} "${TARGET}" \
+  "systemctl stop new-fbrk-frontend-guard.timer new-fbrk-frontend-guard.service 2>/dev/null || true \
+    && mkdir -p '${TARGET_ROOT}' '${STATE_ROOT}/last-good-web-root' '${GUARD_ROOT}'"
 rsync -az -e "${SSH_RSH}" "${package_dir}/" "${TARGET}:${TARGET_ROOT}/"
 rsync -az -e "${SSH_RSH}" "${GUARD_SCRIPT_SOURCE}" "${TARGET}:${GUARD_ROOT}/new-fbrk-frontend-guard.sh"
 rsync -az -e "${SSH_RSH}" "${GUARD_SERVICE_SOURCE}" "${TARGET}:${SYSTEMD_ROOT}/new-fbrk-frontend-guard.service"
