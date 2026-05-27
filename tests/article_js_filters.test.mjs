@@ -141,6 +141,18 @@ test('article tldr stays hidden when there are no key points', () => {
   );
 });
 
+test('article renderer keeps summary, mentions, and share below the body', () => {
+  const bodyIdx = source.indexOf('<div class="article__body">');
+  const tldrIdx = source.indexOf('${tldrHtml}');
+  const entitiesIdx = source.indexOf('${entitiesHtml}');
+  const shareIdx = source.indexOf('${shareHtml}');
+
+  assert.ok(bodyIdx > -1);
+  assert.ok(tldrIdx > bodyIdx);
+  assert.ok(entitiesIdx > tldrIdx);
+  assert.ok(shareIdx > entitiesIdx);
+});
+
 test('article hero dek uses summary when compact cards do not have sections yet', () => {
   assert.equal(
     context.articleHeroDek(

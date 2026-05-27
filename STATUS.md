@@ -65,3 +65,10 @@ Branch: `release/pre-prod-audit`
 - [x] Public article payload now caps visible entity chips at `12` and supplements obvious missing public entities from title/dek/summary context when that can be done cleanly.
 - [x] After the public payload refresh and split sync, `new.fbrk.kz/js/article-full.js` dropped from `18` public single-entity articles to `4`; the remaining four are intentionally left as-is because a second public entity is not extractable without introducing awkward fragments.
 - [ ] `region` remains empty on `1,193` rows; this is tracked as normal mixed coverage rather than a current blocker because national or non-local materials may legitimately have no single region.
+
+## Visual QA pass 2026-05-27
+
+- [x] Empty article ad placeholders now collapse instead of adding blank cards/extra vertical gaps.
+- [x] Negative heading letter-spacing removed from the public CSS for more stable Cyrillic readability.
+- [x] Article order is guarded in tests: body -> AI key points -> mentions -> share.
+- [x] Public asset version bumped to `20260527053943` to force browsers off the stale article renderer/CSS.

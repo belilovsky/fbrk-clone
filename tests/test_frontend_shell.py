@@ -67,6 +67,25 @@ def test_public_asset_versions_are_busted_consistently() -> None:
     assert "3" not in versions
 
 
+def test_frontend_css_keeps_article_spacing_readable() -> None:
+    css = (ROOT / "css" / "style.css").read_text(encoding="utf-8")
+
+    assert not re.search(r"letter-spacing:\s*-", css)
+    assert re.search(r"\.ad-block:empty\s*\{\s*display:\s*none;", css)
+    assert re.search(r"\.site-header__nav\s*\{[\s\S]*min-height:\s*100dvh;", css)
+
+
+def test_ssr_article_keeps_summary_and_share_below_body() -> None:
+    html = (ROOT / "admin" / "templates" / "article_ssr.html").read_text(encoding="utf-8")
+
+    body_idx = html.index('class="article__body"')
+    tldr_idx = html.index('class="article__tldr"')
+    mentions_idx = html.index('class="entity-chips"')
+    share_idx = html.index('class="article__share"')
+
+    assert body_idx < tldr_idx < mentions_idx < share_idx
+
+
 def test_public_shell_sync_script_has_no_drift() -> None:
     subprocess.run(
         ["python3", "admin/scripts/sync_public_shell.py", "--check"],

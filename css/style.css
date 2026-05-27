@@ -216,7 +216,7 @@ h4 {
   font-family: var(--font-display);
   font-weight: 600;
   line-height: 1.2;
-  letter-spacing: -0.01em;
+  letter-spacing: 0;
   text-wrap: balance;
 }
 p {
@@ -266,7 +266,7 @@ input {
 .section__title {
   font-size: var(--text-xl);
   font-weight: 600;
-  letter-spacing: -0.015em;
+  letter-spacing: 0;
 }
 .section__link {
   font-size: var(--text-sm);
@@ -354,7 +354,7 @@ input {
   font-family: var(--font-display);
   font-weight: 600;
   font-size: clamp(1.125rem, 1rem + 1vw, 1.625rem);
-  letter-spacing: -0.01em;
+  letter-spacing: 0;
   color: #ffffff;
   line-height: 1.2;
   display: block;
@@ -586,7 +586,7 @@ input {
   font-size: clamp(1.5rem, 1.1rem + 1.1vw, 1.875rem);
   font-weight: 600;
   line-height: 1.2;
-  letter-spacing: -0.012em;
+  letter-spacing: 0;
   color: var(--color-text);
   text-wrap: balance;
 }
@@ -679,7 +679,7 @@ input {
   font-size: var(--text-lg);
   font-weight: 600;
   line-height: 1.25;
-  letter-spacing: -0.01em;
+  letter-spacing: 0;
   color: var(--color-text);
   display: -webkit-box;
   -webkit-line-clamp: 3;
@@ -822,7 +822,7 @@ input {
   font-size: var(--text-lg);
   font-weight: 600;
   line-height: 1.25;
-  letter-spacing: -0.01em;
+  letter-spacing: 0;
   margin-bottom: var(--space-2);
 }
 .widget__text {
@@ -920,7 +920,7 @@ input {
   font-size: clamp(1.5rem, 1.1rem + 1.1vw, 1.875rem);
   font-weight: 600;
   line-height: 1.2;
-  letter-spacing: -0.012em;
+  letter-spacing: 0;
   margin-bottom: var(--space-5);
   text-wrap: balance;
 }
@@ -1051,7 +1051,7 @@ input {
   font-family: var(--font-display);
   font-size: var(--text-xl);
   font-weight: 600;
-  letter-spacing: -0.015em;
+  letter-spacing: 0;
   margin-top: var(--space-10);
   margin-bottom: var(--space-4);
 }
@@ -1101,7 +1101,7 @@ input {
   font-size: var(--text-3xl);
   font-weight: 600;
   line-height: 1.1;
-  letter-spacing: -0.02em;
+  letter-spacing: 0;
   margin-bottom: var(--space-5);
 }
 .about__lede {
@@ -1129,7 +1129,7 @@ input {
   font-family: var(--font-display);
   font-size: var(--text-2xl);
   font-weight: 600;
-  letter-spacing: -0.02em;
+  letter-spacing: 0;
   color: var(--color-primary);
   margin-bottom: var(--space-2);
 }
@@ -1188,7 +1188,7 @@ input {
   font-family: var(--font-display);
   font-weight: 700;
   font-size: var(--text-lg);
-  letter-spacing: -0.01em;
+  letter-spacing: 0;
   color: var(--color-text);
   margin-bottom: var(--space-3);
 }
@@ -1276,7 +1276,7 @@ input {
   font-family: var(--font-display);
   font-size: var(--text-2xl);
   font-weight: 500;
-  letter-spacing: -0.015em;
+  letter-spacing: 0;
   border: none;
   border-bottom: 1px solid var(--color-border);
   padding-block: var(--space-4);
@@ -1372,7 +1372,7 @@ input {
   .masthead__logo-text {
     font-size: 0.95rem;
     line-height: 1.25;
-    letter-spacing: -0.005em;
+    letter-spacing: 0;
   }
   .masthead__logo-mark {
     width: 44px;
@@ -1443,7 +1443,7 @@ input {
   .lead__title {
     font-size: clamp(1.35rem, 4vw + 0.4rem, 1.7rem);
     line-height: 1.2;
-    letter-spacing: -0.015em;
+    letter-spacing: 0;
   }
   .lead__dek {
     font-size: 1rem;
@@ -1929,7 +1929,7 @@ input {
   font-family: var(--font-display);
   font-size: clamp(2rem, 4vw, 3rem);
   font-weight: 700;
-  letter-spacing: -.02em;
+  letter-spacing: 0;
   margin: var(--space-2) 0 var(--space-3);
 }
 .archive__count {
@@ -2051,7 +2051,7 @@ input {
   font-weight: 700;
   color: var(--color-brand);
   line-height: 1;
-  letter-spacing: -.04em;
+  letter-spacing: 0;
 }
 .errorpage__title {
   font-family: var(--font-display);
@@ -2594,7 +2594,7 @@ button:focus-visible, a:focus-visible { outline-offset: 3px; }
   font-weight: 600;
   font-size: 1rem;
   line-height: 1.15;
-  letter-spacing: -0.005em;
+  letter-spacing: 0;
   color: #fff;
   white-space: nowrap;
 }
@@ -2764,6 +2764,8 @@ button:focus-visible, a:focus-visible { outline-offset: 3px; }
   .site-header__nav {
     position: fixed;
     inset: 0;
+    height: 100vh;
+    min-height: 100dvh;
     background: #0C115F;
     padding: 76px var(--space-6) var(--space-6);
     transform: translateY(-110%);
@@ -2878,7 +2880,7 @@ button:focus-visible, a:focus-visible { outline-offset: 3px; }
   font-weight: 700;
   font-size: 1.125rem;
   color: #fff;
-  letter-spacing: -0.01em;
+  letter-spacing: 0;
 }
 .site-footer__about {
   font-size: 0.875rem;
@@ -3148,8 +3150,8 @@ body:has(.site-footer) .footer {
   color: var(--color-text-faint);
   font-size: var(--text-sm);
 }
-.ad-block:empty::after {
-  content: '';
+.ad-block:empty {
+  display: none;
 }
 .ad-block--article {
   margin-top: var(--space-12);
