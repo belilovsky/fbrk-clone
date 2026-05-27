@@ -141,6 +141,21 @@ test('article tldr stays hidden when there are no key points', () => {
   );
 });
 
+test('article tldr softens truncated key point fragments', () => {
+  const html = context.renderArticleTldr({
+    keyPoints: [
+      'Лидеры: Туркестанская область и Жамбылская область об',
+      'Совместные обследования с Узбекистаном и Кыргызстаном не выявили',
+      'Короткий пункт',
+    ],
+  });
+
+  assert.ok(html.includes('Жамбылская область…'));
+  assert.ok(!html.includes('Жамбылская область об'));
+  assert.ok(html.includes('Кыргызстаном не выявили…'));
+  assert.ok(html.includes('Короткий пункт'));
+});
+
 test('article renderer keeps summary, mentions, and share below the body', () => {
   const bodyIdx = source.indexOf('<div class="article__body">');
   const tldrIdx = source.indexOf('${tldrHtml}');

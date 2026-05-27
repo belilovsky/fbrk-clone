@@ -1102,7 +1102,7 @@ function articleEntities(entities, excludedNames = []) {
 
 function renderArticleTldr(a) {
   const points = Array.isArray(a && a.keyPoints)
-    ? a.keyPoints.map((x) => String(x || '').trim()).filter(Boolean).slice(0, 5)
+    ? a.keyPoints.map(tidyKeyPoint).filter(Boolean).slice(0, 5)
     : [];
   if (!points.length) return '';
   return `
@@ -1110,6 +1110,21 @@ function renderArticleTldr(a) {
       ${points.length ? `<ul class="article__tldr-list">${points.map((p) => `<li>${escapeHtml(p)}</li>`).join('')}</ul>` : ''}
     </aside>
   `;
+}
+
+function tidyKeyPoint(value) {
+  const text = String(value || '').replace(/\s+/g, ' ').trim();
+  if (!text) return '';
+  if (/[.!?…)"»]$/.test(text)) return text;
+
+  const danglingWords = new Set(['а', 'в', 'во', 'для', 'до', 'и', 'из', 'к', 'ко', 'на', 'не', 'о', 'об', 'от', 'по', 'при', 'с', 'со', 'у']);
+  const words = text.split(' ');
+  const lastWord = words[words.length - 1].toLowerCase().replace(/[^\p{L}\p{N}-]+/gu, '');
+  if (words.length > 1 && danglingWords.has(lastWord)) {
+    return `${words.slice(0, -1).join(' ').replace(/[,:;\s]+$/, '')}…`;
+  }
+
+  return text.length >= 48 ? `${text}…` : text;
 }
 
 document.addEventListener('click', (e) => {

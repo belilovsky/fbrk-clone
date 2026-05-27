@@ -158,7 +158,7 @@ def write_bytes(path: Path, data: bytes) -> None:
     path.write_bytes(data)
 
 
-def referenced_upload_assets(out_dir: Path, web_root: Path) -> list[Path]:
+def referenced_upload_assets(out_dir: Path, web_root: Path, backend_origin: str) -> list[Path]:
     refs: set[str] = set()
     for name in GENERATED_FILES:
         payload = (out_dir / "js" / name).read_text(encoding="utf-8", errors="ignore")
@@ -173,12 +173,13 @@ def referenced_upload_assets(out_dir: Path, web_root: Path) -> list[Path]:
         source = (web_root / rel).resolve()
         if not str(source).startswith(f"{web_root_resolved}{os.sep}"):
             raise SyncError(f"unsafe upload asset path: {rel}")
-        if not source.exists():
-            raise SyncError(f"referenced upload asset is missing in backend web-root: {source}")
-        if source.is_file():
-            target = out_dir / rel
-            write_bytes(target, source.read_bytes())
-            assets.append(target)
+        if source.exists() and source.is_file():
+            payload = source.read_bytes()
+        else:
+            payload = fetch_bytes(f"{backend_origin.rstrip('/')}/{rel}", cache_bust=True)
+        target = out_dir / rel
+        write_bytes(target, payload)
+        assets.append(target)
     return assets
 
 
@@ -358,17 +359,14 @@ def build_package(
         uploaded.append(target)
 
     for name in DATA_FILES:
-        source = web_root / "data" / name
-        if not source.exists():
-            raise SyncError(f"missing source data file: {source}")
         target = out_dir / "data" / name
-        write_bytes(target, source.read_bytes())
+        write_bytes(target, fetch_bytes(f"{backend_origin.rstrip('/')}/data/{name}", cache_bust=True))
         uploaded.append(target)
 
     if generate_article_pages:
         uploaded.extend(generate_static_article_shells(out_dir, public_origin))
 
-    uploaded.extend(referenced_upload_assets(out_dir, web_root))
+    uploaded.extend(referenced_upload_assets(out_dir, web_root, backend_origin))
 
     for name in SEO_FILES:
         raw = fetch_bytes(f"{backend_origin.rstrip('/')}/{name}", cache_bust=True).decode("utf-8")

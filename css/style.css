@@ -2577,6 +2577,9 @@ button:focus-visible, a:focus-visible { outline-offset: 3px; }
   backdrop-filter: blur(12px);
   -webkit-backdrop-filter: blur(12px);
 }
+.site-header .container {
+  max-width: 1440px;
+}
 .site-header__inner {
   display: grid;
   grid-template-columns: auto minmax(0, 1fr) auto;
@@ -2744,7 +2747,7 @@ button:focus-visible, a:focus-visible { outline-offset: 3px; }
   box-shadow: var(--shadow-md);
 }
 
-@media (max-width: 1320px) {
+@media (max-width: 1500px) {
   .site-header__inner {
     gap: var(--space-3);
   }

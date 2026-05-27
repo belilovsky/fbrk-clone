@@ -74,19 +74,23 @@ def test_split_frontend_package_includes_video_data(tmp_path, monkeypatch):
     web_root = tmp_path / "web"
     web_root.mkdir()
     (web_root / "data").mkdir()
-    (web_root / "data" / "videos.json").write_text('[{"id":"demo"}]', encoding="utf-8")
+    (web_root / "data" / "videos.json").write_text('[{"id":"stale-local"}]', encoding="utf-8")
     for name in sync.ROOT_FILES:
         (web_root / name).write_text("<html><head></head><body></body></html>", encoding="utf-8")
 
     def fake_fetch_bytes(url, *, timeout=45, cache_bust=False):
         if url.endswith("/js/article-full.js"):
-            return b'window.ARTICLE_FULL = {"articles":[]};'
+            return b'window.ARTICLE_FULL = {"articles":[{"image_url":"/img/uploads/thumb/backend-demo.webp"}]};'
         if url.endswith("/js/data.js"):
             return b"const FBRK_DATA = {\"articles\":[]};"
         if url.endswith("/js/data-archive.js"):
             return b"const FBRK_ARCHIVE = {\"articles\":[]};"
         if url.endswith("/js/search-index.js"):
             return b"const FBRK_SEARCH_INDEX = {\"items\":[]};"
+        if url.endswith("/data/videos.json"):
+            return b'[{"id":"backend-demo"}]'
+        if url.endswith("/img/uploads/thumb/backend-demo.webp"):
+            return b"backend-image"
         if url.endswith("/robots.txt"):
             return b"User-agent: *\nAllow: /\n"
         if url.endswith("/sitemap.xml"):
@@ -111,7 +115,9 @@ def test_split_frontend_package_includes_video_data(tmp_path, monkeypatch):
     rel_paths = {path.relative_to(out_dir).as_posix() for path in uploaded}
     assert "data/videos.json" in rel_paths
     assert "js/search-index.js" in rel_paths
-    assert (out_dir / "data" / "videos.json").read_text(encoding="utf-8") == '[{"id":"demo"}]'
+    assert "img/uploads/thumb/backend-demo.webp" in rel_paths
+    assert (out_dir / "data" / "videos.json").read_text(encoding="utf-8") == '[{"id":"backend-demo"}]'
+    assert (out_dir / "img/uploads/thumb/backend-demo.webp").read_bytes() == b"backend-image"
 
 
 def test_split_sync_rewrites_short_numeric_asset_versions():
