@@ -3,18 +3,21 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Поиск — ФБРК</title>
-    <meta name="description" content="Поиск по материалам ФБРК: расследования, новости, темы и теги." />
+    <title>Редакционная политика — ФБРК</title>
+    <meta name="description" content="Редакционная политика ФБРК: фактчек, источники, AI-disclosure, исправления, право на ответ и публичные обращения." />
     <meta name="theme-color" content="#0C115F" />
-    <link rel="canonical" href="https://fbrk.qdev.run/search.html" />
+    <link rel="canonical" href="https://fbrk.qdev.run/editorial-policy.html" />
     <meta property="og:site_name" content="ФБРК" />
     <meta property="og:locale" content="ru_RU" />
     <meta property="og:type" content="website" />
-    <meta property="og:title" content="Поиск — ФБРК" />
-    <meta property="og:description" content="Поиск по материалам ФБРК." />
-    <meta property="og:url" content="https://fbrk.qdev.run/search.html" />
+    <meta property="og:title" content="Редакционная политика — ФБРК" />
+    <meta property="og:description" content="Как ФБРК проверяет информацию, работает с источниками, исправлениями, AI и обращениями читателей." />
+    <meta property="og:url" content="https://fbrk.qdev.run/editorial-policy.html" />
     <meta property="og:image" content="https://fbrk.qdev.run/img/brand/logo-on-brand-640.png" />
     <meta name="twitter:card" content="summary_large_image" />
+    <meta name="twitter:title" content="Редакционная политика — ФБРК" />
+    <meta name="twitter:description" content="Публичный редакционный стандарт ФБРК на базе Editorial Hub v1.2." />
+    <meta name="twitter:image" content="https://fbrk.qdev.run/img/brand/logo-on-brand-640.png" />
     <link rel="icon" type="image/png" sizes="32x32" href="/img/brand/favicon-32.png" />
     <link rel="stylesheet" href="/fonts/avds/avds-fonts.css?v=20260527055001" />
     <link rel="stylesheet" href="/css/style.css?v=20260527055001" />
@@ -69,30 +72,44 @@
     </header>
 
     <main id="main" class="content-page">
-      <div class="container content-page__inner search-page" data-search-page>
+      <div class="container content-page__inner">
         <header class="content-page__head">
-          <div class="kicker content-page__eyebrow">Поиск</div>
-          <h1 class="content-page__title">Поиск по материалам</h1>
+          <div class="kicker content-page__eyebrow">Редакция</div>
+          <h1 class="content-page__title">Редакционная политика</h1>
+          <p class="about__lede">ФБРК использует Editorial Hub v1.2 как рабочий стандарт проверки, публикации и исправления материалов. Эта страница фиксирует публичные правила именно для ФБРК.</p>
         </header>
-        <div class="search-page__form">
-          <label>
-            <span>Запрос</span>
-            <input type="search" placeholder="Назарбаев, госзакупки, АФМ…" data-search-page-q autocomplete="off" autofocus />
-          </label>
-          <label>
-            <span>Рубрика</span>
-            <select data-search-page-cat>
-              <option value="">Все</option>
-              <option value="investigation">Расследования</option>
-              <option value="news">Новости</option>
-            </select>
-          </label>
-        </div>
-        <p class="search-page__count" data-search-page-count></p>
-        <div class="search-page__results" data-search-page-results></div>
-        <div class="search-page__empty" data-search-page-empty hidden>
-          <p>По запросу «<span data-empty-query></span>» ничего не найдено.</p>
-          <button class="btn--secondary" type="button" data-search-page-reset>Сбросить</button>
+
+        <div class="content-grid">
+          <section class="content-card">
+            <h2>Статус документа</h2>
+            <p>Редакционная политика действует для новостей, расследований, досье, карточек, видео, социальных сетей и архивных обновлений, опубликованных от имени ФБРК.</p>
+            <p>Полный операционный стандарт доступен в <a href="https://edpol.qdev.run/" target="_blank" rel="noopener">Editorial Hub</a>. ФБРК является первым проектом-носителем этого стандарта.</p>
+          </section>
+          <section class="content-card">
+            <h2>Проверка информации</h2>
+            <p>Факты отделяются от оценок. Для чувствительных утверждений редакция хранит evidence file: ссылки, документы, скриншоты, запросы, ответы и историю правок.</p>
+            <p>Если факт не подтверждён достаточно надёжно, он формулируется как утверждение источника или не публикуется до дополнительной проверки.</p>
+          </section>
+          <section class="content-card">
+            <h2>Источники и право на ответ</h2>
+            <p>Редакция проверяет первоисточник, избегает circular sourcing и даёт фигурантам разумную возможность прокомментировать существенные обвинения до публикации.</p>
+            <p>Анонимность источника возможна только когда раскрытие личности может создать риск для источника или материала.</p>
+          </section>
+          <section class="content-card">
+            <h2>Исправления и снятие материалов</h2>
+            <p>Если в материале обнаружена ошибка, редакция исправляет её и при необходимости добавляет пометку об обновлении. Существенные исправления не скрываются.</p>
+            <p>Запросы на исправление, ответ, удаление или уточнение принимаются через <a href="mailto:redaktor@fbrk.kz">redaktor@fbrk.kz</a> и <a href="https://t.me/fund_kz_bot" target="_blank" rel="noopener">@fund_kz_bot</a>.</p>
+          </section>
+          <section class="content-card">
+            <h2>AI и синтетические материалы</h2>
+            <p>AI может использоваться для черновой аналитики, резюме, извлечения сущностей и технической подготовки текста, но не заменяет редактора и фактчек.</p>
+            <p>Если изображение или важный фрагмент материала создан синтетически, читатель должен видеть понятную маркировку.</p>
+          </section>
+          <section class="content-card">
+            <h2>Публичные обращения</h2>
+            <p>Обращения читателей, источников, фигурантов и представителей организаций рассматриваются редакцией. В сообщении желательно указать ссылку на материал, суть ошибки или запроса и документы, если они есть.</p>
+            <p>Для конфиденциальной информации используйте Telegram-бот <a href="https://t.me/fund_kz_bot" target="_blank" rel="noopener">@fund_kz_bot</a>.</p>
+          </section>
         </div>
       </div>
     </main>
@@ -156,23 +173,8 @@
         </div>
       </div>
     </footer>
-<div class="search-overlay" role="dialog" aria-modal="true" aria-label="Поиск">
-      <div class="search-box">
-        <button class="search-close" type="button" aria-label="Закрыть поиск">
-          <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M18 6 6 18M6 6l12 12"/></svg>
-        </button>
-        <div class="search-box__label">Поиск по материалам</div>
-        <input class="search-box__input" type="search" placeholder="Введите запрос…" autocomplete="off" />
-        <div class="search-box__results" data-search-results></div>
-        <div class="search-box__count" data-search-count></div>
-      </div>
-    </div>
-
-
     <script src="/js/runtime-config.js?v=20260527055001"></script>
     <script src="/js/data.js?v=20260527055001"></script>
-    <script src="/js/data-archive.js?v=20260527055001"></script>
-    <script src="/js/search-index.js?v=20260527055001"></script>
     <script src="/js/app.js?v=20260527055001"></script>
   </body>
 </html>

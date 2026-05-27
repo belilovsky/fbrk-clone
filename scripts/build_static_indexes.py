@@ -36,6 +36,7 @@ def main() -> None:
         "archive.html?cat=news",
         "about.html",
         "contacts.html",
+        "editorial-policy.html",
         "privacy.html",
         "search.html",
         "sitemap.html",

@@ -72,3 +72,10 @@ Branch: `release/pre-prod-audit`
 - [x] Negative heading letter-spacing removed from the public CSS for more stable Cyrillic readability.
 - [x] Article order is guarded in tests: body -> AI key points -> mentions -> share.
 - [x] Public asset version bumped to `20260527053943` to force browsers off the stale article renderer/CSS.
+
+## Editorial policy carrier 2026-05-27
+
+- [x] `/editorial-policy.html` added as the first FBRK-specific carrier page for Editorial Hub v1.2.
+- [x] Footer, sitemap page, static sitemap generation and split-frontend package scripts include the editorial policy page.
+- [x] Public shell drift tests now require the editorial policy link in every public shell and SSR article template.
+- [x] Public asset version bumped to `20260527055001` for the carrier page rollout.

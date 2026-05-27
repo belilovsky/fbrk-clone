@@ -24,6 +24,9 @@ fbrk/
 ├── archive.html          — архивный листинг (фильтры по дате/категории)
 ├── article.html          — fallback-шаблон для CSR
 ├── about.html            — о проекте
+├── contacts.html         — контакты редакции и каналы обращений
+├── editorial-policy.html — редакционная политика ФБРК как проекта-носителя
+├── privacy.html          — политика конфиденциальности
 ├── videos.html           — YouTube-канал
 ├── 404.html
 ├── css/
@@ -86,7 +89,9 @@ docker inspect -f '{{.State.Health.Status}}' fbrk-admin
   `~/.ssh/fbrk_new_frontend_sync`, если этот deploy-key присутствует на host.
 - `admin/scripts/build_new_frontend_static_package.sh` — delta-пакет для ручной
   синхронизации Plesk-статики; после cutover 2026-05-18 это fallback/rollback
-  путь, а не основной production-hosting.
+  путь, а не основной production-hosting. Пакет включает
+  `/editorial-policy.html`, чтобы FBRK оставался первым проектом-носителем
+  Editorial Hub v1.2 после любой статической пересборки.
 - `admin/scripts/sync_new_frontend_to_plesk.py` — автоматический guarded sync
   через Plesk File Manager; используется как fallback, на проде запущен cron
   `/etc/cron.d/fbrk-plesk-sync`, env-секреты лежат вне репо в

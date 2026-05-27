@@ -637,6 +637,11 @@ def sitemap_xml(request: Request):
     _url(f"{site_url}/archive.html?cat=investigation", newest, "daily", "0.8")
     _url(f"{site_url}/archive.html?cat=news", newest, "daily", "0.8")
     _url(f"{site_url}/about.html", now, "monthly", "0.5")
+    _url(f"{site_url}/contacts.html", now, "monthly", "0.5")
+    _url(f"{site_url}/editorial-policy.html", now, "monthly", "0.5")
+    _url(f"{site_url}/privacy.html", now, "monthly", "0.4")
+    _url(f"{site_url}/search.html", now, "weekly", "0.4")
+    _url(f"{site_url}/sitemap.html", now, "weekly", "0.3")
 
     recent_ids = {a["id"] for a in recent_news}
     for a in arts:

@@ -42,6 +42,7 @@ ROOT_FILES = (
     "about.html",
     "article.html",
     "contacts.html",
+    "editorial-policy.html",
     "privacy.html",
     "search.html",
     "sitemap.html",

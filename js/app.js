@@ -133,7 +133,7 @@ function findArticleByKeys(list, rawId) {
           <div class="site-footer__top">
             <div class="site-footer__brand-block"><div class="site-footer__brand"><span class="site-footer__brand-name">ФБРК</span></div><p class="site-footer__about">Фонд-бюро расследования коррупции — независимое сетевое издание. Свидетельство СМИ № KZ83VPY00075165 от 21.08.2023.</p></div>
             <div><div class="site-footer__heading">Разделы</div><ul class="site-footer__list" role="list"><li><a href="/">Главная</a></li><li><a href="/archive.html?cat=investigation">Расследования</a></li><li><a href="/archive.html?cat=news">Новости</a></li><li><a href="/archive.html">Архив</a></li></ul></div>
-            <div><div class="site-footer__heading">Редакция</div><ul class="site-footer__list" role="list"><li><a href="/about.html">О нас</a></li><li><a href="/contacts.html">Контакты</a></li><li><a href="/privacy.html">Политика конфиденциальности</a></li><li><a href="/feed.xml">RSS-лента</a></li><li><a href="/sitemap.html">Карта сайта</a></li></ul></div>
+            <div><div class="site-footer__heading">Редакция</div><ul class="site-footer__list" role="list"><li><a href="/about.html">О нас</a></li><li><a href="/contacts.html">Контакты</a></li><li><a href="/editorial-policy.html">Редакционная политика</a></li><li><a href="/privacy.html">Политика конфиденциальности</a></li><li><a href="/feed.xml">RSS-лента</a></li><li><a href="/sitemap.html">Карта сайта</a></li></ul></div>
           </div>
           <div class="site-footer__bottom"><div class="site-footer__legal"><span>© 2023–2026 ФБРК</span><span aria-hidden="true">·</span><span class="site-footer__version">AV DS 3.7.1</span><span aria-hidden="true">·</span><span>Астана, Казахстан</span></div></div>
         </div>
@@ -335,6 +335,7 @@ function fbrkToast(message, ms = 2400) {
   if (path === '/' || path === '/index.html') active = 'home';
   else if (path.startsWith('/about')) active = 'about';
   else if (path.startsWith('/contacts')) active = 'about';
+  else if (path.startsWith('/editorial-policy')) active = 'about';
   else if (path.startsWith('/archive')) {
     if (cat === 'investigation') active = 'investigation';
     else if (cat === 'news') active = 'news';
@@ -636,7 +637,7 @@ function liveBadgeHtml(a) {
         : `<span class="latest__thumb-mark">ФБРК</span>`;
       return `
       <li class="latest__item">
-        <a class="${thumbCls} ${imageKindClass(a)}" href="${articleHref(a)}">
+        <a class="${thumbCls} ${imageKindClass(a)}" href="${articleHref(a)}" aria-label="${escapeHtml(a.title)}">
           ${thumbInner}
           ${importanceBadgeHtml(a)}${liveBadgeHtml(a)}
         </a>

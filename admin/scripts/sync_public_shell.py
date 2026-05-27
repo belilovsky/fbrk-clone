@@ -17,6 +17,7 @@ STATIC_SHELL_FILES = (
     "archive.html",
     "article.html",
     "contacts.html",
+    "editorial-policy.html",
     "privacy.html",
     "search.html",
     "sitemap.html",

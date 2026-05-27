@@ -418,6 +418,11 @@ def _write_sitemap(articles: list[dict], web_root: Path) -> None:
         (f"{SITE_URL}/archive.html?cat=investigation", now, "daily", "0.8"),
         (f"{SITE_URL}/archive.html?cat=news", now, "daily", "0.8"),
         (f"{SITE_URL}/about.html", now, "monthly", "0.5"),
+        (f"{SITE_URL}/contacts.html", now, "monthly", "0.5"),
+        (f"{SITE_URL}/editorial-policy.html", now, "monthly", "0.5"),
+        (f"{SITE_URL}/privacy.html", now, "monthly", "0.4"),
+        (f"{SITE_URL}/search.html", now, "weekly", "0.4"),
+        (f"{SITE_URL}/sitemap.html", now, "weekly", "0.3"),
     ]
     for a in articles:
         iso = (a.get("dateIso") or now)

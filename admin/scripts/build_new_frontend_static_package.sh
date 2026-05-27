@@ -24,7 +24,7 @@ rewrite_public_html() {
 
 cd "${REPO_ROOT}"
 
-for file in index.html archive.html about.html article.html contacts.html privacy.html search.html sitemap.html 404.html .htaccess; do
+for file in index.html archive.html about.html article.html contacts.html editorial-policy.html privacy.html search.html sitemap.html 404.html .htaccess; do
   rewrite_public_html < "${file}" > "${OUT_DIR}/${file}"
 done
 
