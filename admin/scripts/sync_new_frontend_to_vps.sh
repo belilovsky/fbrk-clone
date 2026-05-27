@@ -18,12 +18,14 @@ TARGET="${TARGET_USER}@${TARGET_HOST}"
 WORKDIR="${NEW_FBRK_SYNC_WORKDIR:-/tmp}"
 ASSET_VERSION="${ASSET_VERSION:-$(date -u +%Y%m%d%H%M%S)}"
 SSH_RSH="ssh -o BatchMode=yes -o StrictHostKeyChecking=accept-new"
+SSH_CMD=(ssh -o BatchMode=yes -o StrictHostKeyChecking=accept-new)
 SSH_KEY_PATH="${NEW_FBRK_SSH_KEY:-}"
 if [[ -z "${SSH_KEY_PATH}" && -f "${HOME}/.ssh/fbrk_new_frontend_sync" ]]; then
   SSH_KEY_PATH="${HOME}/.ssh/fbrk_new_frontend_sync"
 fi
 if [[ -n "${SSH_KEY_PATH}" ]]; then
   SSH_RSH="${SSH_RSH} -i ${SSH_KEY_PATH}"
+  SSH_CMD+=(-i "${SSH_KEY_PATH}")
 fi
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 PLESK_BUILDER="${SCRIPT_DIR}/sync_new_frontend_to_plesk.py"
@@ -93,25 +95,36 @@ text = text.replace(
 path.write_text(text, encoding="utf-8")
 PY
 
-${SSH_RSH} "${TARGET}" \
-  "systemctl stop new-fbrk-frontend-guard.timer new-fbrk-frontend-guard.service 2>/dev/null || true \
-    && mkdir -p '${TARGET_ROOT}' '${STATE_ROOT}/last-good-web-root' '${GUARD_ROOT}'"
+"${SSH_CMD[@]}" "${TARGET}" bash -s -- "${TARGET_ROOT}" "${STATE_ROOT}" "${GUARD_ROOT}" <<'EOF'
+set -euo pipefail
+TARGET_ROOT="$1"
+STATE_ROOT="$2"
+GUARD_ROOT="$3"
+systemctl stop new-fbrk-frontend-guard.timer new-fbrk-frontend-guard.service 2>/dev/null || true
+mkdir -p "${TARGET_ROOT}" "${STATE_ROOT}/last-good-web-root" "${GUARD_ROOT}"
+EOF
 rsync -az -e "${SSH_RSH}" "${package_dir}/" "${TARGET}:${TARGET_ROOT}/"
 rsync -az -e "${SSH_RSH}" "${GUARD_SCRIPT_SOURCE}" "${TARGET}:${GUARD_ROOT}/new-fbrk-frontend-guard.sh"
 rsync -az -e "${SSH_RSH}" "${GUARD_SERVICE_SOURCE}" "${TARGET}:${SYSTEMD_ROOT}/new-fbrk-frontend-guard.service"
 rsync -az -e "${SSH_RSH}" "${GUARD_TIMER_SOURCE}" "${TARGET}:${SYSTEMD_ROOT}/new-fbrk-frontend-guard.timer"
-${SSH_RSH} "${TARGET}" \
-  "find '${TARGET_ROOT}' \\( -name '.DS_Store' -o -name '._*' \\) -delete \
-    && chmod 0755 '${GUARD_ROOT}/new-fbrk-frontend-guard.sh' \
-    && rsync -a --delete '${TARGET_ROOT}/' '${STATE_ROOT}/last-good-web-root/' \
-    && (cd '${TARGET_ROOT}' && shasum -a 256 js/app.js js/data.js js/data-archive.js js/article-full.js js/search-index.js data/videos.json > '${STATE_ROOT}/expected-sha256s') \
-    && shasum -a 256 '${TARGET_ROOT}/js/app.js' | cut -d ' ' -f 1 > '${STATE_ROOT}/expected-app-sha256' \
-    && printf '%s\n' '${ASSET_VERSION}' > '${STATE_ROOT}/expected-asset-version' \
-    && chown -R www-data:www-data '${TARGET_ROOT}' \
-    && systemctl daemon-reload \
-    && systemctl enable --now new-fbrk-frontend-guard.timer \
-    && nginx -t \
-    && systemctl reload nginx"
+"${SSH_CMD[@]}" "${TARGET}" bash -s -- "${TARGET_ROOT}" "${STATE_ROOT}" "${GUARD_ROOT}" "${ASSET_VERSION}" <<'EOF'
+set -euo pipefail
+TARGET_ROOT="$1"
+STATE_ROOT="$2"
+GUARD_ROOT="$3"
+ASSET_VERSION="$4"
+find "${TARGET_ROOT}" \( -name '.DS_Store' -o -name '._*' \) -delete
+chmod 0755 "${GUARD_ROOT}/new-fbrk-frontend-guard.sh"
+rsync -a --delete "${TARGET_ROOT}/" "${STATE_ROOT}/last-good-web-root/"
+(cd "${TARGET_ROOT}" && shasum -a 256 js/app.js js/data.js js/data-archive.js js/article-full.js js/search-index.js data/videos.json > "${STATE_ROOT}/expected-sha256s")
+shasum -a 256 "${TARGET_ROOT}/js/app.js" | cut -d ' ' -f 1 > "${STATE_ROOT}/expected-app-sha256"
+printf '%s\n' "${ASSET_VERSION}" > "${STATE_ROOT}/expected-asset-version"
+chown -R www-data:www-data "${TARGET_ROOT}"
+systemctl daemon-reload
+systemctl enable --now new-fbrk-frontend-guard.timer
+nginx -t
+systemctl reload nginx
+EOF
 
 echo "STATUS=synced"
 echo "TARGET=${TARGET}:${TARGET_ROOT}"
