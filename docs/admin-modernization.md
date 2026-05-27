@@ -121,6 +121,24 @@ The previous maintenance caveat is also closed in this branch: FastAPI startup
 now uses lifespan, and legacy admin/SSR template calls are normalized by the
 shared `AdminJinja2Templates` adapter.
 
+## Editorial Policy Carrier Pass 2026-05-27
+
+ФБРК теперь не только публичный носитель Editorial Hub, но и админ-носитель:
+
+- добавлен защищённый раздел `/admin/editorial-policy`;
+- публичные формулировки, статус, контакты и ссылка на Editorial Hub хранятся в
+  `settings` с префиксом `editorial_policy.*`;
+- сохранение и ручная публикация требуют session + CSRF;
+- каждое изменение пишет best-effort audit event `editorial_policy`;
+- публичный URL `/editorial-policy.html` остаётся статическим HTML для SEO,
+  отказоустойчивости и синхронизации на split-фронтенд;
+- генератор берёт актуальные header/footer из `index.html`, чтобы не было
+  рассинхронизации shell.
+
+Практическое правило: редактор меняет политику в админке, админка
+перегенерирует статическую страницу, а public/split хосты получают готовый HTML
+при обычном deploy/sync.
+
 ## Follow-up Pass 2026-05-22
 
 Additional container-era admin/editor check after backend Dockerization:

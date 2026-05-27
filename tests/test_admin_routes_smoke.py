@@ -21,6 +21,19 @@ def _client(tmp_path: Path) -> TestClient:
     data_js = public_root / "js" / "data.js"
     uploads_dir.mkdir(parents=True)
     data_js.parent.mkdir(parents=True)
+    (public_root / "index.html").write_text(
+        """
+<!doctype html>
+<html lang="ru">
+<head><link rel="stylesheet" href="/css/style.css?v=20260527000000"></head>
+<body>
+  <header class="site-header" role="banner"><div>ФБРК</div></header>
+  <footer class="site-footer" role="contentinfo"><div>Редакция</div></footer>
+</body>
+</html>
+""".strip(),
+        encoding="utf-8",
+    )
 
     os.environ.update(
         {
@@ -136,6 +149,46 @@ def test_admin_form_csrf_reject_and_accept(tmp_path: Path) -> None:
             follow_redirects=False,
         )
         assert accepted.status_code == 303
+
+
+def test_editorial_policy_admin_saves_and_generates_static_page(tmp_path: Path) -> None:
+    with _client(tmp_path) as client:
+        protected = client.get("/admin/editorial-policy", follow_redirects=False)
+        assert protected.status_code == 302
+        assert protected.headers["location"] == "/admin/login"
+
+        _login(client)
+        page = client.get("/admin/editorial-policy")
+        assert page.status_code == 200
+        assert "Редакционная политика" in page.text
+        token = _csrf_from(page.text)
+
+        rejected = client.post(
+            "/admin/editorial-policy",
+            data={"title": "Редакционная политика"},
+            follow_redirects=False,
+        )
+        assert rejected.status_code == 403
+
+        accepted = client.post(
+            "/admin/editorial-policy",
+            data={
+                "csrf_token": token,
+                "title": "Редакционная политика <test>",
+                "lede": "Публичный стандарт без HTML-инъекций.",
+            },
+            follow_redirects=False,
+        )
+        assert accepted.status_code == 303
+        assert accepted.headers["location"] == "/admin/editorial-policy?saved=1"
+
+        generated = tmp_path / "public" / "editorial-policy.html"
+        assert generated.exists()
+        html = generated.read_text(encoding="utf-8")
+        assert "Редакционная политика &lt;test&gt;" in html
+        assert "Редакционная политика <test>" not in html
+        assert '<header class="site-header"' in html
+        assert '<footer class="site-footer"' in html
 
 
 def test_upload_policy_rejects_bad_image(tmp_path: Path) -> None:
