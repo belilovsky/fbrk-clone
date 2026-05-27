@@ -54,6 +54,22 @@ function articleHref(a) {
   return articleUrl(a.slug || a.id);
 }
 
+function articleLookupKeys(rawId) {
+  const value = String(rawId || '').trim();
+  if (!value) return [];
+  const keys = [value];
+  const legacySlug = value.replace(/-\d{4}-\d{2}-\d{2}-\d{2}_\d{2}_\d{2}$/, '');
+  if (legacySlug && legacySlug !== value) keys.push(legacySlug);
+  return keys;
+}
+
+function findArticleByKeys(list, rawId) {
+  if (!Array.isArray(list) || !list.length) return null;
+  const keys = articleLookupKeys(rawId);
+  if (!keys.length) return null;
+  return list.find((item) => item && keys.some((key) => item.id === key || item.slug === key)) || null;
+}
+
 // Align static SEO tags with runtime public origin in split-hosting mode.
 (function normalizeStaticSeoHost() {
   const base = siteOrigin();
@@ -87,6 +103,45 @@ function articleHref(a) {
   });
 })();
 
+// Static utility pages can opt into the common shell by omitting duplicated
+// header/footer markup. Keep this before global controls initialize.
+(function ensureSiteShell() {
+  if (!document.querySelector('.site-header')) {
+    document.body.insertAdjacentHTML('afterbegin', `
+      <header class="site-header" role="banner">
+        <div class="container site-header__inner">
+          <a class="site-header__logo" href="/" aria-label="ФБРК — на главную"><span class="site-header__logo-mark">ФБРК</span><span class="site-header__logo-text">Фонд-бюро расследования коррупции</span></a>
+          <nav class="site-header__nav" aria-label="Основная навигация" data-site-nav>
+            <ul role="list"><li><a href="/" data-nav-link="home">Главная</a></li><li><a href="/archive.html?cat=investigation" data-nav-link="investigation">Расследования</a></li><li><a href="/archive.html?cat=news" data-nav-link="news">Новости</a></li><li><a href="/archive.html" data-nav-link="archive">Архив</a></li><li><a href="/about.html" data-nav-link="about">О нас</a></li></ul>
+          </nav>
+          <div class="site-header__actions">
+            <div class="lang-switch" role="group" aria-label="Язык сайта"><button type="button" data-lang="ru" aria-pressed="true">RU</button><button type="button" data-lang="kk" aria-pressed="false" aria-disabled="true">ҚАЗ</button></div>
+            <span class="site-header__divider" aria-hidden="true"></span>
+            <a class="site-header__btn" href="/search.html" data-search-open aria-label="Открыть поиск"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="m21 21-4.35-4.35"/></svg></a>
+            <button class="site-header__btn" type="button" data-theme-toggle aria-label="Переключить тему"></button>
+            <a class="site-header__btn site-header__btn--social" href="https://t.me/fund_kz_bot" target="_blank" rel="noopener" aria-label="Telegram-бот"><svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M9.78 18.65l.28-4.23 7.68-6.92c.34-.31-.07-.46-.52-.19L7.74 13.3 3.64 12c-.88-.25-.89-.86.2-1.3l15.97-6.16c.73-.33 1.43.18 1.15 1.3l-2.72 12.81c-.19.91-.74 1.13-1.5.71L12.6 16.3l-1.99 1.93c-.23.23-.42.42-.83.42z"/></svg></a>
+            <button class="site-header__btn site-header__menu-btn" type="button" data-menu-toggle aria-label="Меню" aria-expanded="false"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="18" x2="21" y2="18"/></svg></button>
+          </div>
+        </div>
+      </header>
+    `);
+  }
+  if (!document.querySelector('.site-footer')) {
+    document.body.insertAdjacentHTML('beforeend', `
+      <footer class="site-footer" role="contentinfo">
+        <div class="container">
+          <div class="site-footer__top">
+            <div class="site-footer__brand-block"><div class="site-footer__brand"><span class="site-footer__brand-name">ФБРК</span></div><p class="site-footer__about">Фонд-бюро расследования коррупции — независимое сетевое издание. Свидетельство СМИ № KZ83VPY00075165 от 21.08.2023.</p></div>
+            <div><div class="site-footer__heading">Разделы</div><ul class="site-footer__list" role="list"><li><a href="/">Главная</a></li><li><a href="/archive.html?cat=investigation">Расследования</a></li><li><a href="/archive.html?cat=news">Новости</a></li><li><a href="/archive.html">Архив</a></li></ul></div>
+            <div><div class="site-footer__heading">Редакция</div><ul class="site-footer__list" role="list"><li><a href="/about.html">О нас</a></li><li><a href="/contacts.html">Контакты</a></li><li><a href="/editorial-policy.html">Редакционная политика</a></li><li><a href="/privacy.html">Политика конфиденциальности</a></li><li><a href="/feed.xml">RSS-лента</a></li><li><a href="/sitemap.html">Карта сайта</a></li></ul></div>
+          </div>
+          <div class="site-footer__bottom"><div class="site-footer__legal"><span>© 2023–2026 ФБРК</span><span aria-hidden="true">·</span><span class="site-footer__version">AV DS 3.7.1</span><span aria-hidden="true">·</span><span>Астана, Казахстан</span></div></div>
+        </div>
+      </footer>
+    `);
+  }
+})();
+
 // ---------- date formatting (used everywhere; defined first) ----------
 // Genitive month names («22 апреля» / «22 апр»)
 var _RU_MONTHS_FULL = ['января','февраля','марта','апреля','мая','июня','июля','августа','сентября','октября','ноября','декабря'];
@@ -115,10 +170,10 @@ function fmtDateShort(iso) {
 (function () {
   const root = document.documentElement;
   const stored = (function () {
-    try { return localStorage.getItem('fbrk_theme'); } catch (_) { return null; }
+    try { return localStorage.getItem('theme') || localStorage.getItem('fbrk_theme'); } catch (_) { return null; }
   })();
-  // Default to LIGHT (only honour user-chosen preference)
-  let current = stored === 'dark' ? 'dark' : 'light';
+  const prefersDark = window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches;
+  let current = stored === 'dark' || stored === 'light' ? stored : (prefersDark ? 'dark' : 'light');
   root.setAttribute('data-theme', current);
 
   const sun =
@@ -138,7 +193,10 @@ function fmtDateShort(iso) {
     btn.addEventListener('click', () => {
       current = current === 'dark' ? 'light' : 'dark';
       root.setAttribute('data-theme', current);
-      try { localStorage.setItem('fbrk_theme', current); } catch (_) {}
+      try {
+        localStorage.setItem('theme', current);
+        localStorage.setItem('fbrk_theme', current);
+      } catch (_) {}
       document.querySelectorAll('[data-theme-toggle]').forEach(render);
     });
   });
@@ -167,10 +225,14 @@ function fbrkToast(message, ms = 2400) {
   const buttons = document.querySelectorAll('.lang-switch [data-lang]');
   if (!buttons.length) return;
   buttons.forEach((btn) => {
+    if (btn.dataset.lang === 'kk') {
+      btn.setAttribute('aria-disabled', 'true');
+      btn.setAttribute('title', 'Қазақша нұсқасы жақын арада');
+    }
     btn.addEventListener('click', () => {
       const lang = btn.dataset.lang;
       if (lang === 'kk') {
-        fbrkToast('Қазақша нұсқасы жақын арада қол жетімді болады');
+        btn.setAttribute('aria-pressed', 'false');
         return;
       }
       // Set RU active
@@ -184,14 +246,81 @@ function fbrkToast(message, ms = 2400) {
   const btn = document.querySelector('[data-menu-toggle]');
   const nav = document.querySelector('[data-site-nav]');
   if (!btn || !nav) return;
-  btn.addEventListener('click', () => {
-    const open = nav.classList.toggle('is-open');
+  if (!nav.querySelector('[data-mobile-menu-panel]')) {
+    nav.insertAdjacentHTML('beforeend', `
+      <div class="site-header__mobile-panel" data-mobile-menu-panel>
+        <div class="site-header__mobile-controls">
+          <button class="site-header__btn site-header__mobile-theme" type="button" data-mobile-theme aria-label="Переключить тему">Тема</button>
+          <div class="lang-switch site-header__mobile-lang" role="group" aria-label="Язык сайта">
+            <button type="button" data-mobile-lang="ru" aria-pressed="true">RU</button>
+            <button type="button" data-mobile-lang="kk" aria-pressed="false" aria-disabled="true" title="Қазақша нұсқасы жақын арада">ҚАЗ</button>
+          </div>
+        </div>
+        <div class="site-header__mobile-socials" aria-label="Социальные сети">
+          <a href="https://t.me/fund_kz_bot" target="_blank" rel="noopener" aria-label="Telegram-бот">Telegram</a>
+          <a href="https://www.youtube.com/@fbrk_news" target="_blank" rel="noopener" aria-label="YouTube">YouTube</a>
+        </div>
+        <button class="site-header__mobile-close" type="button" data-menu-close aria-label="Закрыть меню">Закрыть</button>
+      </div>
+    `);
+  }
+  let lastFocus = null;
+  function setOpen(open) {
+    nav.classList.toggle('is-open', open);
     btn.setAttribute('aria-expanded', String(open));
+    document.body.style.overflow = open ? 'hidden' : '';
+    if (open) {
+      lastFocus = document.activeElement;
+      const first = nav.querySelector('a, button, [tabindex]:not([tabindex="-1"])');
+      setTimeout(() => first?.focus(), 20);
+    } else if (lastFocus && typeof lastFocus.focus === 'function') {
+      lastFocus.focus();
+    }
+  }
+  btn.addEventListener('click', () => {
+    setOpen(!nav.classList.contains('is-open'));
+  });
+  nav.querySelector('[data-menu-close]')?.addEventListener('click', () => setOpen(false));
+  nav.querySelector('[data-mobile-theme]')?.addEventListener('click', () => {
+    document.querySelector('.site-header__actions [data-theme-toggle]')?.click();
+  });
+  nav.querySelectorAll('[data-mobile-lang]').forEach((langBtn) => {
+    langBtn.addEventListener('click', () => {
+      if (langBtn.dataset.mobileLang === 'kk') {
+        langBtn.setAttribute('aria-pressed', 'false');
+        return;
+      }
+      nav.querySelectorAll('[data-mobile-lang]').forEach((item) => {
+        item.setAttribute('aria-pressed', item === langBtn ? 'true' : 'false');
+      });
+    });
   });
   nav.addEventListener('click', (e) => {
     if (e.target.closest('a')) {
-      nav.classList.remove('is-open');
-      btn.setAttribute('aria-expanded', 'false');
+      setOpen(false);
+    }
+    if (e.target === nav) {
+      setOpen(false);
+    }
+  });
+  document.addEventListener('keydown', (e) => {
+    if (!nav.classList.contains('is-open')) return;
+    if (e.key === 'Escape') {
+      setOpen(false);
+      return;
+    }
+    if (e.key !== 'Tab') return;
+    const focusables = Array.from(nav.querySelectorAll('a, button, [tabindex]:not([tabindex="-1"])'))
+      .filter((el) => !el.disabled && el.offsetParent !== null);
+    if (!focusables.length) return;
+    const first = focusables[0];
+    const last = focusables[focusables.length - 1];
+    if (e.shiftKey && document.activeElement === first) {
+      e.preventDefault();
+      last.focus();
+    } else if (!e.shiftKey && document.activeElement === last) {
+      e.preventDefault();
+      first.focus();
     }
   });
 })();
@@ -205,10 +334,19 @@ function fbrkToast(message, ms = 2400) {
   let active = null;
   if (path === '/' || path === '/index.html') active = 'home';
   else if (path.startsWith('/about')) active = 'about';
+  else if (path.startsWith('/contacts')) active = 'about';
+  else if (path.startsWith('/editorial-policy')) active = 'about';
   else if (path.startsWith('/archive')) {
     if (cat === 'investigation') active = 'investigation';
     else if (cat === 'news') active = 'news';
     else active = 'archive';
+  } else if (path.startsWith('/a/')) {
+    const slug = decodeURIComponent(path.split('/').filter(Boolean).pop() || '');
+    const items = []
+      .concat((typeof FBRK_DATA !== 'undefined' && FBRK_DATA.articles) ? FBRK_DATA.articles : [])
+      .concat((typeof ARTICLES_ARCHIVE !== 'undefined' && ARTICLES_ARCHIVE.articles) ? ARTICLES_ARCHIVE.articles : []);
+    const article = items.find((a) => a && (a.slug === slug || a.id === slug));
+    active = article && article.category === 'investigation' ? 'investigation' : 'news';
   }
   if (active) {
     links.forEach((l) => {
@@ -287,7 +425,7 @@ function fbrkToast(message, ms = 2400) {
     }).slice(0, 50);
     if (!matches.length) {
       results.innerHTML =
-        '<div style="color:var(--color-text-muted); padding: var(--space-5) 0; font-size: var(--text-sm);">Ничего не найдено. Попробуйте другой запрос.</div>';
+        '<div class="search-empty">Ничего не найдено. Попробуйте другой запрос.</div>';
       activeIndex = -1;
       return;
     }
@@ -342,11 +480,51 @@ function fbrkToast(message, ms = 2400) {
 
 // ---------- Helper: prefer full cover for hero ----------
 function fullCover(a) {
+  const meta = imageMeta(a);
+  const image = meta.url;
   // swap /covers/thumb/ -> /covers/web/ for larger rendering
-  if (a.image && a.image.includes('/covers/thumb/')) {
-    return a.image.replace('/covers/thumb/', '/covers/web/');
+  if (image && image.includes('/covers/thumb/')) {
+    return image.replace('/covers/thumb/', '/covers/web/');
   }
-  return a.image;
+  return image;
+}
+
+function imageMeta(a) {
+  const image = a && a.image;
+  const meta = image && typeof image === 'object' ? image : {};
+  const rawUrl = typeof image === 'string' ? image : (meta.url || meta.src || '');
+  const url = String(rawUrl || '');
+  let kind = String(a?.imageKind || meta.kind || '').toLowerCase();
+  if (!kind) {
+    if (/chatgpt|dall|midjourney|ai[-_%20]?image/i.test(url)) kind = 'ai';
+    else if (/infographic|info[-_%20]?graphic|chart|diagram/i.test(url)) kind = 'infographic';
+    else kind = 'photo';
+  }
+  const source = String(a?.imageSource || meta.source || '').trim();
+  const hasRealPerson = Boolean(a?.imageHasRealPerson || meta.hasRealPerson);
+  return { url, kind, source, hasRealPerson };
+}
+
+function imageKindClass(a) {
+  return `image-kind-${imageMeta(a).kind}`;
+}
+
+function imageCaptionHtml(a) {
+  const meta = imageMeta(a);
+  if (meta.kind === 'ai' && meta.hasRealPerson) {
+    return '<span class="image-caption image-caption--ai">Иллюстрация ИИ. Не является фотоматериалом</span>';
+  }
+  if (meta.kind === 'photo' && meta.source) {
+    return `<span class="image-caption">Фото: ${escapeHtml(meta.source)}</span>`;
+  }
+  return '';
+}
+
+function truncateText(text, maxLength) {
+  const clean = String(text || '').trim();
+  if (!clean) return '';
+  if (clean.length <= maxLength) return clean;
+  return `${clean.slice(0, maxLength).trim()}…`;
 }
 
 // Importance badge — shown only for AI-rated articles with importance >= 4 (out of 5)
@@ -393,7 +571,7 @@ function liveBadgeHtml(a) {
   const featured = all.find((a) => a.featured) || all[0];
 
   leadRoot.innerHTML = `
-    <a class="lead__media" href="${articleHref(featured)}" aria-label="${escapeHtml(featured.title)}">
+    <a class="lead__media ${imageKindClass(featured)}" href="${articleHref(featured)}" aria-label="${escapeHtml(featured.title)}">
       <img src="${fullCover(featured)}" alt="${escapeHtml(featured.title)}" width="1200" height="800" loading="eager"/>
     </a>
     <div class="lead__body">
@@ -401,7 +579,7 @@ function liveBadgeHtml(a) {
       <h1 class="lead__title">
         <a href="${articleHref(featured)}">${escapeHtml(featured.title)}</a>
       </h1>
-      <p class="lead__dek">${escapeHtml(featured.dek)}</p>
+      <p class="lead__dek">${escapeHtml(articleHeroDek(featured, []))}</p>
       <div class="lead__meta">
         <span>${fmtDateLong(featured.dateIso) || featured.date}</span>
       </div>
@@ -433,7 +611,7 @@ function liveBadgeHtml(a) {
         return `
       <article class="${cardCls}">
         <a href="${articleHref(a)}">
-          <div class="card__media">
+          <div class="card__media ${imageKindClass(a)}">
             ${mediaInner}
             <span class="card__date-badge">${fmtDateShort(a.dateIso) || a.date}</span>
             ${importanceBadgeHtml(a)}${liveBadgeHtml(a)}
@@ -459,7 +637,7 @@ function liveBadgeHtml(a) {
         : `<span class="latest__thumb-mark">ФБРК</span>`;
       return `
       <li class="latest__item">
-        <a class="${thumbCls}" href="${articleHref(a)}">
+        <a class="${thumbCls} ${imageKindClass(a)}" href="${articleHref(a)}" aria-label="${escapeHtml(a.title)}">
           ${thumbInner}
           ${importanceBadgeHtml(a)}${liveBadgeHtml(a)}
         </a>
@@ -636,7 +814,6 @@ function liveBadgeHtml(a) {
   fetch('data/videos.json')
     .then((r) => (r.ok ? r.json() : []))
     .then((videos) => {
-      console.log('[videos] fetched', videos.length);
       if (!videos.length) { root.closest('.section').style.display = 'none'; return; }
       render(videos);
     })
@@ -661,9 +838,8 @@ function liveBadgeHtml(a) {
   const archive = (typeof ARTICLES_ARCHIVE !== 'undefined' && Array.isArray(ARTICLES_ARCHIVE.articles))
     ? ARTICLES_ARCHIVE.articles
     : [];
-  const findById = (list) => list.find((x) => x && (x.id === id || x.slug === id));
-  const compactArticle = findById(primary) || findById(archive);
-  const fullArticle = findById(fullArticles);
+  const compactArticle = findArticleByKeys(primary, id) || findArticleByKeys(archive, id);
+  const fullArticle = findArticleByKeys(fullArticles, id);
   const a = fullArticle
     ? { ...(compactArticle || {}), ...fullArticle }
     : compactArticle;
@@ -677,6 +853,11 @@ function liveBadgeHtml(a) {
     return;
   }
 
+  const canonicalSlug = String(a.slug || a.id || '').trim();
+  if (pathMatch && canonicalSlug && canonicalSlug !== id) {
+    history.replaceState(null, '', `${articleUrl(canonicalSlug)}${location.hash || ''}`);
+  }
+
   const sectionItems = Array.isArray(a.sections)
     ? a.sections.filter((s) => s && ((s.h && String(s.h).trim()) || (s.p && String(s.p).trim())))
     : [];
@@ -687,7 +868,8 @@ function liveBadgeHtml(a) {
     .filter(Boolean)
     .map((p) => ({ h: '', p }));
   const bodySections = sectionItems.length ? sectionItems : fallbackParagraphs;
-  const heroDek = sectionItems.length ? String(a.dek || '').trim() : '';
+  const heroDek = articleHeroDek(a, sectionItems);
+  const articleDateLabel = fmtDateLong(a.dateIso) || a.date || '';
 
   document.title = `${a.title} — ФБРК`;
 
@@ -703,7 +885,7 @@ function liveBadgeHtml(a) {
     { label: 'Telegram', href: `https://t.me/share/url?url=${shareUrl}&text=${shareTitle}`, icon: '<svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M9.78 18.65l.28-4.23 7.68-6.92c.34-.31-.07-.46-.52-.19L7.74 13.3 3.64 12c-.88-.25-.89-.86.2-1.3l15.97-6.16c.73-.33 1.43.18 1.15 1.3l-2.72 12.81c-.19.91-.74 1.13-1.5.71L12.6 16.3l-1.99 1.93c-.23.23-.42.42-.83.42z"/></svg>' },
     { label: 'X', href: `https://twitter.com/intent/tweet?url=${shareUrl}&text=${shareTitle}`, icon: '<svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 21.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z"/></svg>' },
     { label: 'ВКонтакте', href: `https://vk.com/share.php?url=${shareUrl}&title=${shareTitle}`, icon: '<svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M12.785 16.241s.288-.032.435-.194c.136-.148.132-.427.132-.427s-.02-1.304.576-1.496c.588-.19 1.342 1.26 2.141 1.818.605.422 1.064.33 1.064.33l2.137-.03s1.117-.071.588-.964c-.043-.073-.308-.66-1.588-1.87-1.337-1.266-1.158-1.06.453-3.27.98-1.345 1.374-2.164 1.251-2.515-.118-.334-.848-.245-.848-.245l-2.434.016s-.18-.025-.314.056c-.13.08-.215.264-.215.264s-.377 1.022-.882 1.89c-1.064 1.832-1.49 1.929-1.664 1.814-.403-.267-.302-1.08-.302-1.658 0-1.806.27-2.558-.528-2.756-.264-.066-.459-.11-1.135-.116-.867-.009-1.6.003-2.016.209-.277.137-.49.443-.36.46.162.022.528.1.722.368.25.345.241 1.122.241 1.122s.144 2.135-.336 2.4c-.33.181-.782-.189-1.731-1.852-.486-.852-.853-1.794-.853-1.794s-.07-.175-.2-.269c-.156-.114-.374-.15-.374-.15l-2.313.015s-.348.01-.476.163c-.113.136-.009.418-.009.418s1.812 4.288 3.864 6.449c1.882 1.982 4.019 1.852 4.019 1.852z"/></svg>' },
-    { label: 'Copy', href: '#', icon: '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>', copy: true },
+    { label: 'Скопировать ссылку', href: '#', icon: '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>', copy: true },
   ];
   const shareHtml = `<div class="article__share" role="group" aria-label="Поделиться">
     <span class="article__share__label">Поделиться:</span>
@@ -718,19 +900,19 @@ function liveBadgeHtml(a) {
   root.innerHTML = `
     <article class="article container">
       <header class="article__head">
-        <div class="kicker article__kicker">${a.categoryLabel}</div>
+        <div class="kicker article__kicker">
+          <span>${escapeHtml(a.categoryLabel || 'Материал')}</span>
+          ${articleDateLabel ? `<span class="article__kicker-sep" aria-hidden="true">·</span><time datetime="${escapeHtml(a.dateIso || '')}">${escapeHtml(articleDateLabel)}</time>` : ''}
+          <span class="article__kicker-sep" aria-hidden="true">·</span>
+          <span class="article__kicker-meta">${readMin} мин чтения</span>
+        </div>
         <h1 class="article__title">${escapeHtml(a.title)}</h1>
         ${heroDek ? `<p class="article__dek">${escapeHtml(heroDek)}</p>` : ''}
-        <div class="article__meta">
-          <span>${fmtDateLong(a.dateIso) || a.date}</span>
-          <span class="article__meta__dot">${readMin} мин чтения</span>
-        </div>
-        ${shareHtml}
       </header>
-      <div class="article__cover">
+      <div class="article__cover ${imageKindClass(a)}">
         <img src="${fullCover(a)}" alt="${escapeHtml(a.title)}" width="1440" height="810" loading="eager"/>
+        ${imageCaptionHtml(a)}
       </div>
-      ${tldrHtml}
       <div class="article__body">
         ${bodySections.map((s) => {
           const h = String((s && s.h) || '').trim();
@@ -740,13 +922,15 @@ function liveBadgeHtml(a) {
           return hHtml + pHtml;
         }).join('')}
       </div>
+      ${tldrHtml}
       ${entitiesHtml}
+      ${shareHtml}
       ${tagsHtml}
-                ${a.source && !a.source.includes('fbrk.kz') ? `<div class="article_source">Источник: <a href="${a.source}" target="_blank" rel="noopener">${new URL(a.source).hostname}</a></div>` : ''}
+      ${a.source && !a.source.includes('fbrk.kz') ? `<div class="article__source">Источник: <a href="${a.source}" target="_blank" rel="noopener">${new URL(a.source).hostname}</a></div>` : ''}
 
-          <div class="ad-block ad-block--article" data-ad-slot="article-bottom"></div>
+      <div class="ad-block ad-block--article" data-ad-slot="article-bottom"></div>
       <section class="related">
-                    <h2 class="related__title">Материалы по теме</h2>
+        <h2 class="related__title">Материалы по теме</h2>
         <div class="card-grid">
           ${FBRK_DATA.articles
             .filter((x) => x.id !== a.id)
@@ -761,7 +945,7 @@ function liveBadgeHtml(a) {
                 return `
             <article class="${cardCls}">
               <a href="${articleHref(x)}">
-                <div class="card__media">
+                <div class="card__media ${imageKindClass(x)}">
                   ${mediaInner}
                   <span class="card__date-badge">${fmtDateShort(x.dateIso) || x.date}</span>
                   ${importanceBadgeHtml(x)}${liveBadgeHtml(x)}
@@ -775,21 +959,9 @@ function liveBadgeHtml(a) {
             .join('')}
         </div>
       </section>
-                <div class="ad-block ad-block--footer" data-ad-slot="article-footer"></div>
+      <div class="ad-block ad-block--footer" data-ad-slot="article-footer"></div>
     </article>
   `;
-
-  // Copy-link handler
-  root.addEventListener('click', (e) => {
-    const btn = e.target.closest('[data-copy]');
-    if (!btn) return;
-    e.preventDefault();
-    navigator.clipboard?.writeText(location.href).then(() => {
-      const prev = btn.innerHTML;
-      btn.innerHTML = '<span style="font-size:.85em">Скопировано</span>';
-      setTimeout(() => { btn.innerHTML = prev; }, 1600);
-    });
-  });
 })();
 
 // ---------- util ----------
@@ -848,6 +1020,48 @@ function renderArticleParagraphs(raw) {
     .join('');
 }
 
+function normalizedArticleText(value) {
+  return String(value || '')
+    .replace(/<[^>]*>/g, ' ')
+    .replace(/\s+/g, ' ')
+    .trim();
+}
+
+function articleHeroDek(a, sectionItems = []) {
+  const dek = String((a && a.dek) || '').trim();
+  const summaryShort = String((a && a.summaryShort) || '').trim();
+  const normalizedSections = Array.isArray(sectionItems) ? sectionItems : [];
+  const firstParagraph = dek.split(/\n{2,}/)[0]?.trim() || '';
+
+  if (summaryShort) {
+    return truncateText(summaryShort, 240);
+  }
+
+  if (!dek) return '';
+
+  if (!normalizedSections.length) {
+    return truncateText(summaryShort || firstParagraph || dek, 420);
+  }
+
+  const firstSectionText = normalizedArticleText(`${sectionItems[0]?.h || ''} ${sectionItems[0]?.p || ''}`);
+  const candidates = [
+    dek,
+    firstParagraph,
+    summaryShort,
+  ];
+
+  for (const candidate of candidates) {
+    const text = String(candidate || '').trim();
+    if (!text || text.length > 420) continue;
+    if (/\n\s*\n/.test(text)) continue;
+    const normalizedDek = normalizedArticleText(text);
+    if (normalizedDek && firstSectionText.startsWith(normalizedDek)) continue;
+    return text;
+  }
+
+  return '';
+}
+
 function articleTags(a, excludedNames = []) {
   const excluded = new Set((excludedNames || []).map(normalizeEntityName).filter(Boolean));
   const seen = new Set();
@@ -883,22 +1097,97 @@ function articleEntities(entities, excludedNames = []) {
     seen.add(key);
     items.push({ name, type });
   });
-  return items.slice(0, 32);
+  return items.slice(0, 12);
 }
 
 function renderArticleTldr(a) {
-  const summary = String((a && a.summaryShort) || '').trim();
-  const points = Array.isArray(a && a.keyPoints)
-    ? a.keyPoints.map((x) => String(x || '').trim()).filter(Boolean).slice(0, 5)
-    : [];
-  if (!summary && !points.length) return '';
+  const points = articleTldrPoints(a);
+  if (!points.length) return '';
   return `
     <aside class="article__tldr" aria-label="Кратко">
-      ${summary ? `<p class="article__lead">${escapeHtml(summary)}</p>` : ''}
       ${points.length ? `<ul class="article__tldr-list">${points.map((p) => `<li>${escapeHtml(p)}</li>`).join('')}</ul>` : ''}
     </aside>
   `;
 }
+
+function articleTldrPoints(a) {
+  const keyPoints = Array.isArray(a && a.keyPoints)
+    ? a.keyPoints.map(tidyKeyPoint).filter(Boolean).slice(0, 5)
+    : [];
+  if (keyPoints.length && !looksLikeTruncatedKeyPoints(keyPoints)) {
+    return keyPoints;
+  }
+  return articleTldrFallbackPoints(a).slice(0, 5);
+}
+
+function tidyKeyPoint(value) {
+  const text = String(value || '').replace(/\s+/g, ' ').trim();
+  if (!text) return '';
+  if (/[.!?…)"»]$/.test(text)) return text;
+
+  const danglingWords = new Set(['а', 'в', 'во', 'для', 'до', 'и', 'из', 'к', 'ко', 'на', 'не', 'о', 'об', 'от', 'по', 'при', 'с', 'со', 'у']);
+  const words = text.split(' ');
+  const lastWord = words[words.length - 1].toLowerCase().replace(/[^\p{L}\p{N}-]+/gu, '');
+  if (words.length > 1 && danglingWords.has(lastWord)) {
+    return words.slice(0, -1).join(' ').replace(/[,:;\s]+$/, '');
+  }
+
+  return text;
+}
+
+function looksLikeTruncatedKeyPoints(points) {
+  if (!Array.isArray(points) || !points.length) return false;
+  let suspicious = 0;
+  points.forEach((point) => {
+    const text = String(point || '').trim();
+    if (!text || /[.!?…)"»]$/.test(text)) return;
+    const words = text.split(/\s+/);
+    const lastWord = words[words.length - 1].replace(/[^\p{L}\p{N}-]+/gu, '');
+    if (text.length >= 36 && lastWord && lastWord.length <= 6) suspicious += 1;
+  });
+  return suspicious >= 2;
+}
+
+function articleTldrFallbackPoints(a) {
+  const sectionItems = Array.isArray(a && a.sections) ? a.sections : [];
+  const seen = new Set();
+  const points = [];
+
+  sectionItems.forEach((section) => {
+    String((section && section.p) || '')
+      .replace(/\r\n/g, '\n')
+      .split(/\n{2,}/)
+      .map(normalizedArticleText)
+      .forEach((part) => {
+        if (!part || part.length < 48 || points.length >= 5) return;
+        const sentence = firstArticleSentence(part);
+        const key = sentence.toLocaleLowerCase('ru-RU');
+        if (!sentence || seen.has(key)) return;
+        seen.add(key);
+        points.push(sentence);
+      });
+  });
+
+  return points;
+}
+
+function firstArticleSentence(text) {
+  const value = String(text || '').replace(/\s+/g, ' ').trim();
+  if (!value) return '';
+  const match = value.match(/^(.{24,220}?[.!?])(?:\s|$)/);
+  return (match ? match[1] : truncateText(value, 220)).trim();
+}
+
+document.addEventListener('click', (e) => {
+  const btn = e.target.closest('[data-copy]');
+  if (!btn) return;
+  e.preventDefault();
+  navigator.clipboard?.writeText(location.href).then(() => {
+    const prev = btn.innerHTML;
+    btn.innerHTML = '<span class="article__copy-label">Скопировано</span>';
+    setTimeout(() => { btn.innerHTML = prev; }, 1600);
+  });
+});
 
 function renderArticleEntities(entities) {
   if (!Array.isArray(entities) || !entities.length) return '';
@@ -906,7 +1195,7 @@ function renderArticleEntities(entities) {
     <div class="entity-chips" aria-label="Упомянуты в тексте">
       <h3 class="entity-chips__title">Упоминания</h3>
       <div class="entity-chips__row">
-        ${entities.slice(0, 32).map((e) => `<span class="entity-chip entity-chip--${escapeHtml(e.type)}">${escapeHtml(e.name)}</span>`).join('')}
+        ${entities.slice(0, 12).map((e) => `<span class="entity-chip entity-chip--${escapeHtml(e.type)}">${escapeHtml(e.name)}</span>`).join('')}
       </div>
     </div>
   `;
@@ -935,18 +1224,19 @@ function renderArticleTags(tags) {
   const archive = (typeof ARTICLES_ARCHIVE !== 'undefined' && Array.isArray(ARTICLES_ARCHIVE.articles))
     ? ARTICLES_ARCHIVE.articles
     : [];
-  const compactArticle = primary.find((x) => x.id === id || x.slug === id)
-    || archive.find((x) => x.id === id || x.slug === id);
-  const fullArticle = fullArticles.find((x) => x.id === id || x.slug === id);
+  const compactArticle = findArticleByKeys(primary, id)
+    || findArticleByKeys(archive, id);
+  const fullArticle = findArticleByKeys(fullArticles, id);
   const a = fullArticle
     ? { ...(compactArticle || {}), ...fullArticle }
     : compactArticle;
   if (!a) return;
   const base = siteOrigin();
   const title = `${a.title} — ФБРК`;
-  const desc = (a.dek || '').slice(0, 200);
+  const desc = (a.summaryShort || a.dek || '').slice(0, 200);
   const url = articleUrl(a.slug || a.id);
-  const img = (a.image || '').startsWith('http') ? a.image : absSiteUrl(a.image || '/img/og-default.jpg');
+  const imageUrl = imageMeta(a).url || '/img/og-default.jpg';
+  const img = imageUrl.startsWith('http') ? imageUrl : absSiteUrl(imageUrl);
   titleEl.textContent = title;
   const descEl = document.querySelector('[data-article-desc]');
   if (descEl) descEl.setAttribute('content', desc);
@@ -990,7 +1280,7 @@ function renderArticleTags(tags) {
     inLanguage: 'ru',
     isAccessibleForFree: true,
     keywords: Array.isArray(a.tags) && a.tags.length ? a.tags.join(', ') : undefined,
-    speakable: { '@type': 'SpeakableSpecification', cssSelector: ['.article__title', '.article__dek', '.article__lead'] },
+    speakable: { '@type': 'SpeakableSpecification', cssSelector: ['.article__title', '.article__dek', '.article__tldr-list'] },
   });
   document.head.appendChild(ld);
 
@@ -1015,7 +1305,7 @@ function renderArticleTags(tags) {
   if (!el || typeof FBRK_DATA === 'undefined') return;
   // Prefer totalCount published by data.js (full archive size), fall back to slice length.
   const n = (typeof FBRK_DATA.totalCount === 'number' ? FBRK_DATA.totalCount : FBRK_DATA.articles.length);
-  el.textContent = n >= 1000 ? (n/1000).toFixed(1).replace('.0','') + 'k+' : String(n);
+  el.textContent = n >= 1000 ? `${new Intl.NumberFormat('ru-KZ').format(Math.floor(n / 100) * 100)}+` : String(n);
 })();
 
 // ---------- Search overlay: live counter ----------
@@ -1090,9 +1380,9 @@ function renderArticleTags(tags) {
   // Update page title based on filter
   function updateHeader(cat) {
     if (!titleEl) return;
-    if (cat === 'investigation') { titleEl.textContent = 'Расследования'; if (kickerEl) kickerEl.textContent = 'Архив'; }
-    else if (cat === 'news') { titleEl.textContent = 'Новости'; if (kickerEl) kickerEl.textContent = 'Архив'; }
-    else { titleEl.textContent = 'Архив материалов'; if (kickerEl) kickerEl.textContent = 'Архив'; }
+    if (cat === 'investigation') { titleEl.textContent = 'Расследования'; if (kickerEl) kickerEl.textContent = 'Расследования'; document.title = 'Расследования — ФБРК'; }
+    else if (cat === 'news') { titleEl.textContent = 'Новости'; if (kickerEl) kickerEl.textContent = 'Новости'; document.title = 'Новости — ФБРК'; }
+    else { titleEl.textContent = 'Архив материалов'; if (kickerEl) kickerEl.textContent = 'Архив'; document.title = 'Архив материалов — ФБРК'; }
   }
 
   let rendered = 0;
@@ -1117,7 +1407,7 @@ function renderArticleTags(tags) {
     });
     rendered = 0;
     grid.innerHTML = '';
-    if (countEl) countEl.textContent = `Найдено материалов: ${filtered.length}`;
+    if (countEl) countEl.textContent = `Найдено материалов: ${new Intl.NumberFormat('ru-KZ').format(filtered.length)}`;
     if (!filtered.length) {
       if (emptyEl) emptyEl.hidden = false;
       if (moreBtn) moreBtn.style.display = 'none';
@@ -1132,19 +1422,19 @@ function renderArticleTags(tags) {
     if (month) next.set('month', month);
     if (q) next.set('q', q);
     const qs = next.toString();
-    history.replaceState(null, '', qs ? `?${qs}` : location.pathname);
+    history.pushState(null, '', qs ? `?${qs}` : location.pathname);
   }
 
   function itemHtml(a) {
-    const hasImg = !!(a.image && String(a.image).trim());
+    const hasImg = !!imageMeta(a).url;
     const cardCls = hasImg ? 'card' : 'card card--no-image';
     const mediaInner = hasImg
-      ? `<img src="${a.image}" alt="${escapeHtml(a.title)}" width="600" height="400" loading="lazy"/>`
+      ? `<img src="${imageMeta(a).url}" alt="${escapeHtml(a.title)}" width="600" height="400" loading="lazy" decoding="async"/>`
       : '';
     return `
       <article class="${cardCls}">
         <a href="${articleHref(a)}">
-          <div class="card__media">
+          <div class="card__media ${imageKindClass(a)}">
             ${mediaInner}
             <span class="card__date-badge">${fmtDateShort(a.dateIso) || a.date}</span>
             ${importanceBadgeHtml(a)}${liveBadgeHtml(a)}
@@ -1174,7 +1464,14 @@ function renderArticleTags(tags) {
     let t;
     qInput.addEventListener('input', () => { clearTimeout(t); t = setTimeout(filter, 120); });
   }
-  if (moreBtn) moreBtn.addEventListener('click', renderMore);
+  if (moreBtn) moreBtn.addEventListener('click', () => {
+    moreBtn.disabled = true;
+    moreBtn.textContent = 'Загрузка...';
+    requestAnimationFrame(() => {
+      renderMore();
+      moreBtn.disabled = false;
+    });
+  });
   if (resetBtn) resetBtn.addEventListener('click', () => {
     if (catSel) catSel.value = '';
     if (yearSel) yearSel.value = '';
@@ -1184,4 +1481,109 @@ function renderArticleTags(tags) {
   });
 
   filter();
+})();
+
+// ---------- Search page ----------
+(function () {
+  const root = document.querySelector('[data-search-page]');
+  if (!root) return;
+  const input = document.querySelector('[data-search-page-q]');
+  const catSel = document.querySelector('[data-search-page-cat]');
+  const results = document.querySelector('[data-search-page-results]');
+  const empty = document.querySelector('[data-search-page-empty]');
+  const reset = document.querySelector('[data-search-page-reset]');
+  const count = document.querySelector('[data-search-page-count]');
+  const data = (typeof FBRK_SEARCH_INDEX !== 'undefined' && Array.isArray(FBRK_SEARCH_INDEX.items))
+    ? FBRK_SEARCH_INDEX.items
+    : ((typeof ARTICLES_ARCHIVE !== 'undefined' && ARTICLES_ARCHIVE.articles) ? ARTICLES_ARCHIVE.articles : FBRK_DATA.articles);
+
+  const params = new URLSearchParams(location.search);
+  if (input) input.value = params.get('q') || '';
+  if (catSel) catSel.value = params.get('cat') || '';
+
+  function highlight(text, q) {
+    const value = escapeHtml(text || '');
+    const term = String(q || '').trim();
+    if (!term) return value;
+    const safe = term.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+    return value.replace(new RegExp(`(${safe})`, 'ig'), '<mark>$1</mark>');
+  }
+
+  function searchable(a) {
+    return String([a.title, a.dek, a.description, a.body, (a.tags || []).join(' ')].join(' ')).toLowerCase();
+  }
+
+  function render() {
+    const q = (input?.value || '').trim();
+    const cat = catSel?.value || '';
+    const qLower = q.toLowerCase();
+    const matches = data.filter((a) => {
+      if (cat && a.category !== cat) return false;
+      if (!qLower) return true;
+      return searchable(a).includes(qLower);
+    }).slice(0, 80);
+    if (count) {
+      const formatted = new Intl.NumberFormat('ru-KZ').format(matches.length);
+      count.textContent = q ? `Найдено: ${formatted}` : `Материалов в индексе: ${new Intl.NumberFormat('ru-KZ').format(data.length)}`;
+    }
+    if (!matches.length) {
+      if (results) results.innerHTML = '';
+      if (empty) {
+        empty.hidden = false;
+        const text = empty.querySelector('[data-empty-query]');
+        if (text) text.textContent = q;
+      }
+    } else {
+      if (empty) empty.hidden = true;
+      if (results) {
+        results.innerHTML = matches.map((a) => `
+          <article class="search-page-result">
+            <a href="${articleHref(a)}">
+              <div class="search-page-result__meta">${escapeHtml(a.categoryLabel || '')} · ${fmtDateLong(a.dateIso) || a.date || ''}</div>
+              <h2>${highlight(a.title, q)}</h2>
+              <p>${highlight(a.dek || a.description || '', q)}</p>
+            </a>
+          </article>
+        `).join('');
+      }
+    }
+    const next = new URLSearchParams();
+    if (q) next.set('q', q);
+    if (cat) next.set('cat', cat);
+    history.replaceState(null, '', next.toString() ? `?${next}` : location.pathname);
+  }
+  input?.addEventListener('input', render);
+  catSel?.addEventListener('change', render);
+  reset?.addEventListener('click', () => {
+    if (input) input.value = '';
+    if (catSel) catSel.value = '';
+    render();
+    input?.focus();
+  });
+  render();
+})();
+
+// ---------- Functional cookie notice ----------
+(function () {
+  if (document.querySelector('[data-cookie-banner]')) return;
+  let accepted = false;
+  try { accepted = localStorage.getItem('cookie-consent') === 'ok'; } catch (_) {}
+  if (accepted) return;
+  const banner = document.createElement('div');
+  banner.className = 'cookie-banner';
+  banner.setAttribute('data-cookie-banner', '');
+  banner.setAttribute('role', 'status');
+  banner.innerHTML = `
+    <p>Сайт использует функциональные cookie.</p>
+    <div class="cookie-banner__actions">
+      <a class="btn--secondary" href="/privacy.html">Подробнее</a>
+      <button class="btn--primary" type="button" data-cookie-ok>OK</button>
+    </div>
+  `;
+  document.body.appendChild(banner);
+  requestAnimationFrame(() => banner.classList.add('is-visible'));
+  banner.querySelector('[data-cookie-ok]')?.addEventListener('click', () => {
+    try { localStorage.setItem('cookie-consent', 'ok'); } catch (_) {}
+    banner.classList.remove('is-visible');
+  });
 })();

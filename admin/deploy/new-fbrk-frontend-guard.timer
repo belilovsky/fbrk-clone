@@ -1,0 +1,12 @@
+[Unit]
+Description=Run new.fbrk.kz frontend guard every minute
+
+[Timer]
+OnBootSec=2min
+OnUnitActiveSec=1min
+AccuracySec=10s
+Unit=new-fbrk-frontend-guard.service
+Persistent=true
+
+[Install]
+WantedBy=timers.target

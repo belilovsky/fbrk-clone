@@ -39,6 +39,15 @@ from .admin_platform.paths import upload_url_to_public_path, uploads_dir as plat
 from .admin_platform.templating import AdminJinja2Templates
 from .admin_platform.uploads import validate_image_upload
 from .db import db, init_db, row_to_article
+from .editorial_policy import (
+    POLICY_FIELDS,
+    SECTION_FIELDS,
+    load_policy,
+    policy_status,
+    save_policy,
+    safe_http_url,
+    write_public_policy_page,
+)
 from .editorjs import editorjs_to_sections, sections_to_editorjs
 from .publish import regenerate_data_js
 from .security import (
@@ -781,9 +790,8 @@ def _section_users(request: Request):
     return _RR_(url="/admin/users/list", status_code=302)
 @app.get("/admin/settings", response_class=_HR)
 def _section_settings_page(request: Request):
-    u=current_user(request)
-    if not u: return _auth_or_redirect(request)
-    return _templates.TemplateResponse("section.html", {"request":request,"user":u,"title":"Настройки","section":"settings_page","url":"/admin/settings"})
+    from fastapi.responses import RedirectResponse as _RR_
+    return _RR_(url="/admin/settings/list", status_code=302)
 
 @app.get("/admin/audit", response_class=_HR)
 def _section_audit(request: Request):
@@ -1142,6 +1150,71 @@ def _s_set(r:Request, _csrf: None = Depends(require_admin_csrf), key:str=_Form("
         )
         db.commit(); db.close()
     return _RR(url="/admin/settings/list", status_code=303)
+
+
+@app.get("/admin/editorial-policy", response_class=_HR2)
+def _editorial_policy_page(r: Request, saved: int = 0, published: int = 0):
+    u = current_user(r)
+    if not u:
+        return _auth_or_redirect(r)
+    with db() as conn:
+        policy = load_policy(conn)
+    sections = [{"key": key, "label": label} for key, label in SECTION_FIELDS]
+    return _t2.TemplateResponse(
+        "editorial_policy.html",
+        {
+            "request": r,
+            "user": u,
+            "title": "Редакционная политика",
+            "section": "editorial_policy",
+            "policy": policy,
+            "standard_url": safe_http_url(policy.get("standard_url", "")),
+            "fields": POLICY_FIELDS,
+            "sections": sections,
+            "status": policy_status(),
+            "saved": bool(saved),
+            "published": bool(published),
+        },
+    )
+
+
+@app.post("/admin/editorial-policy")
+async def _editorial_policy_save(r: Request, _csrf: None = Depends(require_admin_csrf)):
+    u = current_user(r)
+    if not u:
+        return _auth_or_redirect(r)
+    form = await r.form()
+    with db() as conn:
+        changed = save_policy(conn, form)
+        result = write_public_policy_page(conn)
+        record_audit(
+            conn,
+            user=u,
+            action="update",
+            entity="editorial_policy",
+            entity_id="public",
+            details={"changed": changed, **result},
+        )
+    return _RR(url="/admin/editorial-policy?saved=1", status_code=303)
+
+
+@app.post("/admin/editorial-policy/publish")
+def _editorial_policy_publish(r: Request, _csrf: None = Depends(require_admin_csrf)):
+    u = current_user(r)
+    if not u:
+        return _auth_or_redirect(r)
+    with db() as conn:
+        result = write_public_policy_page(conn)
+        record_audit(
+            conn,
+            user=u,
+            action="publish",
+            entity="editorial_policy",
+            entity_id="public",
+            details=result,
+        )
+    return _RR(url="/admin/editorial-policy?published=1", status_code=303)
+
 
 @app.get("/admin/audit/list", response_class=_HR2)
 def _a_list(r:Request):

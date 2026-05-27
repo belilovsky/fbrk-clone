@@ -121,6 +121,24 @@ The previous maintenance caveat is also closed in this branch: FastAPI startup
 now uses lifespan, and legacy admin/SSR template calls are normalized by the
 shared `AdminJinja2Templates` adapter.
 
+## Editorial Policy Carrier Pass 2026-05-27
+
+ФБРК теперь не только публичный носитель Editorial Hub, но и админ-носитель:
+
+- добавлен защищённый раздел `/admin/editorial-policy`;
+- публичные формулировки, статус, контакты и ссылка на Editorial Hub хранятся в
+  `settings` с префиксом `editorial_policy.*`;
+- сохранение и ручная публикация требуют session + CSRF;
+- каждое изменение пишет best-effort audit event `editorial_policy`;
+- публичный URL `/editorial-policy.html` остаётся статическим HTML для SEO,
+  отказоустойчивости и синхронизации на split-фронтенд;
+- генератор берёт актуальные header/footer из `index.html`, чтобы не было
+  рассинхронизации shell.
+
+Практическое правило: редактор меняет политику в админке, админка
+перегенерирует статическую страницу, а public/split хосты получают готовый HTML
+при обычном deploy/sync.
+
 ## Follow-up Pass 2026-05-22
 
 Additional container-era admin/editor check after backend Dockerization:
@@ -466,3 +484,201 @@ Verification:
   home, archive, and article render through `https://new.fbrk.kz`; article
   title, share URLs, `Упоминания`/`Материалы по теме`, and `AV DS 3.7.1` footer
   are present.
+
+## 2026-05-24 final frontend polish
+
+The final pre-prod/front-facing pass found one real desktop regression that was
+worth closing before calling the split frontend finished: around `1280px` wide,
+the public header grid was slightly wider than the viewport, so the right-side
+action group could clip one of the social buttons even though mobile and full
+desktop widths looked acceptable.
+
+Changes:
+
+- added a safer `minmax(0, 1fr)` middle track for `.site-header__inner`;
+- allowed the nav cluster to shrink cleanly instead of pushing the action group
+  off-canvas;
+- added an intermediate desktop breakpoint (`max-width: 1320px`) that hides the
+  long logo text, tightens nav pill padding, and reduces action spacing before
+  the dedicated mobile breakpoint;
+- bumped public asset references to `20260524115400` across public shells and
+  `admin/templates/article_ssr.html` so the CSS fix is not lost behind browser
+  cache.
+
+Verification:
+
+- Local verifier: `./scripts/verify_preprod.sh` -> OK, including `29 passed`,
+  Python compile checks, and strict split linkage `STATUS=ok`.
+- Local browser smoke:
+  - `http://127.0.0.1:5057/` at `1280px`: `scrollWidth == clientWidth`,
+    both social buttons visible, no header clipping.
+  - `390px` home/article/admin: no horizontal overflow.
+- Live browser smoke:
+  - `https://new.fbrk.kz/` at `1280px`: `overflow=false`,
+    `socialCount=2`, `/css/style.css?v=20260524115400`.
+  - representative article on `new.fbrk.kz`: `overflow=false`,
+    header action group fully visible.
+  - `https://fbrk.qdev.run/admin/login`: renders cleanly with no overflow.
+
+## 2026-05-24 Entity chips harmonization pass
+
+После доработки AI-контента осталось техническое рассогласование: на карточках и
+в SEO-инфо блоке сущности по-разному отрезались (32 в некоторых местах,
+12 в других), плюс отсутствовала защита по количеству сущностей при
+критических краях (0 / >12). Пробежались все публичные и SSR-пути и выровняли
+лимиты.
+
+Изменения:
+
+- `admin/app/publish.py`
+  - публичный лимит сущностей в `_public_entities` и сборке `_article_full_shape`
+    поставлен в `12`.
+- `admin/app/seo.py`
+  - `_visible_entities` теперь лимитирует выдачу до `12`.
+- `admin/enrich.py`
+  - `_sanitize_result` жёстко режет AI-выход по `12` сущностям;
+  - `--quality-rerun` теперь пересобирает записи с менее чем `2` или более чем
+    `12` сущностями;
+  - дата времени теперь в UTC-формате через `datetime.now(timezone.utc)`.
+- `admin/templates/article_ssr.html` и `js/app.js`
+  - отрисовка чипов сущностей унифицирована до `12`.
+
+Проверка:
+
+- `python3 -m pytest` -> `37 passed`.
+- `article_full_shape` и `_visible_entities` теперь возвращают максимум `12` элементов
+  в тестах.
+
+## 2026-05-24 Split sync stabilization
+
+Во время финального прохода обнаружилось, что актуальный live backend уже
+смотрит не на старый VPS `62.72.32.112`, а на `148.230.117.131`, тогда как
+`new.fbrk.kz` живёт на `213.155.22.190`. Из-за этого ручные проверки на старом
+хосте могли давать ложное чувство, что правка уже в проде.
+
+Что закрыто:
+
+- live operational mapping перепроверен по DNS и HTTP;
+- `sync_new_frontend_to_vps.sh` теперь:
+  - принимает новый host key через `StrictHostKeyChecking=accept-new`;
+  - автоматически использует `~/.ssh/fbrk_new_frontend_sync`, если ключ
+    присутствует на backend host;
+  - вычищает `.DS_Store` и `._*` из package и target tree;
+- на live backend VPS `148.230.117.131` создан выделенный SSH key для sync на
+  `213.155.22.190` и добавлен в `authorized_keys` frontend VPS;
+- после этого штатный backend -> new frontend sync завершился `STATUS=synced`;
+- финальный `scripts/verify_preprod.sh` прошёл зелёно (`STATUS=ok`).
+
+## 2026-05-24 AI summary and entity quality pass
+
+The next production-facing gap was not layout but content quality inside the AI
+layer that powers article summary metadata, TTS copy, and public entity chips.
+A live DB audit on the active backend host showed that all `4,727` published
+articles already had `article_meta` rows, but a historical fallback wave from
+`2026-05-14` had left a long tail of weak outputs:
+
+- `589` rows still marked `model=fallback-local`;
+- `621` short summaries were longer than the intended `180` characters;
+- `508` short summaries simply echoed `dek`;
+- `586` rows exposed entity lists typed entirely as `other`;
+- a small tail of broken endings, title copies, or empty entities remained.
+
+That was enough drift to justify a targeted rerun instead of pretending the AI
+surface was "good enough".
+
+Changes:
+
+- added short-summary normalization helpers in `admin/enrich.py`:
+  stripping source/date boilerplate, sentence-aware trimming, punctuation
+  repair, and a hard `180`-character target for `summary_short`;
+- added heuristic entity typing for fallback output so obvious `gov`, `org`,
+  `place`, and `person` names no longer collapse into `other`;
+- added `--quality-rerun`, which reselects only rows with
+  `fallback-local`, overlong summaries, or title-copy short summaries;
+- updated split static article rendering so `summaryShort` is now the first
+  source for `<meta name="description">`, Open Graph, Twitter, and JSON-LD
+  article descriptions instead of stale or overly long `dek`.
+
+Verification:
+
+- local tests:
+  - `./.venv/bin/python -m pytest tests/test_public_entity_tags.py tests/test_static_article_meta.py -q`
+    -> `14 passed`;
+  - `python3 -m py_compile admin/enrich.py admin/scripts/sync_new_frontend_to_plesk.py`
+    -> OK;
+  - `./scripts/verify_preprod.sh` -> OK, including strict split linkage.
+- live safety prep:
+  - DB backup:
+    `/opt/fbrk-admin/backups/fbrk-20260524T120742Z-pre-enrich-quality.db`;
+  - code snapshot:
+    `/opt/fbrk-admin/code-snapshots/20260524T120742Z-enrich-quality/enrich.py`.
+- live rerun:
+  - smoke batch:
+    `python3 /opt/fbrk-admin/enrich.py --quality-rerun --limit 5 --model deepseek-chat --sleep 0.4`
+    -> `ok=5 err=0`;
+  - full batch:
+    `python3 /opt/fbrk-admin/enrich.py --quality-rerun --model deepseek-chat --sleep 0.1`
+    -> `DONE ok=918 err=0 total=918`.
+- live end state after rerun and final normalization of the last two edge rows:
+  - `fallback_local=0`
+  - `long_summary=0`
+  - `all_other=0`
+  - `empty_summary=0`
+  - `empty_entities=0`
+  - `quality_queue_remaining=0`
+- split publication:
+  - regenerated `data.js` on backend and re-ran
+    `/opt/fbrk-admin/scripts/sync_new_frontend_to_vps.sh`;
+  - backend/new hashes matched for `data.js`, `data-archive.js`,
+    `article-full.js`, and `search-index.js`;
+  - curl-confirmed article HTML on `https://new.fbrk.kz/a/<slug>/` now exposes
+    the cleaned AI summary in meta description, Open Graph, Twitter, and
+    JSON-LD output.
+
+Residual note:
+
+- `region` is still empty on `1,193` rows. This is intentionally not treated as
+  a blocker here because many national, broad, or non-local materials do not
+  have a single defensible region label. The current pass focused on summary and
+  entity quality, not forcing synthetic geography.
+
+Follow-up entity pass:
+
+The first rerun fixed summary quality and raw entity typing, but a second audit
+showed two narrower tails still worth closing:
+
+- `516` rows still matched the stricter quality selector because they had
+  entity counts outside the desired `2..12` range;
+- public `article-full.js` still contained `18` articles with fewer than two
+  visible entity chips after public-type filtering.
+
+Changes:
+
+- expanded `--quality-rerun` selection in `admin/enrich.py` so it also requeues
+  rows with `<2` or `>12` stored entities;
+- capped sanitized model output to `12` stored entities;
+- added small deterministic entity backfill from article context when the model
+  still returns only one entity;
+- capped public chip rendering to `12` across SSR and split static article
+  pages;
+- added a publication-layer supplement in `admin/app/publish.py` so obvious
+  public entities such as money figures or clear org/place names can still
+  appear when the raw stored entity list is too thin after public filtering,
+  while explicitly avoiding awkward partial place fragments.
+
+Verification:
+
+- second live rerun:
+  `python3 /opt/fbrk-admin/enrich.py --quality-rerun --model deepseek-chat --sleep 0.1`
+  -> `DONE ok=516 err=0 total=516`;
+- final DB state:
+  - `entities_lt_2=0`
+  - `entities_gt_12=0`
+  - `summary_equals_dek=0`
+  - `summary_ends_badly=0`
+  - `region_empty=1111`
+- final public state after regenerate + VPS sync:
+  - `public_entities_lt_2=4`
+  - `public_entities_gt_12=0`
+  - split linkage strict smoke still passes with matching backend/new hashes and
+    `STATUS=ok`.

@@ -5,6 +5,7 @@ import html
 import hashlib
 import json
 import os
+import re
 from datetime import datetime, timezone
 from pathlib import Path
 
@@ -70,6 +71,40 @@ def _unique_strings(*groups: list, limit: int = 16) -> list[str]:
     return out
 
 
+def _derive_image_meta(url: str) -> dict[str, object]:
+    """Normalize image display metadata for public payloads."""
+    if not url:
+        return {
+            "imageKind": "other",
+            "imageSource": "",
+            "imageHasRealPerson": False,
+        }
+
+    lowered = str(url).lower().strip()
+    if "chatgpt" in lowered or "midjourney" in lowered or "dall" in lowered or "stable" in lowered or "openai" in lowered:
+        kind = "ai"
+    else:
+        kind = "photo"
+
+    if lowered.startswith("/"):
+        if "/img/covers/" in lowered:
+            source = "cover"
+        elif "/img/" in lowered:
+            source = "upload"
+        else:
+            source = "internal"
+    elif lowered.startswith("data:"):
+        source = "inline"
+    else:
+        source = "external"
+
+    return {
+        "imageKind": kind,
+        "imageSource": source,
+        "imageHasRealPerson": False,
+    }
+
+
 def _manual_public_tags(
     raw: list,
     auto_raw: list,
@@ -93,6 +128,51 @@ def _manual_public_tags(
 
 
 PUBLIC_ENTITY_TYPES = {"person", "org", "gov", "place", "law", "case", "money"}
+PUBLIC_PLACE_HINTS = (
+    "астана",
+    "алматы",
+    "шымкент",
+    "актау",
+    "актобе",
+    "атырау",
+    "область",
+    "район",
+    "казахстан",
+    "тараз",
+    "туркестан",
+    "павлодар",
+    "семей",
+    "костанай",
+)
+PUBLIC_PARTIAL_PLACE_SUFFIXES = ("ская", "ский", "ское", "ской", "скую", "ские", "ских", "ском")
+PUBLIC_GOV_HINTS = (
+    "агентств",
+    "акимат",
+    "аудиторская палата",
+    "департамент",
+    "комитет",
+    "министер",
+    "мвд",
+    "мсх",
+    "прокуратур",
+    "суд",
+)
+PUBLIC_ORG_HINTS = (
+    "bank",
+    "economy.kz",
+    "halyqstan",
+    "telegram",
+    "тоо ",
+    "ип ",
+    "фб",
+    "фбрк",
+    "чси",
+    "volvo",
+)
+PUBLIC_MONEY_RE = re.compile(
+    r"\b\d[\d\s.,]*\s*(?:млн|млрд|трлн)?\s*(?:тенге|₸|доллар(?:ов|а)?|usd|евро|€)\b",
+    re.IGNORECASE,
+)
 
 
 def _hidden_entity_names(raw: list) -> set[str]:
@@ -107,7 +187,7 @@ def _hidden_entity_names(raw: list) -> set[str]:
     return out
 
 
-def _public_entities(raw: list, limit: int = 32, exclude_names: set[str] | None = None) -> list[dict]:
+def _public_entities(raw: list, limit: int = 12, exclude_names: set[str] | None = None) -> list[dict]:
     excluded = {str(x or "").strip().casefold() for x in (exclude_names or set()) if str(x or "").strip()}
     out: list[dict] = []
     seen: set[str] = set()
@@ -129,6 +209,79 @@ def _public_entities(raw: list, limit: int = 32, exclude_names: set[str] | None 
         seen.add(key)
         if len(out) >= limit:
             break
+    return out
+
+
+def _guess_public_entity_type(name: str) -> str:
+    value = str(name or "").strip()
+    if not value:
+        return ""
+    low = value.casefold()
+    if PUBLIC_MONEY_RE.fullmatch(value):
+        return "money"
+    if any(hint in low for hint in PUBLIC_PLACE_HINTS):
+        if " " not in value and low.endswith(PUBLIC_PARTIAL_PLACE_SUFFIXES):
+            return ""
+        return "place"
+    if any(hint in low for hint in PUBLIC_GOV_HINTS):
+        return "gov"
+    if any(hint in low for hint in PUBLIC_ORG_HINTS):
+        return "org"
+    if value.isupper() and 2 <= len(value) <= 10:
+        return "org"
+    capitalized_words = re.findall(r"[A-ZА-ЯЁ][A-Za-zА-Яа-яЁё-]{1,}", value)
+    if len(capitalized_words) >= 2:
+        return "person"
+    return ""
+
+
+def _supplement_public_entities(article: dict, existing: list[dict], limit: int = 2) -> list[dict]:
+    if limit <= 0:
+        return []
+
+    excluded_names = {
+        str(item.get("name") or "").strip().casefold()
+        for item in existing
+        if isinstance(item, dict) and str(item.get("name") or "").strip()
+    }
+    out: list[dict] = []
+
+    def add(name: str, kind: str) -> None:
+        clean = str(name or "").strip()[:80]
+        if not clean or kind not in PUBLIC_ENTITY_TYPES:
+            return
+        key = clean.casefold()
+        if key in excluded_names:
+            return
+        excluded_names.add(key)
+        out.append({"name": clean, "type": kind})
+
+    texts = [
+        str(article.get("title") or ""),
+        str(article.get("dek") or ""),
+        str(article.get("summaryShort") or article.get("_meta_summary_short") or ""),
+        str(article.get("region") or article.get("_meta_region") or ""),
+    ]
+
+    for text in texts:
+        for match in PUBLIC_MONEY_RE.findall(text):
+            add(match, "money")
+            if len(out) >= limit:
+                return out
+
+    blob = " ".join(texts)
+    for match in re.finditer(
+        r"\b[A-ZА-ЯЁ][A-Za-zА-Яа-яЁё0-9-]{2,}(?:\s+[A-ZА-ЯЁ][A-Za-zА-Яа-яЁё0-9-]{2,}){0,2}\b",
+        blob,
+    ):
+        name = match.group(0).strip()
+        kind = _guess_public_entity_type(name)
+        if not kind:
+            continue
+        add(name, kind)
+        if len(out) >= limit:
+            return out
+
     return out
 
 
@@ -181,6 +334,19 @@ def _public_shape(a: dict) -> dict:
         "tags": a["tags"],
         **({"featured": True} if a.get("featured") else {}),
     }
+
+    source_override = str(a.get("imageSource") or "").strip()
+    shape["imageSource"] = source_override or _derive_image_meta(a.get("image") or "")["imageSource"]
+
+    kind_override = str(a.get("imageKind") or "").strip().lower()
+    shape["imageKind"] = kind_override or _derive_image_meta(a.get("image") or "")["imageKind"]
+
+    has_person_override = a.get("imageHasRealPerson")
+    if isinstance(has_person_override, bool):
+        shape["imageHasRealPerson"] = bool(has_person_override)
+    else:
+        shape["imageHasRealPerson"] = bool(_derive_image_meta(a.get("image") or "").get("imageHasRealPerson"))
+
     imp = a.get("_meta_importance")
     if imp is not None and imp != 0:
         shape["importance"] = int(imp)
@@ -210,8 +376,19 @@ def _article_full_shape(a: dict) -> dict:
     )
     entities = _public_entities(
         raw_entities,
-        limit=32,
+        limit=12,
     )
+    if len(entities) < 2:
+        entities.extend(
+            _supplement_public_entities(
+                {
+                    **a,
+                    "summaryShort": str(a.get("_meta_summary_short") or "").strip(),
+                },
+                entities,
+                limit=min(2 - len(entities), 12 - len(entities)),
+            )
+        )
     entity_names = {str(e.get("name") or "").casefold() for e in entities}
     shape["tags"] = [
         tag for tag in manual_tags
@@ -241,6 +418,11 @@ def _write_sitemap(articles: list[dict], web_root: Path) -> None:
         (f"{SITE_URL}/archive.html?cat=investigation", now, "daily", "0.8"),
         (f"{SITE_URL}/archive.html?cat=news", now, "daily", "0.8"),
         (f"{SITE_URL}/about.html", now, "monthly", "0.5"),
+        (f"{SITE_URL}/contacts.html", now, "monthly", "0.5"),
+        (f"{SITE_URL}/editorial-policy.html", now, "monthly", "0.5"),
+        (f"{SITE_URL}/privacy.html", now, "monthly", "0.4"),
+        (f"{SITE_URL}/search.html", now, "weekly", "0.4"),
+        (f"{SITE_URL}/sitemap.html", now, "weekly", "0.3"),
     ]
     for a in articles:
         iso = (a.get("dateIso") or now)

@@ -157,6 +157,20 @@ def _sections_to_plain(sections: list) -> str:
     return "\n\n".join(p for p in parts if p)
 
 
+def _header_dek(dek: str, sections: list) -> str:
+    value = _strip_html(dek or "").strip()
+    if not value or not sections:
+        return ""
+    if len(value) > 420 or "\n\n" in value:
+        return ""
+
+    first = sections[0] if isinstance(sections[0], dict) else {}
+    first_text = _strip_html(f"{first.get('h') or ''} {first.get('p') or ''}")
+    if first_text.startswith(value):
+        return ""
+    return value
+
+
 def _sections_to_html(sections: list, site_url: str) -> str:
     """Render sections as clean semantic HTML for SSR body + RSS content:encoded."""
     out: list[str] = []
@@ -225,7 +239,7 @@ def _hidden_entity_names(raw: list) -> set[str]:
     return out
 
 
-def _visible_entities(raw: list, exclude_names: set[str] | None = None, limit: int = 32) -> list[dict]:
+def _visible_entities(raw: list, exclude_names: set[str] | None = None, limit: int = 12) -> list[dict]:
     """Return public-facing named entities, excluding topic tags and fallback noise."""
     excluded = {str(x or "").strip().casefold() for x in (exclude_names or set()) if str(x or "").strip()}
     out: list[dict] = []
@@ -364,13 +378,17 @@ def ssr_article(slug: str, request: Request):
 
     url = f"{site_url}/a/{a['slug']}"
     title = a["title"]
-    dek = _strip_html(a.get("dek") or "")
+    raw_dek = a.get("dek") or ""
+    dek = _strip_html(raw_dek)
     plain_body = _sections_to_plain(a.get("sections") or [])
+    header_dek = _header_dek(raw_dek, a.get("sections") or [])
+    hero_dek = (meta.get("summary_short") or header_dek or "").strip()
     # Prefer AI short summary when available (tighter, better for SEO/LLMs)
     desc = (meta.get("summary_short") or dek or plain_body[:240]).strip()[:240]
     image = _abs_url(a.get("image") or "", site_url)
     body_html = _sections_to_html(a.get("sections") or [], site_url)
     word_count = len((plain_body or "").split())
+    read_min = max(1, round(len((" ".join(part for part in [hero_dek, plain_body] if part)).split()) / 180))
 
     date_iso = a.get("dateIso") or ""
     date_label = a.get("date") or ""
@@ -435,7 +453,6 @@ def ssr_article(slug: str, request: Request):
             "cssSelector": [
                 ".article__title",
                 ".article__dek",
-                ".article__lead",
                 ".article__tldr-list",
             ],
         },
@@ -466,10 +483,13 @@ def ssr_article(slug: str, request: Request):
         "url": url,
         "title": title,
         "desc": desc,
+        "header_dek": header_dek,
+        "hero_dek": hero_dek,
         "image": image,
         "body_html": body_html,
         "date_iso": date_iso,
         "date_label": date_label,
+        "read_min": read_min,
         "published_iso": published_iso,
         "modified_iso": modified_iso,
         "category_label": category_label,
@@ -617,6 +637,11 @@ def sitemap_xml(request: Request):
     _url(f"{site_url}/archive.html?cat=investigation", newest, "daily", "0.8")
     _url(f"{site_url}/archive.html?cat=news", newest, "daily", "0.8")
     _url(f"{site_url}/about.html", now, "monthly", "0.5")
+    _url(f"{site_url}/contacts.html", now, "monthly", "0.5")
+    _url(f"{site_url}/editorial-policy.html", now, "monthly", "0.5")
+    _url(f"{site_url}/privacy.html", now, "monthly", "0.4")
+    _url(f"{site_url}/search.html", now, "weekly", "0.4")
+    _url(f"{site_url}/sitemap.html", now, "weekly", "0.3")
 
     recent_ids = {a["id"] for a in recent_news}
     for a in arts:

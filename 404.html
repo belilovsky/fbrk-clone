@@ -7,9 +7,10 @@
     <meta name="description" content="Запрошенная страница не найдена. Вернитесь на главную или воспользуйтесь поиском по материалам." />
     <meta name="robots" content="noindex" />
     <meta name="theme-color" content="#0C115F" />
+    <script>try{const t=localStorage.getItem("theme")||localStorage.getItem("fbrk_theme");document.documentElement.dataset.theme=t==="dark"||t==="light"?t:(matchMedia("(prefers-color-scheme: dark)").matches?"dark":"light");}catch(_){}</script>
     <link rel="icon" type="image/png" sizes="32x32" href="/img/brand/favicon-32.png" />
-    <link rel="stylesheet" href="/fonts/avds/avds-fonts.css?v=202605161904" />
-    <link rel="stylesheet" href="/css/style.css?v=202605161904" />
+    <link rel="stylesheet" href="/fonts/avds/avds-fonts.css?v=20260527160712" />
+    <link rel="stylesheet" href="/css/style.css?v=20260527160712" />
   </head>
   <body>
     <a class="skip-link" href="#main">Перейти к содержимому</a>
@@ -32,12 +33,12 @@
         <div class="site-header__actions">
           <div class="lang-switch" role="group" aria-label="Язык сайта">
             <button type="button" data-lang="ru" aria-pressed="true">RU</button>
-            <button type="button" data-lang="kk" aria-pressed="false">ҚАЗ</button>
+            <button type="button" data-lang="kk" aria-pressed="false" aria-disabled="true">ҚАЗ</button>
           </div>
           <span class="site-header__divider" aria-hidden="true"></span>
-          <button class="site-header__btn" type="button" data-search-open aria-label="Открыть поиск">
+          <a class="site-header__btn" href="/search.html" data-search-open aria-label="Открыть поиск">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="m21 21-4.35-4.35"/></svg>
-          </button>
+          </a>
           <button class="site-header__btn" type="button" data-theme-toggle aria-label="Переключить тему">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></svg>
           </button>
@@ -59,7 +60,7 @@
         <div class="errorpage__code">404</div>
         <h1 class="errorpage__title">Страница не найдена</h1>
         <p class="errorpage__text">
-          Возможно, материал удалён или адрес введён с ошибкой.
+          Возможно, материал удалён или адрес введён неверно.
           Попробуйте вернуться на главную или воспользоваться поиском по архиву.
         </p>
         <div class="errorpage__actions">
@@ -91,9 +92,11 @@
             <div class="site-footer__heading">Редакция</div>
             <ul class="site-footer__list" role="list">
               <li><a href="/about.html">О нас</a></li>
-              <li><a href="/about.html">Контакты</a></li>
+              <li><a href="/contacts.html">Контакты</a></li>
+              <li><a href="/editorial-policy.html">Редакционная политика</a></li>
+              <li><a href="/privacy.html">Политика конфиденциальности</a></li>
               <li><a href="/feed.xml">RSS-лента</a></li>
-              <li><a href="/sitemap.xml">Карта сайта</a></li>
+              <li><a href="/sitemap.html">Карта сайта</a></li>
             </ul>
           </div>
           <div>
@@ -108,7 +111,7 @@
           <div class="site-footer__legal">
             <span>© 2023–2026 ФБРК</span>
             <span aria-hidden="true">·</span>
-            <span>AV DS 3.7.1</span>
+            <span class="site-footer__version">AV DS 3.7.1</span>
             <span aria-hidden="true">·</span>
             <span>Астана, Казахстан</span>
           </div>
@@ -138,7 +141,7 @@
       </div>
     </div>
 
-    <script src="/js/data.js?v=202605161904"></script>
-    <script src="/js/app.js?v=202605161904"></script>
+    <script src="/js/data.js?v=20260527160712"></script>
+    <script src="/js/app.js?v=20260527160712"></script>
   </body>
 </html>

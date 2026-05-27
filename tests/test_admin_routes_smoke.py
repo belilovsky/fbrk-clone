@@ -21,6 +21,19 @@ def _client(tmp_path: Path) -> TestClient:
     data_js = public_root / "js" / "data.js"
     uploads_dir.mkdir(parents=True)
     data_js.parent.mkdir(parents=True)
+    (public_root / "index.html").write_text(
+        """
+<!doctype html>
+<html lang="ru">
+<head><link rel="stylesheet" href="/css/style.css?v=20260527000000"></head>
+<body>
+  <header class="site-header" role="banner"><div>ФБРК</div></header>
+  <footer class="site-footer" role="contentinfo"><div>Редакция</div></footer>
+</body>
+</html>
+""".strip(),
+        encoding="utf-8",
+    )
 
     os.environ.update(
         {
@@ -138,6 +151,46 @@ def test_admin_form_csrf_reject_and_accept(tmp_path: Path) -> None:
         assert accepted.status_code == 303
 
 
+def test_editorial_policy_admin_saves_and_generates_static_page(tmp_path: Path) -> None:
+    with _client(tmp_path) as client:
+        protected = client.get("/admin/editorial-policy", follow_redirects=False)
+        assert protected.status_code == 302
+        assert protected.headers["location"] == "/admin/login"
+
+        _login(client)
+        page = client.get("/admin/editorial-policy")
+        assert page.status_code == 200
+        assert "Редакционная политика" in page.text
+        token = _csrf_from(page.text)
+
+        rejected = client.post(
+            "/admin/editorial-policy",
+            data={"title": "Редакционная политика"},
+            follow_redirects=False,
+        )
+        assert rejected.status_code == 403
+
+        accepted = client.post(
+            "/admin/editorial-policy",
+            data={
+                "csrf_token": token,
+                "title": "Редакционная политика <test>",
+                "lede": "Публичный стандарт без HTML-инъекций.",
+            },
+            follow_redirects=False,
+        )
+        assert accepted.status_code == 303
+        assert accepted.headers["location"] == "/admin/editorial-policy?saved=1"
+
+        generated = tmp_path / "public" / "editorial-policy.html"
+        assert generated.exists()
+        html = generated.read_text(encoding="utf-8")
+        assert "Редакционная политика &lt;test&gt;" in html
+        assert "Редакционная политика <test>" not in html
+        assert '<header class="site-header"' in html
+        assert '<footer class="site-footer"' in html
+
+
 def test_upload_policy_rejects_bad_image(tmp_path: Path) -> None:
     with _client(tmp_path) as client:
         _login(client)
@@ -202,6 +255,37 @@ def test_session_api_mutation_requires_csrf_and_updates_frontend_data(tmp_path: 
         assert "Материалы по теме" in ssr.text
         assert "Codex related title" in ssr.text
         assert "Уникальное описание related" not in ssr.text
+
+
+def test_ssr_article_omits_long_imported_dek_from_header(tmp_path: Path) -> None:
+    with _client(tmp_path) as client:
+        _login(client)
+        token = _csrf_from(client.get("/admin/").text)
+        payload = _article_payload("codex-long-dek")
+        payload["category"] = "investigation"
+        payload["categoryLabel"] = "Расследование"
+        payload["dek"] = "\n\n".join(
+            [
+                "Редакция ФБРК анализирует динамику изменения площадей крупнейших землепользователей Казахстана.",
+                "Напомним, в редакцию ФБРК массово поступают жалобы из регионов на некорректное изъятие.",
+                "Изначально редакция ФБРК направляла обращения в областные акиматы и профильные ведомства.",
+            ]
+        )
+        payload["body"] = {
+            "blocks": [
+                {
+                    "type": "paragraph",
+                    "data": {"text": payload["dek"]},
+                }
+            ]
+        }
+        created = client.post("/api/articles", json=payload, headers={"X-CSRF-Token": token})
+        assert created.status_code == 200
+
+        ssr = client.get("/a/codex-long-dek")
+        assert ssr.status_code == 200
+        assert '<p class="article__dek"' not in ssr.text
+        assert "динамику изменения площадей" in ssr.text
 
 
 def test_admin_articles_list_keeps_scripts_out_of_title_and_has_csrf(tmp_path: Path) -> None:

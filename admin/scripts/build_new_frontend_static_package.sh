@@ -19,12 +19,12 @@ mkdir -p "${OUT_DIR}/css" "${OUT_DIR}/js" "${OUT_DIR}/fonts/avds"
 rewrite_public_html() {
   sed -E \
     -e "s#https://fbrk.qdev.run#${PUBLIC_ORIGIN}#g" \
-    -e "s#\\?v=[0-9]{12}#?v=${ASSET_VERSION}#g"
+    -e "s#\\?v=[0-9]+#?v=${ASSET_VERSION}#g"
 }
 
 cd "${REPO_ROOT}"
 
-for file in index.html archive.html about.html article.html 404.html .htaccess; do
+for file in index.html archive.html about.html article.html contacts.html editorial-policy.html privacy.html search.html sitemap.html 404.html .htaccess; do
   rewrite_public_html < "${file}" > "${OUT_DIR}/${file}"
 done
 
@@ -73,6 +73,7 @@ EOF
 curl -fsSL "${BACKEND_ORIGIN}/js/data.js" -o "${OUT_DIR}/js/data.js"
 curl -fsSL "${BACKEND_ORIGIN}/js/data-archive.js" -o "${OUT_DIR}/js/data-archive.js"
 curl -fsSL "${BACKEND_ORIGIN}/js/article-full.js" -o "${OUT_DIR}/js/article-full.js"
+curl -fsSL "${BACKEND_ORIGIN}/js/search-index.js" -o "${OUT_DIR}/js/search-index.js"
 curl -fsSL "${BACKEND_ORIGIN}/robots.txt" | rewrite_public_html > "${OUT_DIR}/robots.txt"
 curl -fsSL "${BACKEND_ORIGIN}/sitemap.xml" | rewrite_public_html > "${OUT_DIR}/sitemap.xml"
 curl -fsSL "${BACKEND_ORIGIN}/feed.xml" | rewrite_public_html > "${OUT_DIR}/feed.xml"
@@ -97,10 +98,12 @@ def parse_js(path: pathlib.Path, marker: str) -> dict:
 data = parse_js(out / "js" / "data.js", "const FBRK_DATA =")
 archive = parse_js(out / "js" / "data-archive.js", "window.ARTICLES_ARCHIVE =")
 article_full = parse_js(out / "js" / "article-full.js", "window.ARTICLE_FULL =")
+search_index = parse_js(out / "js" / "search-index.js", "const FBRK_SEARCH_INDEX =")
 
 print(f"OUT_DIR={out}")
 print(f"DATA_JS_ARTICLES={len(data.get('articles') or [])}")
 print(f"DATA_JS_TOTAL={data.get('totalCount')}")
 print(f"ARCHIVE_ARTICLES={len(archive.get('articles') or [])}")
 print(f"ARTICLE_FULL_ARTICLES={len(article_full.get('articles') or [])}")
+print(f"SEARCH_INDEX_ITEMS={len(search_index.get('items') or [])}")
 PY

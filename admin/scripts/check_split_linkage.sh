@@ -1,10 +1,38 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-NEW_ORIGIN="${1:-https://new.fbrk.kz}"
-BACKEND_ORIGIN="${2:-https://fbrk.qdev.run}"
-STRICT="${3:-}"
+NEW_ORIGIN="https://new.fbrk.kz"
+BACKEND_ORIGIN="https://fbrk.qdev.run"
+STRICT=""
 FBRK_NEW_RESOLVE_IP="${FBRK_NEW_RESOLVE_IP:-}"
+CURL_CONNECT_TIMEOUT="${CURL_CONNECT_TIMEOUT:-8}"
+CURL_MAX_TIME="${CURL_MAX_TIME:-120}"
+new_origin_set=0
+backend_origin_set=0
+
+for arg in "$@"; do
+  case "$arg" in
+    --strict)
+      STRICT="--strict"
+      ;;
+    http://*|https://*)
+      if [ "$new_origin_set" -eq 0 ]; then
+        NEW_ORIGIN="${arg%/}"
+        new_origin_set=1
+      elif [ "$backend_origin_set" -eq 0 ]; then
+        BACKEND_ORIGIN="${arg%/}"
+        backend_origin_set=1
+      else
+        echo "ERROR: unexpected origin argument: ${arg}" >&2
+        exit 2
+      fi
+      ;;
+    *)
+      echo "ERROR: unexpected argument: ${arg}" >&2
+      exit 2
+      ;;
+  esac
+done
 
 fail=0
 CURL_NEW_RESOLVE_ARGS=()
@@ -25,9 +53,9 @@ curl_url() {
   local url="$1"
   shift
   if [[ "$url" == "${NEW_ORIGIN}"* ]] && [ "${#CURL_NEW_RESOLVE_ARGS[@]}" -gt 0 ]; then
-    curl "${CURL_NEW_RESOLVE_ARGS[@]}" "$@" "$url"
+    curl --connect-timeout "${CURL_CONNECT_TIMEOUT}" --max-time "${CURL_MAX_TIME}" "${CURL_NEW_RESOLVE_ARGS[@]}" "$@" "$url"
   else
-    curl "$@" "$url"
+    curl --connect-timeout "${CURL_CONNECT_TIMEOUT}" --max-time "${CURL_MAX_TIME}" "$@" "$url"
   fi
 }
 
@@ -149,6 +177,13 @@ extract_canonical() {
   echo "$canon"
 }
 
+extract_cache_control() {
+  local url="$1"
+  curl_url "$url" -sSI \
+    | tr -d '\r' \
+    | awk 'tolower($1) == "cache-control:" {sub(/^[^:]*:[[:space:]]*/, "", $0); print; exit}'
+}
+
 ts="$(date -u +%Y-%m-%dT%H:%M:%SZ)"
 new_total="$(extract_total_count "$NEW_ORIGIN")"
 backend_total="$(extract_total_count "$BACKEND_ORIGIN")"
@@ -176,6 +211,8 @@ backend_health_code="$(http_code "${BACKEND_ORIGIN}/admin/healthz")"
 
 new_canonical_home="$(extract_canonical "${NEW_ORIGIN}/")"
 new_canonical_article="$(extract_canonical "${NEW_ORIGIN}/a/${first_slug}")"
+new_home_cache_control="$(extract_cache_control "${NEW_ORIGIN}/")"
+new_article_cache_control="$(extract_cache_control "${NEW_ORIGIN}/a/${first_slug}")"
 
 echo "CHECK_TS_UTC=${ts}"
 echo "NEW_ORIGIN=${NEW_ORIGIN}"
@@ -202,6 +239,8 @@ echo "HTTP_BACKEND_HOME=${backend_home_code}"
 echo "HTTP_BACKEND_ADMIN_HEALTHZ=${backend_health_code}"
 echo "NEW_CANONICAL_HOME=${new_canonical_home}"
 echo "NEW_CANONICAL_ARTICLE=${new_canonical_article}"
+echo "NEW_HOME_CACHE_CONTROL=${new_home_cache_control:-missing}"
+echo "NEW_ARTICLE_CACHE_CONTROL=${new_article_cache_control:-missing}"
 
 if [ "$STRICT" = "--strict" ]; then
   if [ "$backend_health_code" != "200" ]; then
@@ -236,6 +275,22 @@ if [ "$STRICT" = "--strict" ]; then
     echo "FAIL: new data/videos.json hash differs from backend" >&2
     fail=1
   fi
+  new_home_cache_control_lc="$(printf '%s' "${new_home_cache_control}" | tr '[:upper:]' '[:lower:]')"
+  new_article_cache_control_lc="$(printf '%s' "${new_article_cache_control}" | tr '[:upper:]' '[:lower:]')"
+  case "${new_home_cache_control_lc}" in
+    *no-cache*|*no-store*) : ;;
+    *)
+      echo "FAIL: new home shell is missing no-cache cache-control" >&2
+      fail=1
+      ;;
+  esac
+  case "${new_article_cache_control_lc}" in
+    *no-cache*|*no-store*) : ;;
+    *)
+      echo "FAIL: new article shell is missing no-cache cache-control" >&2
+      fail=1
+      ;;
+  esac
   case "$new_canonical_home" in
     "${NEW_ORIGIN}"/*) : ;;
     *)

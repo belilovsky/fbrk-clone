@@ -1,0 +1,8 @@
+[Unit]
+Description=Guard new.fbrk.kz frontend against stale deploy drift
+Wants=network-online.target
+After=network-online.target docker.service
+
+[Service]
+Type=oneshot
+ExecStart=/opt/new-fbrk-frontend/guard/new-fbrk-frontend-guard.sh

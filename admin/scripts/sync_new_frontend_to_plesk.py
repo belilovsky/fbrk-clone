@@ -34,9 +34,20 @@ DEFAULT_PUBLIC_ORIGIN = "https://new.fbrk.kz"
 DEFAULT_BACKEND_ORIGIN = "https://fbrk.qdev.run"
 DEFAULT_WEB_ROOT = "/var/www/fbrk.qdev.run"
 DEFAULT_PLESK_ROOT = "/new.fbrk.kz"
-GENERATED_FILES = ("data.js", "data-archive.js", "article-full.js")
+GENERATED_FILES = ("data.js", "data-archive.js", "article-full.js", "search-index.js")
 DATA_FILES = ("videos.json",)
-ROOT_FILES = ("index.html", "archive.html", "about.html", "article.html", "404.html")
+ROOT_FILES = (
+    "index.html",
+    "archive.html",
+    "about.html",
+    "article.html",
+    "contacts.html",
+    "editorial-policy.html",
+    "privacy.html",
+    "search.html",
+    "sitemap.html",
+    "404.html",
+)
 SEO_FILES = ("robots.txt", "sitemap.xml", "feed.xml")
 
 HTACCESS_TEXT = """# Pretty article URLs: /a/<slug> -> /article.html?id=<slug>&spa=1
@@ -60,7 +71,7 @@ RewriteRule ^a/([A-Za-z0-9_\\-]+)/?$ /article.html?id=$1&spa=1 [L,QSA]
     Header set Cache-Control "public, max-age=86400"
   </FilesMatch>
 
-  <FilesMatch "^(data|data-archive|article-full)\\.js$">
+  <FilesMatch "^(data|data-archive|article-full|search-index)\\.js$">
     Header set Cache-Control "no-cache, no-store, must-revalidate"
     Header set Pragma "no-cache"
     Header set Expires "0"
@@ -121,10 +132,19 @@ def url_sha(origin: str, path: str, *, cache_bust: bool = True) -> str:
     return sha256(fetch_bytes(f"{origin.rstrip('/')}/{path.lstrip('/')}", cache_bust=cache_bust))
 
 
+def url_sha_or_missing(origin: str, path: str, *, cache_bust: bool = True) -> str:
+    try:
+        return url_sha(origin, path, cache_bust=cache_bust)
+    except urllib.error.HTTPError as exc:
+        if exc.code == 404:
+            return "missing"
+        raise
+
+
 def rewrite_public(text: str, public_origin: str, asset_version: str) -> str:
     text = text.replace(DEFAULT_BACKEND_ORIGIN, public_origin)
     text = text.replace("http://fbrk.qdev.run", public_origin)
-    text = re.sub(r"\?v=\d{12,14}", f"?v={asset_version}", text)
+    text = re.sub(r"\?v=\d+", f"?v={asset_version}", text)
     return text
 
 
@@ -138,7 +158,7 @@ def write_bytes(path: Path, data: bytes) -> None:
     path.write_bytes(data)
 
 
-def referenced_upload_assets(out_dir: Path, web_root: Path) -> list[Path]:
+def referenced_upload_assets(out_dir: Path, web_root: Path, backend_origin: str) -> list[Path]:
     refs: set[str] = set()
     for name in GENERATED_FILES:
         payload = (out_dir / "js" / name).read_text(encoding="utf-8", errors="ignore")
@@ -153,12 +173,13 @@ def referenced_upload_assets(out_dir: Path, web_root: Path) -> list[Path]:
         source = (web_root / rel).resolve()
         if not str(source).startswith(f"{web_root_resolved}{os.sep}"):
             raise SyncError(f"unsafe upload asset path: {rel}")
-        if not source.exists():
-            raise SyncError(f"referenced upload asset is missing in backend web-root: {source}")
-        if source.is_file():
-            target = out_dir / rel
-            write_bytes(target, source.read_bytes())
-            assets.append(target)
+        if source.exists() and source.is_file():
+            payload = source.read_bytes()
+        else:
+            payload = fetch_bytes(f"{backend_origin.rstrip('/')}/{rel}", cache_bust=True)
+        target = out_dir / rel
+        write_bytes(target, payload)
+        assets.append(target)
     return assets
 
 
@@ -200,13 +221,14 @@ def render_static_article_shell(template: str, article: dict, public_origin: str
 
     title = str(article.get("title") or "Материал").strip()
     dek = str(article.get("dek") or "").strip()
+    summary_short = str(article.get("summaryShort") or "").strip()
     category = str(article.get("categoryLabel") or article.get("category") or "Материал").strip()
     date_iso = str(article.get("dateIso") or "").strip()
     image = absolute_public_url(public_origin, str(article.get("image") or ""))
     article_url = f"{public_origin}/a/{slug}"
 
     title_text = f"{title} — ФБРК"
-    description = dek or f"{category} ФБРК."
+    description = summary_short or dek or f"{category} ФБРК."
 
     page = template
     page = replace_meta(
@@ -337,17 +359,14 @@ def build_package(
         uploaded.append(target)
 
     for name in DATA_FILES:
-        source = web_root / "data" / name
-        if not source.exists():
-            raise SyncError(f"missing source data file: {source}")
         target = out_dir / "data" / name
-        write_bytes(target, source.read_bytes())
+        write_bytes(target, fetch_bytes(f"{backend_origin.rstrip('/')}/data/{name}", cache_bust=True))
         uploaded.append(target)
 
     if generate_article_pages:
         uploaded.extend(generate_static_article_shells(out_dir, public_origin))
 
-    uploaded.extend(referenced_upload_assets(out_dir, web_root))
+    uploaded.extend(referenced_upload_assets(out_dir, web_root, backend_origin))
 
     for name in SEO_FILES:
         raw = fetch_bytes(f"{backend_origin.rstrip('/')}/{name}", cache_bust=True).decode("utf-8")
@@ -516,7 +535,7 @@ def main(argv: list[str] | None = None) -> int:
     domain_id = os.environ.get("PLESK_DOMAIN_ID", "1507")
 
     backend_hashes = {name: url_sha(backend_origin, f"js/{name}") for name in GENERATED_FILES}
-    public_hashes = {name: url_sha(public_origin, f"js/{name}") for name in GENERATED_FILES}
+    public_hashes = {name: url_sha_or_missing(public_origin, f"js/{name}") for name in GENERATED_FILES}
     drift = [name for name in GENERATED_FILES if backend_hashes[name] != public_hashes[name]]
 
     print(f"PUBLIC_ORIGIN={public_origin}")

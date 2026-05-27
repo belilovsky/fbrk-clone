@@ -11,6 +11,7 @@ function makeElement() {
     content: { childNodes: [] },
     dataset: {},
     getAttribute() { return ''; },
+    insertAdjacentHTML() {},
     setAttribute() {},
     addEventListener() {},
     appendChild() {},
@@ -25,6 +26,7 @@ const context = {
   Date,
   URL,
   URLSearchParams,
+  requestAnimationFrame(callback) { return setTimeout(callback, 0); },
   setTimeout,
   clearTimeout,
   location: { href: 'https://fbrk.qdev.run/a/sample', origin: 'https://fbrk.qdev.run', pathname: '/a/sample', search: '' },
@@ -63,5 +65,157 @@ test('article entities hide fallback other tags and duplicates with tags', () =>
   assert.equal(
     JSON.stringify(context.articleTags({ tags: ['БНР', 'Казахстан', 'статистика'] }, entities.map((e) => e.name))),
     JSON.stringify(['БНР', 'Казахстан', 'статистика']),
+  );
+});
+
+test('article hero dek hides long imported investigation body duplicates', () => {
+  const longDek = [
+    'Редакция ФБРК с конца прошлого года анализирует динамику изменения площадей крупнейших землепользователей Казахстана.',
+    'Напомним, в редакцию ФБРК массово поступают жалобы из регионов на некорректное изъятие.',
+    'После нашей публикации, шымкентский филиал Правительства для граждан все же выслал запрашиваемую информацию.',
+  ].join('\n\n');
+
+  assert.equal(
+    context.articleHeroDek({ dek: longDek }, [{ h: '', p: longDek }]),
+    '',
+  );
+});
+
+test('article hero dek keeps concise editorial lead', () => {
+  assert.equal(
+    context.articleHeroDek(
+      { dek: 'Короткий редакционный лид для статьи.' },
+      [{ h: '', p: 'Основной текст начинается другим предложением.' }],
+    ),
+    'Короткий редакционный лид для статьи.',
+  );
+});
+
+test('article hero dek prefers ai summary when it exists', () => {
+  assert.equal(
+    context.articleHeroDek(
+      {
+        dek: 'Исходный редакционный лид для статьи.',
+        summaryShort: 'Сжатое AI-описание для шапки материала.',
+      },
+      [{ h: '', p: 'Основной текст статьи.' }],
+    ),
+    'Сжатое AI-описание для шапки материала.',
+  );
+});
+
+test('article hero dek falls back to summary for duplicated long investigation import', () => {
+  const importedDek = [
+    'Редакция ФБРК с конца прошлого года анализирует динамику изменения площадей крупнейших землепользователей Казахстана.',
+    'Нашей целью было выяснить, сколько земель было изъято у крупнейших собственников.',
+    'После нашей публикации шымкентский филиал все же выслал запрашиваемую информацию.',
+  ].join('\n\n');
+
+  assert.equal(
+    context.articleHeroDek(
+      {
+        dek: importedDek,
+        summaryShort: 'Шымкент впервые раскрыл данные по крупнейшим землепользователям после серии запросов ФБРК.',
+      },
+      [{ h: '', p: importedDek }],
+    ),
+    'Шымкент впервые раскрыл данные по крупнейшим землепользователям после серии запросов ФБРК.',
+  );
+});
+
+test('article tldr renders only key points and hides duplicated summary lead', () => {
+  const html = context.renderArticleTldr({
+    summaryShort: 'AI lead that should move into article dek.',
+    keyPoints: ['Первый пункт.', 'Второй пункт.'],
+  });
+
+  assert.ok(html.includes('article__tldr-list'));
+  assert.ok(html.includes('Первый пункт.'));
+  assert.ok(!html.includes('article__lead'));
+});
+
+test('article tldr stays hidden when there are no key points', () => {
+  assert.equal(
+    context.renderArticleTldr({ summaryShort: 'Есть только summary.' }),
+    '',
+  );
+});
+
+test('article tldr keeps full key points and only drops dangling helper words', () => {
+  const html = context.renderArticleTldr({
+    keyPoints: [
+      'Лидеры: Туркестанская область и Жамбылская область об',
+      'Совместные обследования с Узбекистаном и Кыргызстаном не выявили',
+      'Короткий пункт',
+    ],
+  });
+
+  assert.ok(html.includes('Жамбылская область'));
+  assert.ok(!html.includes('Жамбылская область об'));
+  assert.ok(html.includes('Кыргызстаном не выявили'));
+  assert.ok(html.includes('Короткий пункт'));
+});
+
+test('article tldr falls back to section sentences when backend key points are clipped', () => {
+  const html = context.renderArticleTldr({
+    keyPoints: [
+      'Горнолыжники из Казахстана тренируются за рубежом из-за нехватки',
+      'Тренер Роман Григоров поддержал развитие Алматинского горного кл',
+      'Кластер должен стать крупнейшим всесезонным турпроектом в Центра',
+    ],
+    sections: [
+      { h: '', p: 'Отсутствие современной горной инфраструктуры в Алматы лишает казахстанских спортсменов возможности готовиться дома - часть из них проходит сборы в соседних странах.' },
+      { h: 'ЧТО ГОВОРЯТ СПОРТСМЕНЫ', p: 'Представители спортивного сообщества публично выступили в поддержку развития проекта, указав на дефицит качественных трасс и объектов для подготовки.' },
+      { h: 'ЧТО ТАКОЕ АЛМАТИНСКИЙ ГОРНЫЙ КЛАСТЕР', p: 'Проект предполагает объединение горных курортов Шымбулак, Бутаковка, Кимасар, Пионер и Ой-Карагай в единую туристическую систему с общей инфраструктурой и управлением.' },
+    ],
+  });
+
+  assert.ok(html.includes('Отсутствие современной горной инфраструктуры в Алматы лишает казахстанских спортсменов возможности готовиться дома - часть из них проходит сборы в соседних странах.'));
+  assert.ok(html.includes('Представители спортивного сообщества публично выступили в поддержку развития проекта, указав на дефицит качественных трасс и объектов для подготовки.'));
+  assert.ok(!html.includes('Алматинского горного кл'));
+});
+
+test('article renderer keeps summary, mentions, and share below the body', () => {
+  const bodyIdx = source.indexOf('<div class="article__body">');
+  const tldrIdx = source.indexOf('${tldrHtml}');
+  const entitiesIdx = source.indexOf('${entitiesHtml}');
+  const shareIdx = source.indexOf('${shareHtml}');
+
+  assert.ok(bodyIdx > -1);
+  assert.ok(tldrIdx > bodyIdx);
+  assert.ok(entitiesIdx > tldrIdx);
+  assert.ok(shareIdx > entitiesIdx);
+});
+
+test('article hero dek uses summary when compact cards do not have sections yet', () => {
+  assert.equal(
+    context.articleHeroDek(
+      {
+        dek: 'Очень длинный импортированный лид.\n\nВторой абзац повторяет структуру старого материала.',
+        summaryShort: 'Короткий lead для компактной карточки.',
+      },
+      [],
+    ),
+    'Короткий lead для компактной карточки.',
+  );
+});
+
+test('article lookup keys keep legacy timestamp slug compatible', () => {
+  assert.equal(
+    JSON.stringify(context.articleLookupKeys('latifundisty-kazakhstana-glava-9-shymkent-2026-05-23-00_30_44')),
+    JSON.stringify([
+      'latifundisty-kazakhstana-glava-9-shymkent-2026-05-23-00_30_44',
+      'latifundisty-kazakhstana-glava-9-shymkent',
+    ]),
+  );
+});
+
+test('article lookup finds canonical article by legacy timestamp slug', () => {
+  assert.deepEqual(
+    context.findArticleByKeys(
+      [{ slug: 'latifundisty-kazakhstana-glava-9-shymkent', title: 'Шымкент' }],
+      'latifundisty-kazakhstana-glava-9-shymkent-2026-05-23-00_30_44',
+    ),
+    { slug: 'latifundisty-kazakhstana-glava-9-shymkent', title: 'Шымкент' },
   );
 });

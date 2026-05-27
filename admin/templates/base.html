@@ -29,6 +29,7 @@
       <a href="/admin/ads" class="a-side-link">💰 Реклама</a>
       <a href="/admin/uploads" class="a-side-link">🖼️ Медиа</a>
       <a href="/admin/users" class="a-side-link">👥 Пользователи</a>
+      <a href="/admin/editorial-policy" class="a-side-link">Редполитика</a>
       <a href="/admin/settings" class="a-side-link">⚙️ Настройки</a>
       <a href="/admin/audit" class="a-side-link">📜 Аудит</a>
       <div class="a-side-sep"></div>
@@ -52,7 +53,7 @@
     (function(){
       var b=document.getElementById('a-burger'),s=document.getElementById('a-sidebar');
       if(b&&s){b.addEventListener('click',function(){s.classList.toggle('is-open');b.classList.toggle('is-open');});}
-      try{var p=location.pathname;document.querySelectorAll('.a-side-link').forEach(function(a){var h=a.getAttribute('href');if(h&&p.indexOf(h)===0&&h!=='/'){a.classList.add('is-active');}if(h===p){a.classList.add('is-active');}});}catch(e){}
+      try{var p=location.pathname;document.querySelectorAll('.a-side-link').forEach(function(a){var h=a.getAttribute('href');if(!h||h==='/')return;var exact=p===h;var section=h.endsWith('/')?p===h:p.indexOf(h + '/')===0;if(h==='/admin/'){exact=p==='/admin/'||p==='/admin';section=false;}if(exact||section){a.classList.add('is-active');}});}catch(e){}
       var csrf=document.querySelector('meta[name="csrf-token"]');
       var token=csrf ? csrf.getAttribute('content') : '';
       if(token){

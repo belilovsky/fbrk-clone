@@ -1,0 +1,88 @@
+{% extends "base.html" %}
+{% block title %}Редакционная политика — Админка ФБРК{% endblock %}
+{% block page_title %}Редакционная политика{% endblock %}
+{% block topbar_actions %}
+  <a class="a-btn" href="/editorial-policy.html" target="_blank" rel="noopener">Публичная страница</a>
+  <a class="a-btn" href="{{ standard_url }}" target="_blank" rel="noopener">Editorial Hub</a>
+{% endblock %}
+{% block content %}
+  {% if saved %}
+    <div class="a-alert a-alert--ok">Изменения сохранены и публичная страница обновлена.</div>
+  {% endif %}
+  {% if published %}
+    <div class="a-alert a-alert--ok">Публичная страница перегенерирована.</div>
+  {% endif %}
+
+  <div class="policy-admin-grid">
+    <section class="section-card">
+      <h3>Публичный статус</h3>
+      <dl class="policy-status-list">
+        <div>
+          <dt>URL</dt>
+          <dd><a class="a-link" href="/editorial-policy.html" target="_blank" rel="noopener">/editorial-policy.html</a></dd>
+        </div>
+        <div>
+          <dt>Файл</dt>
+          <dd>{{ status.path }}</dd>
+        </div>
+        <div>
+          <dt>Состояние</dt>
+          <dd>
+            {% if status.exists %}
+              <span class="a-pill a-pill--ok">опубликовано</span>
+              <span class="muted">{{ status.updated_at }} · {{ status.size }} байт</span>
+            {% else %}
+              <span class="a-pill a-pill--mute">нет файла</span>
+            {% endif %}
+          </dd>
+        </div>
+      </dl>
+      <form method="post" action="/admin/editorial-policy/publish" class="policy-action-form">
+        <button type="submit" class="a-btn a-btn--primary">Перегенерировать страницу</button>
+      </form>
+    </section>
+
+    <section class="section-card">
+      <h3>Правило связки</h3>
+      <p class="muted">Админка хранит публичные формулировки, контакты и ссылку на полный стандарт. Публичная страница остаётся статическим HTML для SEO, отказоустойчивости и синхронизации на split-фронтенд.</p>
+    </section>
+  </div>
+
+  <form method="post" action="/admin/editorial-policy" class="section-card policy-editor-form">
+    <h3>Основные поля</h3>
+    <div class="policy-form-grid">
+      {% for field in fields %}
+        <label class="policy-field policy-field--{{ field.kind }}">
+          <span>{{ field.label }}</span>
+          {% if field.kind == "textarea" %}
+            <textarea name="{{ field.name }}" rows="4" {% if field.required %}required{% endif %}>{{ policy[field.name] }}</textarea>
+          {% else %}
+            <input name="{{ field.name }}" value="{{ policy[field.name] }}" {% if field.required %}required{% endif %}>
+          {% endif %}
+        </label>
+      {% endfor %}
+    </div>
+
+    <h3>Публичные разделы</h3>
+    <div class="policy-sections">
+      {% for section in sections %}
+        <fieldset class="policy-section">
+          <legend>{{ section.label }}</legend>
+          <label class="policy-field">
+            <span>Заголовок</span>
+            <input name="{{ section.key }}_title" value="{{ policy[section.key ~ '_title'] }}" required>
+          </label>
+          <label class="policy-field policy-field--textarea">
+            <span>Текст</span>
+            <textarea name="{{ section.key }}_body" rows="5" required>{{ policy[section.key ~ '_body'] }}</textarea>
+          </label>
+        </fieldset>
+      {% endfor %}
+    </div>
+
+    <div class="policy-form-actions">
+      <button type="submit" class="a-btn a-btn--primary">Сохранить и опубликовать</button>
+      <a class="a-btn" href="/admin/settings/list">Все настройки</a>
+    </div>
+  </form>
+{% endblock %}
