@@ -1363,6 +1363,20 @@ input {
     padding-inline: var(--space-5);
   }
 
+  .section__header {
+    flex-wrap: wrap;
+    align-items: flex-start;
+    gap: var(--space-2) var(--space-4);
+  }
+  .section__header > * {
+    min-width: 0;
+  }
+  .section__link {
+    flex-basis: 100%;
+    display: flex;
+    justify-content: flex-end;
+  }
+
   /* Topstrip: hide date, keep essentials */
   .topstrip__inner {
     gap: var(--space-3);
@@ -1513,6 +1527,27 @@ input {
   .article__title {
     font-size: clamp(1.5rem, 6vw + 0.25rem, 2rem);
     line-height: 1.2;
+    max-width: 100%;
+    overflow-wrap: anywhere;
+  }
+  .article__head,
+  .article__cover,
+  .article__body,
+  .article__tldr,
+  .entity-chips,
+  .article__share,
+  .article__source,
+  .related {
+    max-width: 100%;
+    min-width: 0;
+  }
+  .article__dek,
+  .article__body,
+  .article__body p,
+  .article__body h2,
+  .article__tldr-list li {
+    max-width: 100%;
+    overflow-wrap: break-word;
   }
   .article__body h2 {
     font-size: 1.125rem;

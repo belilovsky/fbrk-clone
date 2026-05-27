@@ -78,7 +78,7 @@ Branch: `release/pre-prod-audit`
 - [x] `/editorial-policy.html` added as the first FBRK-specific carrier page for Editorial Hub v1.2.
 - [x] Footer, sitemap page, static sitemap generation and split-frontend package scripts include the editorial policy page.
 - [x] Public shell drift tests now require the editorial policy link in every public shell and SSR article template.
-- [x] Public asset version bumped to `20260527101809` for the carrier page rollout.
+- [x] Public asset version bumped to `20260527160712` for the carrier page rollout.
 - [x] Follow-up live QA found the policy route still served 404 before redeploy; fixed by syncing the current static package to `new.fbrk.kz`.
 - [x] About page inline styles, frontend debug logging, and a stale missing `mobile-menu-fix.js` SSR reference were removed.
 - [x] Mobile header compacted on narrow screens so search and menu remain visible without horizontal clipping.
