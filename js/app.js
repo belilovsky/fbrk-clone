@@ -425,7 +425,7 @@ function fbrkToast(message, ms = 2400) {
     }).slice(0, 50);
     if (!matches.length) {
       results.innerHTML =
-        '<div style="color:var(--color-text-muted); padding: var(--space-5) 0; font-size: var(--text-sm);">Ничего не найдено. Попробуйте другой запрос.</div>';
+        '<div class="search-empty">Ничего не найдено. Попробуйте другой запрос.</div>';
       activeIndex = -1;
       return;
     }
@@ -814,7 +814,6 @@ function liveBadgeHtml(a) {
   fetch('data/videos.json')
     .then((r) => (r.ok ? r.json() : []))
     .then((videos) => {
-      console.log('[videos] fetched', videos.length);
       if (!videos.length) { root.closest('.section').style.display = 'none'; return; }
       render(videos);
     })
@@ -1119,7 +1118,7 @@ document.addEventListener('click', (e) => {
   e.preventDefault();
   navigator.clipboard?.writeText(location.href).then(() => {
     const prev = btn.innerHTML;
-    btn.innerHTML = '<span style="font-size:.85em">Скопировано</span>';
+    btn.innerHTML = '<span class="article__copy-label">Скопировано</span>';
     setTimeout(() => { btn.innerHTML = prev; }, 1600);
   });
 });

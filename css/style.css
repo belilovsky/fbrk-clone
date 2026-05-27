@@ -1020,6 +1020,9 @@ input {
   background: var(--color-brand);
   border-color: var(--color-brand);
 }
+.article__copy-label {
+  font-size: 0.85em;
+}
 
 .article__cover {
   position: relative;
@@ -1096,6 +1099,9 @@ input {
   max-width: var(--content-narrow);
   margin-bottom: var(--space-16);
 }
+.about__eyebrow {
+  margin-bottom: var(--space-4);
+}
 .about__title {
   font-family: var(--font-display);
   font-size: var(--text-3xl);
@@ -1148,7 +1154,13 @@ input {
     grid-template-columns: 1fr;
   }
 }
-.about__block h3 {
+.about__block {
+  padding: var(--space-6);
+  background: var(--color-surface);
+  border: 1px solid var(--color-divider);
+  border-radius: var(--radius-md);
+}
+.about__block h2 {
   font-family: var(--font-display);
   font-size: var(--text-lg);
   font-weight: 600;
@@ -2187,6 +2199,11 @@ input {
 .search-page-result p {
   color: var(--color-text-muted);
 }
+.search-empty {
+  color: var(--color-text-muted);
+  padding: var(--space-5) 0;
+  font-size: var(--text-sm);
+}
 .search-page-result mark {
   background: color-mix(in oklab, var(--accent) 20%, transparent);
   color: var(--color-text);
@@ -2824,6 +2841,32 @@ button:focus-visible, a:focus-visible { outline-offset: 3px; }
   .site-header__menu-btn { display: inline-flex; }
   .site-header__actions .lang-switch,
   .site-header__actions .site-header__btn--social { display: none; }
+}
+
+@media (max-width: 560px) {
+  .site-header .container {
+    padding-inline: var(--space-4);
+  }
+  .site-header__inner {
+    gap: var(--space-2);
+  }
+  .site-header__actions {
+    gap: var(--space-1);
+  }
+  .site-header__divider,
+  .site-header__actions [data-theme-toggle] {
+    display: none;
+  }
+  .site-header__btn {
+    width: 40px;
+    min-width: 40px;
+    height: 40px;
+    padding: 0;
+  }
+  .site-header__logo-mark {
+    font-size: 1.125rem;
+    padding: 5px 9px;
+  }
 }
 
 /* Toast for "soon" notice */

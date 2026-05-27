@@ -63,6 +63,24 @@ def test_public_shells_link_editorial_policy() -> None:
         assert '<a href="/editorial-policy.html">Редакционная политика</a>' in html, path
 
 
+def test_public_shells_do_not_use_inline_style_attributes() -> None:
+    for path in STATIC_SHELLS:
+        html = path.read_text(encoding="utf-8")
+        assert 'style="' not in html, path
+
+
+def test_public_script_references_are_available_or_generated() -> None:
+    generated = {"data.js", "data-archive.js", "article-full.js", "search-index.js"}
+    for path in PUBLIC_SHELLS:
+        html = path.read_text(encoding="utf-8")
+        for raw_src in re.findall(r'<script src="([^"]+)"', html):
+            src = raw_src.split("?", 1)[0].lstrip("/")
+            if not src.startswith("js/"):
+                continue
+            script_name = Path(src).name
+            assert script_name in generated or (ROOT / src).exists(), (path, raw_src)
+
+
 def test_public_asset_versions_are_busted_consistently() -> None:
     versions: set[str] = set()
     for path in PUBLIC_SHELLS:
@@ -76,8 +94,10 @@ def test_public_asset_versions_are_busted_consistently() -> None:
 
 def test_frontend_css_keeps_article_spacing_readable() -> None:
     css = (ROOT / "css" / "style.css").read_text(encoding="utf-8")
+    js = (ROOT / "js" / "app.js").read_text(encoding="utf-8")
 
     assert not re.search(r"letter-spacing:\s*-", css)
+    assert "console.log" not in js
     assert re.search(r"\.ad-block:empty\s*\{\s*display:\s*none;", css)
     assert re.search(r"\.site-header__nav\s*\{[\s\S]*min-height:\s*100dvh;", css)
 
