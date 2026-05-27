@@ -1,11 +1,17 @@
 import importlib.util
 import json
+import sys
 import urllib.error
 from pathlib import Path
 
 
+ROOT = Path(__file__).resolve().parents[1]
+if str(ROOT) not in sys.path:
+    sys.path.insert(0, str(ROOT))
+
+
 def load_sync_module():
-    script = Path(__file__).resolve().parents[1] / "admin" / "scripts" / "sync_new_frontend_to_plesk.py"
+    script = ROOT / "admin" / "scripts" / "sync_new_frontend_to_plesk.py"
     spec = importlib.util.spec_from_file_location("sync_new_frontend_to_plesk", script)
     module = importlib.util.module_from_spec(spec)
     assert spec.loader is not None
@@ -106,6 +112,16 @@ def test_split_frontend_package_includes_video_data(tmp_path, monkeypatch):
     assert "data/videos.json" in rel_paths
     assert "js/search-index.js" in rel_paths
     assert (out_dir / "data" / "videos.json").read_text(encoding="utf-8") == '[{"id":"demo"}]'
+
+
+def test_split_sync_rewrites_short_numeric_asset_versions():
+    sync = load_sync_module()
+
+    html = '<script src="/js/mobile-menu-fix.js?v=3"></script>'
+
+    assert sync.rewrite_public(html, "https://new.fbrk.kz", "20260527050211") == (
+        '<script src="/js/mobile-menu-fix.js?v=20260527050211"></script>'
+    )
 
 
 def test_split_sync_treats_missing_public_generated_file_as_drift(monkeypatch):

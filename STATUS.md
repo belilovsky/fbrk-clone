@@ -13,7 +13,7 @@ Branch: `release/pre-prod-audit`
 - [x] Today badge limited to same-day publications.
 - [x] AI watermark restricted to `image.kind === "ai"` or inferred AI images.
 - [x] Baseline a11y focus/tap-target improvements started.
-- [x] Footer public AV DS version removed from new footer surfaces and kept as HTML comment where added.
+- [x] Footer public AV DS version is visible in the public shell (`AV DS 3.7.1`).
 - [x] `/privacy.html` and functional cookie banner added.
 - [x] `about.html` legal/contact section expanded.
 - [x] FBRK enrichment supports DeepSeek primary (`DEEPSEEK_API_KEY`) with OpenAI fallback (`OPENAI_API_KEY`); live env is installed only on the active FBRK VPS, values are not committed.
@@ -30,6 +30,7 @@ Branch: `release/pre-prod-audit`
 - [x] RSS validation smoke passes as XML/RSS 2.0.
 - [x] `image.kind`, `image.source`, `image.hasRealPerson` now generated on publish pipeline and serialized into public payload.
 - [x] Local pre-prod verifier script added: `./scripts/verify_preprod.sh` runs JS checks, repo `.venv` tests, compile checks, and strict split linkage.
+- [x] Public static shell drift is now guarded by `admin/scripts/sync_public_shell.py --check` and `tests/test_frontend_shell.py`.
 
 ## Production smoke 2026-05-23
 
