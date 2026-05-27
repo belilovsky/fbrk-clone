@@ -143,7 +143,7 @@ def url_sha_or_missing(origin: str, path: str, *, cache_bust: bool = True) -> st
 def rewrite_public(text: str, public_origin: str, asset_version: str) -> str:
     text = text.replace(DEFAULT_BACKEND_ORIGIN, public_origin)
     text = text.replace("http://fbrk.qdev.run", public_origin)
-    text = re.sub(r"\?v=\d{12,14}", f"?v={asset_version}", text)
+    text = re.sub(r"\?v=\d+", f"?v={asset_version}", text)
     return text
 
 
