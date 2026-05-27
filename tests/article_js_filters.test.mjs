@@ -141,7 +141,7 @@ test('article tldr stays hidden when there are no key points', () => {
   );
 });
 
-test('article tldr softens truncated key point fragments', () => {
+test('article tldr keeps full key points and only drops dangling helper words', () => {
   const html = context.renderArticleTldr({
     keyPoints: [
       'Лидеры: Туркестанская область и Жамбылская область об',
@@ -150,9 +150,9 @@ test('article tldr softens truncated key point fragments', () => {
     ],
   });
 
-  assert.ok(html.includes('Жамбылская область…'));
+  assert.ok(html.includes('Жамбылская область'));
   assert.ok(!html.includes('Жамбылская область об'));
-  assert.ok(html.includes('Кыргызстаном не выявили…'));
+  assert.ok(html.includes('Кыргызстаном не выявили'));
   assert.ok(html.includes('Короткий пункт'));
 });
 

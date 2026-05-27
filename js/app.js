@@ -1121,10 +1121,10 @@ function tidyKeyPoint(value) {
   const words = text.split(' ');
   const lastWord = words[words.length - 1].toLowerCase().replace(/[^\p{L}\p{N}-]+/gu, '');
   if (words.length > 1 && danglingWords.has(lastWord)) {
-    return `${words.slice(0, -1).join(' ').replace(/[,:;\s]+$/, '')}…`;
+    return words.slice(0, -1).join(' ').replace(/[,:;\s]+$/, '');
   }
 
-  return text.length >= 48 ? `${text}…` : text;
+  return text;
 }
 
 document.addEventListener('click', (e) => {
