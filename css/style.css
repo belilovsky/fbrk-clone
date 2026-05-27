@@ -2926,6 +2926,10 @@ button:focus-visible, a:focus-visible { outline-offset: 3px; }
   gap: 16px;
   flex-wrap: wrap;
 }
+.site-footer__version {
+  color: rgba(255, 255, 255, 0.74);
+  font-weight: 700;
+}
 .site-footer__socials {
   display: flex;
   gap: 8px;
