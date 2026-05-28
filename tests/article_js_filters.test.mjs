@@ -91,7 +91,7 @@ test('article hero dek keeps concise editorial lead', () => {
   );
 });
 
-test('article hero dek prefers ai summary when it exists', () => {
+test('article hero dek prefers editorial dek over ai summary when available', () => {
   assert.equal(
     context.articleHeroDek(
       {
@@ -100,7 +100,7 @@ test('article hero dek prefers ai summary when it exists', () => {
       },
       [{ h: '', p: 'Основной текст статьи.' }],
     ),
-    'Сжатое AI-описание для шапки материала.',
+    'Исходный редакционный лид для статьи.',
   );
 });
 
@@ -198,6 +198,41 @@ test('article hero dek uses summary when compact cards do not have sections yet'
     ),
     'Короткий lead для компактной карточки.',
   );
+});
+
+test('article hero dek drops metadata-only lead in compact cards', () => {
+  assert.equal(
+    context.articleHeroDek(
+      {
+        dek: '(2 февраля 2026 | Источники: Tengrinews.kz, Kursiv.kz, Nege.kz)',
+      },
+      [],
+    ),
+    '',
+  );
+});
+
+test('article section headings drop all-caps while preserving acronyms and title nouns', () => {
+  assert.equal(
+    context.formatArticleSectionHeading(
+      'ЧТО ЗАЯВИЛИ В МВД',
+      'Ребенок погиб под колесами бетономешалки в Астане',
+    ),
+    'Что заявили в МВД',
+  );
+  assert.equal(
+    context.formatArticleSectionHeading(
+      'КАКИЕ ДОГОВОРЕННОСТИ ДОСТИГЛИ КАЗАХСТАН И РОССИЯ',
+      'Казахстан и Россия протестировали беспилотный маршрут Астана - Москва',
+    ),
+    'Какие договоренности достигли Казахстан и Россия',
+  );
+});
+
+test('article date label keeps legacy date short format', () => {
+  assert.equal(context.articleDateLabelFromData({ date: '15 мая 2026', dateIso: '' }), '15 мая');
+  assert.equal(context.articleDateLabelFromData({ date: '1 апреля 2025', dateIso: '' }), '1 апреля');
+  assert.equal(context.articleDateLabelFromData({ date: 'old style', dateIso: '' }), 'old style');
 });
 
 test('article lookup keys keep legacy timestamp slug compatible', () => {

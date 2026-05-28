@@ -1,5 +1,5 @@
 // ============================================================
-// ФБРК — интерактив (AV DS 3.7.1)
+// ФБРК — интерактив (AV DS 4)
 // ============================================================
 
 function _cfgOrigin(key) {
@@ -135,7 +135,7 @@ function findArticleByKeys(list, rawId) {
             <div><div class="site-footer__heading">Разделы</div><ul class="site-footer__list" role="list"><li><a href="/">Главная</a></li><li><a href="/archive.html?cat=investigation">Расследования</a></li><li><a href="/archive.html?cat=news">Новости</a></li><li><a href="/archive.html">Архив</a></li></ul></div>
             <div><div class="site-footer__heading">Редакция</div><ul class="site-footer__list" role="list"><li><a href="/about.html">О нас</a></li><li><a href="/contacts.html">Контакты</a></li><li><a href="/editorial-policy.html">Редакционная политика</a></li><li><a href="/privacy.html">Политика конфиденциальности</a></li><li><a href="/feed.xml">RSS-лента</a></li><li><a href="/sitemap.html">Карта сайта</a></li></ul></div>
           </div>
-          <div class="site-footer__bottom"><div class="site-footer__legal"><span>© 2023–2026 ФБРК</span><span aria-hidden="true">·</span><span class="site-footer__version">AV DS 3.7.1</span><span aria-hidden="true">·</span><span>Астана, Казахстан</span></div></div>
+          <div class="site-footer__bottom"><div class="site-footer__legal"><span>© 2023–2026 ФБРК</span><span aria-hidden="true">·</span><span class="site-footer__version">AV DS 4</span><span aria-hidden="true">·</span><span>Астана, Казахстан</span></div></div>
         </div>
       </footer>
     `);
@@ -527,6 +527,86 @@ function truncateText(text, maxLength) {
   return `${clean.slice(0, maxLength).trim()}…`;
 }
 
+function isMetadataOnlyLead(text) {
+  const clean = normalizedArticleText(text).replace(/\u00a0/g, ' ').trim();
+  if (!clean) return true;
+  if (clean.length > 220) return false;
+  if (!/источник(?:и)?/i.test(clean)) return false;
+  return (
+    /^\(.+\)$/.test(clean) ||
+    /^\d{1,2}\s+[а-яё]+\s+\d{4}\s*(?:г\.)?\s*[|·-]/i.test(clean) ||
+    /^\d{1,2}\s+[а-яё]+\s+\d{4}\s*(?:г\.)?\s+источник/i.test(clean)
+  );
+}
+
+function cardPreviewDek(a) {
+  return truncateText(articleHeroDek(a, []), 220);
+}
+
+function cardImageHtml(a, width = 640, height = 360) {
+  const url = imageMeta(a).url;
+  if (!url) return '';
+  return `<img src="${url}" alt="${escapeHtml(a.title)}" width="${width}" height="${height}" loading="lazy" decoding="async"/>`;
+}
+
+const HEADING_ACRONYMS = new Set([
+  'АПК', 'АЭС', 'АФМ', 'БАД', 'ВВП', 'ВИЧ', 'ВКО', 'ВОЗ', 'ГЭС', 'ДТП',
+  'ЕНПФ', 'ЕС', 'ЖКХ', 'ИИ', 'КГД', 'КНБ', 'КТЖ', 'МВД', 'МЧС', 'НДС',
+  'ООН', 'ПДД', 'РК', 'РФ', 'СМИ', 'США', 'ТЭЦ', 'ФБРК',
+]);
+const HEADING_PROPER_NOUNS = new Map([
+  ['алматы', 'Алматы'],
+  ['астана', 'Астана'],
+  ['казахстан', 'Казахстан'],
+  ['китай', 'Китай'],
+  ['кыргызстан', 'Кыргызстан'],
+  ['москва', 'Москва'],
+  ['россия', 'Россия'],
+  ['туркестан', 'Туркестан'],
+  ['узбекистан', 'Узбекистан'],
+  ['шымкент', 'Шымкент'],
+]);
+
+function headingContextMap(context) {
+  const restore = new Map();
+  const tokens = String(context || '').match(/[A-Za-zА-Яа-яЁё0-9-]+/g) || [];
+  tokens.forEach((token) => {
+    const lower = token.toLocaleLowerCase('ru');
+    const upper = token.toUpperCase();
+    if (HEADING_ACRONYMS.has(upper)) {
+      restore.set(lower, upper);
+      return;
+    }
+    if (token[0] && token[0] === token[0].toUpperCase()) {
+      restore.set(lower, token);
+    }
+  });
+  return restore;
+}
+
+function formatArticleSectionHeading(text, context = '') {
+  const raw = String(text || '').trim();
+  if (!raw) return '';
+  const letters = raw.match(/[A-Za-zА-Яа-яЁё]/g) || [];
+  if (letters.length < 4) return raw;
+  const lowerCount = (raw.match(/[a-zа-яё]/g) || []).length;
+  const upperCount = (raw.match(/[A-ZА-ЯЁ]/g) || []).length;
+  if (lowerCount || upperCount / Math.max(letters.length, 1) < 0.72) return raw;
+
+  const restore = headingContextMap(context);
+  const normalized = raw.replace(/[A-Za-zА-Яа-яЁё0-9-]+/g, (token) => {
+    const lower = token.toLocaleLowerCase('ru');
+    const upper = token.toUpperCase();
+    if (/\d/.test(token)) return upper;
+    if (HEADING_ACRONYMS.has(upper)) return upper;
+    if (restore.has(lower)) return restore.get(lower);
+    if (HEADING_PROPER_NOUNS.has(lower)) return HEADING_PROPER_NOUNS.get(lower);
+    return token.toLocaleLowerCase('ru');
+  });
+
+  return normalized.replace(/[A-Za-zА-Яа-яЁё]/, (char) => char.toUpperCase());
+}
+
 // Importance badge — shown only for AI-rated articles with importance >= 4 (out of 5)
 function importanceBadgeHtml(a) {
   const imp = Number(a && a.importance);
@@ -603,11 +683,9 @@ function liveBadgeHtml(a) {
     invs.forEach((a) => shownIds.add(a.id));
     invRoot.innerHTML = invs
       .map((a) => {
-        const hasImg = !!(a.image && String(a.image).trim());
+        const hasImg = !!imageMeta(a).url;
         const cardCls = hasImg ? 'card' : 'card card--no-image';
-        const mediaInner = hasImg
-          ? `<img src="${a.image}" alt="${escapeHtml(a.title)}" width="600" height="400" loading="lazy"/>`
-          : '';
+        const mediaInner = hasImg ? cardImageHtml(a) : '';
         return `
       <article class="${cardCls}">
         <a href="${articleHref(a)}">
@@ -630,10 +708,10 @@ function liveBadgeHtml(a) {
     const PAGE = 12;
     let rendered = 0;
     const renderItem = (a) => {
-      const hasImg = !!(a.image && String(a.image).trim());
+      const hasImg = !!imageMeta(a).url;
       const thumbCls = hasImg ? 'latest__thumb' : 'latest__thumb latest__thumb--no-image';
       const thumbInner = hasImg
-        ? `<img src="${a.image}" alt="${escapeHtml(a.title)}" width="320" height="200" loading="lazy"/>`
+        ? `<img src="${imageMeta(a).url}" alt="${escapeHtml(a.title)}" width="320" height="180" loading="lazy" decoding="async"/>`
         : `<span class="latest__thumb-mark">ФБРК</span>`;
       return `
       <li class="latest__item">
@@ -869,7 +947,7 @@ function liveBadgeHtml(a) {
     .map((p) => ({ h: '', p }));
   const bodySections = sectionItems.length ? sectionItems : fallbackParagraphs;
   const heroDek = articleHeroDek(a, sectionItems);
-  const articleDateLabel = fmtDateLong(a.dateIso) || a.date || '';
+  const articleDateLabel = articleDateLabelFromData(a);
 
   document.title = `${a.title} — ФБРК`;
 
@@ -917,7 +995,8 @@ function liveBadgeHtml(a) {
         ${bodySections.map((s) => {
           const h = String((s && s.h) || '').trim();
           const p = String((s && s.p) || '').trim();
-          const hHtml = h ? `<h2>${escapeHtml(h)}</h2>` : '';
+          const headingText = formatArticleSectionHeading(h, a.title);
+          const hHtml = headingText ? `<h2>${escapeHtml(headingText)}</h2>` : '';
           const pHtml = p ? renderArticleParagraphs(p) : '';
           return hHtml + pHtml;
         }).join('')}
@@ -937,11 +1016,10 @@ function liveBadgeHtml(a) {
             .slice(0, 3)
             .map(
               (x) => {
-                const hasImg = !!(x.image && String(x.image).trim());
+                const hasImg = !!imageMeta(x).url;
                 const cardCls = hasImg ? 'card' : 'card card--no-image';
-                const mediaInner = hasImg
-                  ? `<img src="${x.image}" alt="${escapeHtml(x.title)}" width="600" height="400" loading="lazy"/>`
-                  : '';
+                const mediaInner = hasImg ? cardImageHtml(x) : '';
+                const previewDek = cardPreviewDek(x);
                 return `
             <article class="${cardCls}">
               <a href="${articleHref(x)}">
@@ -952,7 +1030,7 @@ function liveBadgeHtml(a) {
                 </div>
                 <h3 class="card__title">${escapeHtml(x.title)}</h3>
               </a>
-              <p class="card__dek">${escapeHtml(x.dek)}</p>
+              ${previewDek ? `<p class="card__dek">${escapeHtml(previewDek)}</p>` : ''}
             </article>`;
               }
             )
@@ -967,6 +1045,20 @@ function liveBadgeHtml(a) {
 // ---------- util ----------
 function escapeHtml(s) {
   return String(s).replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+}
+
+function articleDateLabelFromData(a) {
+  const raw = String(((a && (a.dateIso || a.date)) || '')).trim();
+  if (!raw) return '';
+  const short = fmtDateLong(raw.slice(0, 10));
+  if (short) return short;
+  const match = raw.match(/^(\d{1,2})\s+([А-Яа-яёЁ]+)\s+\d{4}$/);
+  if (match) {
+    const day = parseInt(match[1], 10);
+    const month = match[2];
+    return Number.isNaN(day) ? raw : `${day} ${month}`;
+  }
+  return raw;
 }
 
 function safeArticleUrl(raw) {
@@ -1033,17 +1125,17 @@ function articleHeroDek(a, sectionItems = []) {
   const normalizedSections = Array.isArray(sectionItems) ? sectionItems : [];
   const firstParagraph = dek.split(/\n{2,}/)[0]?.trim() || '';
 
-  if (summaryShort) {
-    return truncateText(summaryShort, 240);
-  }
-
-  if (!dek) return '';
-
   if (!normalizedSections.length) {
-    return truncateText(summaryShort || firstParagraph || dek, 420);
+    const compactCandidates = [summaryShort, firstParagraph, dek];
+    for (const candidate of compactCandidates) {
+      const text = String(candidate || '').trim();
+      if (!text || isMetadataOnlyLead(text)) continue;
+      return truncateText(text, 420);
+    }
+    return '';
   }
 
-  const firstSectionText = normalizedArticleText(`${sectionItems[0]?.h || ''} ${sectionItems[0]?.p || ''}`);
+  const firstSectionText = normalizedArticleText(`${normalizedSections[0]?.h || ''} ${normalizedSections[0]?.p || ''}`);
   const candidates = [
     dek,
     firstParagraph,
@@ -1054,6 +1146,7 @@ function articleHeroDek(a, sectionItems = []) {
     const text = String(candidate || '').trim();
     if (!text || text.length > 420) continue;
     if (/\n\s*\n/.test(text)) continue;
+    if (isMetadataOnlyLead(text)) continue;
     const normalizedDek = normalizedArticleText(text);
     if (normalizedDek && firstSectionText.startsWith(normalizedDek)) continue;
     return text;
@@ -1347,6 +1440,8 @@ function renderArticleTags(tags) {
   const countEl = document.querySelector('[data-archive-count]');
   const kickerEl = document.querySelector('[data-archive-kicker]');
   const titleEl = document.querySelector('[data-archive-title]');
+  const descriptionEl = document.querySelector('[data-archive-description]');
+  const headEl = document.querySelector('.archive__head');
 
   const MONTHS = ['Январь','Февраль','Март','Апрель','Май','Июнь','Июль','Август','Сентябрь','Октябрь','Ноябрь','Декабрь'];
   const PAGE = 24;
@@ -1380,9 +1475,30 @@ function renderArticleTags(tags) {
   // Update page title based on filter
   function updateHeader(cat) {
     if (!titleEl) return;
-    if (cat === 'investigation') { titleEl.textContent = 'Расследования'; if (kickerEl) kickerEl.textContent = 'Расследования'; document.title = 'Расследования — ФБРК'; }
-    else if (cat === 'news') { titleEl.textContent = 'Новости'; if (kickerEl) kickerEl.textContent = 'Новости'; document.title = 'Новости — ФБРК'; }
-    else { titleEl.textContent = 'Архив материалов'; if (kickerEl) kickerEl.textContent = 'Архив'; document.title = 'Архив материалов — ФБРК'; }
+    const categoryView = cat === 'investigation' || cat === 'news';
+    if (headEl) headEl.classList.toggle('archive__head--compact', categoryView);
+    if (kickerEl) kickerEl.hidden = categoryView;
+    if (cat === 'investigation') {
+      titleEl.textContent = 'Расследования';
+      if (kickerEl) kickerEl.textContent = 'Архив';
+      if (descriptionEl) descriptionEl.textContent = 'Большие расследования ФБРК о коррупции, активах, земле и влиятельных связях.';
+      document.title = 'Расследования — ФБРК';
+    }
+    else if (cat === 'news') {
+      titleEl.textContent = 'Новости';
+      if (kickerEl) kickerEl.textContent = 'Архив';
+      if (descriptionEl) descriptionEl.textContent = 'Оперативные материалы ФБРК о чиновниках, судах, силовиках и публичных деньгах.';
+      document.title = 'Новости — ФБРК';
+    }
+    else {
+      titleEl.textContent = 'Архив материалов';
+      if (kickerEl) {
+        kickerEl.hidden = false;
+        kickerEl.textContent = 'Архив';
+      }
+      if (descriptionEl) descriptionEl.textContent = 'Полный архив публикаций ФБРК с фильтрами по рубрике, году, месяцу и теме.';
+      document.title = 'Архив материалов — ФБРК';
+    }
   }
 
   let rendered = 0;
@@ -1428,9 +1544,8 @@ function renderArticleTags(tags) {
   function itemHtml(a) {
     const hasImg = !!imageMeta(a).url;
     const cardCls = hasImg ? 'card' : 'card card--no-image';
-    const mediaInner = hasImg
-      ? `<img src="${imageMeta(a).url}" alt="${escapeHtml(a.title)}" width="600" height="400" loading="lazy" decoding="async"/>`
-      : '';
+    const mediaInner = hasImg ? cardImageHtml(a) : '';
+    const previewDek = cardPreviewDek(a);
     return `
       <article class="${cardCls}">
         <a href="${articleHref(a)}">
@@ -1441,7 +1556,7 @@ function renderArticleTags(tags) {
           </div>
           <h2 class="card__title">${escapeHtml(a.title)}</h2>
         </a>
-        <p class="card__dek">${escapeHtml(a.dek)}</p>
+        ${previewDek ? `<p class="card__dek">${escapeHtml(previewDek)}</p>` : ''}
       </article>`;
   }
 

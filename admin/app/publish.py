@@ -11,6 +11,7 @@ from pathlib import Path
 
 from .config import settings
 from .db import db, row_to_article
+from .editorjs import normalize_section_heading
 
 
 SITE_URL = (os.environ.get("FBRK_SITE_URL") or "https://fbrk.qdev.run").rstrip("/")
@@ -366,7 +367,15 @@ def _article_full_shape(a: dict) -> dict:
     no admin body_json, no author names, no private editor metadata.
     """
     shape = _public_shape(a)
-    shape["sections"] = a.get("sections") or []
+    context = " ".join(str(a.get(key) or "").strip() for key in ("title", "dek"))
+    shape["sections"] = [
+        {
+            **section,
+            "h": normalize_section_heading(section.get("h") or "", context=context),
+        }
+        for section in (a.get("sections") or [])
+        if isinstance(section, dict)
+    ]
     raw_entities = _json_list(a.get("_meta_entities_json"))
     manual_tags = _manual_public_tags(
         shape.get("tags") or [],

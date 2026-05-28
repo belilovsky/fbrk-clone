@@ -28,6 +28,7 @@ from fastapi.responses import HTMLResponse, PlainTextResponse, Response
 from .admin_platform.templating import AdminJinja2Templates
 from .config import settings
 from .db import db, row_to_article
+from .editorjs import normalize_section_heading
 
 DEFAULT_SITE_URL = (os.environ.get("FBRK_SITE_URL") or "https://fbrk.qdev.run").rstrip("/")
 ORG_NAME = "ФБРК"
@@ -171,7 +172,52 @@ def _header_dek(dek: str, sections: list) -> str:
     return value
 
 
-def _sections_to_html(sections: list, site_url: str) -> str:
+RU_MONTHS_GENITIVE = [
+    "января",
+    "февраля",
+    "марта",
+    "апреля",
+    "мая",
+    "июня",
+    "июля",
+    "августа",
+    "сентября",
+    "октября",
+    "ноября",
+    "декабря",
+]
+
+
+def _kicker_date_label(date_value: str, current_year: int) -> str:
+    """Return compact RU date label for article header, usually without year."""
+    raw = (date_value or "").strip()
+    if not raw:
+        return ""
+
+    # Prefer ISO (2026-05-24...), but fallback to "15 мая 2026"-style strings.
+    try:
+        parsed = datetime.strptime(raw[:10], "%Y-%m-%d")
+        day = parsed.day
+        month = RU_MONTHS_GENITIVE[parsed.month - 1]
+        if parsed.year != current_year:
+            return f"{day} {month} {parsed.year}"
+        return f"{day} {month}"
+    except Exception:
+        pass
+
+    match = re.match(r"^(\d{1,2})\s+([А-Яа-яёЁ]+)\s+(\d{4})$", raw)
+    if match:
+        day, month, year = match.groups()
+        try:
+            int_day = int(day)
+            return f"{int_day} {month}" if int(year) == current_year else raw
+        except Exception:
+            return raw
+
+    return raw
+
+
+def _sections_to_html(sections: list, site_url: str, context: str = "") -> str:
     """Render sections as clean semantic HTML for SSR body + RSS content:encoded."""
     out: list[str] = []
     for s in sections or []:
@@ -181,7 +227,7 @@ def _sections_to_html(sections: list, site_url: str) -> str:
         p = s.get("p")
         img = s.get("img") or s.get("image")
         if h:
-            out.append(f"<h2>{html.escape(str(h))}</h2>")
+            out.append(f"<h2>{html.escape(normalize_section_heading(str(h), context=context))}</h2>")
         if img:
             src = _abs_url(str(img), site_url)
             cap = html.escape(str(s.get("caption") or ""))
@@ -382,16 +428,24 @@ def ssr_article(slug: str, request: Request):
     dek = _strip_html(raw_dek)
     plain_body = _sections_to_plain(a.get("sections") or [])
     header_dek = _header_dek(raw_dek, a.get("sections") or [])
-    hero_dek = (meta.get("summary_short") or header_dek or "").strip()
+    if header_dek:
+        hero_dek = header_dek
+    elif summary_short := (meta.get("summary_short") or "").strip():
+        hero_dek = summary_short
+    elif a.get("sections"):
+        hero_dek = ""
+    else:
+        hero_dek = dek if dek and len(dek) <= 420 and "\n\n" not in dek else ""
     # Prefer AI short summary when available (tighter, better for SEO/LLMs)
     desc = (meta.get("summary_short") or dek or plain_body[:240]).strip()[:240]
     image = _abs_url(a.get("image") or "", site_url)
-    body_html = _sections_to_html(a.get("sections") or [], site_url)
+    heading_context = " ".join(filter(None, [str(a.get("title") or "").strip(), str(a.get("dek") or "").strip()]))
+    body_html = _sections_to_html(a.get("sections") or [], site_url, context=heading_context)
     word_count = len((plain_body or "").split())
     read_min = max(1, round(len((" ".join(part for part in [hero_dek, plain_body] if part)).split()) / 180))
 
     date_iso = a.get("dateIso") or ""
-    date_label = a.get("date") or ""
+    date_label = _kicker_date_label((date_iso or a.get("date") or ""), datetime.now(timezone.utc).year)
     published_iso = _iso8601(date_iso)
     modified_iso = _iso8601((a.get("updatedAt") or date_iso)[:10])
     category_label = a.get("categoryLabel") or "Новости"
@@ -693,7 +747,8 @@ def feed_xml(request: Request):
         url = f"{site_url}/a/{slug}"
         img = _abs_url(a.get("image") or "", site_url) if a.get("image") else ""
         dek = _strip_html(a.get("dek") or "")[:500]
-        body_html = _sections_to_html(a.get("sections") or [], site_url)
+        heading_context = " ".join(filter(None, [str(a.get("title") or "").strip(), str(a.get("dek") or "").strip()]))
+        body_html = _sections_to_html(a.get("sections") or [], site_url, context=heading_context)
         content_encoded = f"<![CDATA[{body_html}]]>"
         lines.append("    <item>")
         lines.append(f"      <title>{html.escape(a.get('title') or '')}</title>")
@@ -729,7 +784,8 @@ def _render_ia_body_html(a: dict, url: str, image: str, site_url: str) -> str:
     date_iso = a.get("dateIso") or ""
     pub_iso = _iso8601(date_iso)
     date_label = html.escape(a.get("date") or date_iso)
-    body_inner = _sections_to_html(a.get("sections") or [], site_url)
+    heading_context = " ".join(filter(None, [str(a.get("title") or "").strip(), str(a.get("dek") or "").strip()]))
+    body_inner = _sections_to_html(a.get("sections") or [], site_url, context=heading_context)
 
     parts = [
         '<!doctype html>',

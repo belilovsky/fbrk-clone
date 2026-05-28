@@ -53,7 +53,7 @@ def test_static_pages_share_canonical_shell_markup() -> None:
 def test_public_shells_expose_visible_avds_version() -> None:
     for path in PUBLIC_SHELLS:
         html = path.read_text(encoding="utf-8")
-        assert 'class="site-footer__version">AV DS 3.7.1</span>' in html, path
+        assert 'class="site-footer__version">AV DS 4</span>' in html, path
         assert "<!-- AV DS" not in html, path
 
 
@@ -99,7 +99,8 @@ def test_frontend_css_keeps_article_spacing_readable() -> None:
     assert not re.search(r"letter-spacing:\s*-", css)
     assert "console.log" not in js
     assert re.search(r"\.ad-block:empty\s*\{\s*display:\s*none;", css)
-    assert re.search(r"\.site-header__nav\s*\{[\s\S]*min-height:\s*100dvh;", css)
+    assert re.search(r"\.site-header__nav\s*\{[\s\S]*max-height:\s*calc\(100dvh - 84px\);", css)
+    assert re.search(r"\.site-header__nav\s*\{[\s\S]*border-radius:\s*20px;", css)
 
 
 def test_ssr_article_keeps_summary_and_share_below_body() -> None:

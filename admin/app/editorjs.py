@@ -6,11 +6,103 @@ import re
 from typing import Any
 
 
+HEADING_ACRONYMS = {
+    "АПК",
+    "АЭС",
+    "АФМ",
+    "БАД",
+    "ВВП",
+    "ВИЧ",
+    "ВКО",
+    "ВОЗ",
+    "ГЭС",
+    "ДТП",
+    "ЕНПФ",
+    "ЕС",
+    "ЖКХ",
+    "ИИ",
+    "КГД",
+    "КНБ",
+    "КТЖ",
+    "МВД",
+    "МЧС",
+    "НДС",
+    "ООН",
+    "ПДД",
+    "РК",
+    "РФ",
+    "СМИ",
+    "США",
+    "ТЭЦ",
+    "ФБРК",
+}
+HEADING_PROPER_NOUNS = {
+    "алматы": "Алматы",
+    "астана": "Астана",
+    "казахстан": "Казахстан",
+    "китай": "Китай",
+    "кыргызстан": "Кыргызстан",
+    "москва": "Москва",
+    "россия": "Россия",
+    "туркестан": "Туркестан",
+    "узбекистан": "Узбекистан",
+    "шымкент": "Шымкент",
+}
+HEADING_WORD_RE = re.compile(r"[A-Za-zА-Яа-яЁё0-9-]+")
+
+
 def _strip_html(s: str) -> str:
     # Editor.js inline tools produce <b>/<i>/<a>; the public template wraps
     # paragraphs in <p> verbatim, so we keep the HTML for paragraphs but
     # unescape headings to plain text.
     return re.sub(r"<[^>]+>", "", s or "").strip()
+
+
+def _heading_context_map(context: str) -> dict[str, str]:
+    mapping: dict[str, str] = {}
+    for token in HEADING_WORD_RE.findall(context or ""):
+        lower = token.casefold()
+        upper = token.upper()
+        if upper in HEADING_ACRONYMS:
+            mapping[lower] = upper
+            continue
+        if token[:1].isupper() and any(ch.isalpha() for ch in token):
+            mapping[lower] = token
+    return mapping
+
+
+def normalize_section_heading(text: str, context: str = "") -> str:
+    clean = _strip_html(text or "")
+    if not clean:
+        return ""
+
+    letters = re.findall(r"[A-Za-zА-Яа-яЁё]", clean)
+    if len(letters) < 4:
+        return clean
+
+    lower_count = len(re.findall(r"[a-zа-яё]", clean))
+    upper_count = len(re.findall(r"[A-ZА-ЯЁ]", clean))
+    if lower_count or upper_count / max(len(letters), 1) < 0.72:
+        return clean
+
+    restore = _heading_context_map(context)
+
+    def replace(match: re.Match[str]) -> str:
+        token = match.group(0)
+        lower = token.casefold()
+        upper = token.upper()
+        if any(ch.isdigit() for ch in token):
+            return upper
+        if upper in HEADING_ACRONYMS:
+            return upper
+        if lower in restore:
+            return restore[lower]
+        if lower in HEADING_PROPER_NOUNS:
+            return HEADING_PROPER_NOUNS[lower]
+        return token.lower()
+
+    normalized = HEADING_WORD_RE.sub(replace, clean)
+    return re.sub(r"[A-Za-zА-Яа-яЁё]", lambda m: m.group(0).upper(), normalized, count=1)
 
 
 def editorjs_to_sections(data: dict[str, Any] | None) -> list[dict]:
@@ -39,7 +131,7 @@ def editorjs_to_sections(data: dict[str, Any] | None) -> list[dict]:
         t = b.get("type")
         d = b.get("data") or {}
         if t == "header":
-            text = _strip_html(d.get("text", ""))
+            text = normalize_section_heading(d.get("text", ""))
             level = d.get("level", 2)
             if level <= 2:
                 current = {"h": text, "p": ""}
@@ -81,7 +173,7 @@ def sections_to_editorjs(sections: list[dict]) -> dict:
     opening a legacy article in the editor yields a sensible starting state."""
     blocks = []
     for s in sections or []:
-        h = (s.get("h") or "").strip()
+        h = normalize_section_heading(s.get("h") or "")
         p = (s.get("p") or "").strip()
         if h:
             blocks.append({"type": "header", "data": {"text": h, "level": 2}})
