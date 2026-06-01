@@ -87,6 +87,16 @@ class PublicEntityTagsTest(unittest.TestCase):
         self.assertTrue(result["summary_short"].endswith((".", "!", "?")))
         self.assertEqual(result["entities"][0]["type"], "gov")
 
+    def test_normalize_summary_short_removes_space_before_punctuation(self) -> None:
+        normalized = enrich._normalize_summary_short(
+            "Дело Нурболата Дакебаева , обвиняемого в нападении, вернут в прокуратуру ."
+        )
+
+        self.assertEqual(
+            normalized,
+            "Дело Нурболата Дакебаева, обвиняемого в нападении, вернут в прокуратуру."
+        )
+
     def test_sanitize_result_backfills_second_entity_from_article_context(self) -> None:
         raw = {
             "summary_short": "В Атырау прошёл форум по правовой культуре и безопасности молодёжи.",
@@ -102,6 +112,31 @@ class PublicEntityTagsTest(unittest.TestCase):
 
         self.assertGreaterEqual(len(result["entities"]), 2)
         self.assertIn("Атырау", {item["name"] for item in result["entities"]})
+
+    def test_sanitize_result_replaces_summary_that_duplicates_dek(self) -> None:
+        article = _article(
+            title="В Туркестанской области требуют признать зону ЧС",
+            dek="Жители Туркестанской области требуют признать 900 гектаров земли зоной чрезвычайного положения.",
+            sections=[
+                {
+                    "h": "",
+                    "p": "В поселке Темирлан жители заявили, что просадка почвы возле шахты расширяется и угрожает домам, дорогам и оросительным каналам.",
+                }
+            ],
+        )
+        raw = {
+            "summary_short": "Жители Туркестанской области требуют признать 900 гектаров земли зоной чрезвычайного положения.",
+            "summary_tts": "ok",
+            "entities": [
+                {"name": "Туркестанская область", "type": "place"},
+                {"name": "Темирлан", "type": "place"},
+            ],
+        }
+
+        result = enrich._sanitize_result(raw, article=article)
+
+        self.assertNotEqual(result["summary_short"], article["dek"])
+        self.assertIn("просадка почвы", result["summary_short"])
 
     def test_fallback_result_strips_source_prefix_and_guesses_entity_types(self) -> None:
         article = _article(
@@ -167,6 +202,21 @@ class PublicEntityTagsTest(unittest.TestCase):
                 "Краткое описание статьи без мусора и в пределах разумной длины.",
                 "deepseek-chat",
                 json.dumps([{"name": "Астана", "type": "place"}], ensure_ascii=False),
+            )
+        )
+        self.assertTrue(
+            enrich._needs_quality_rerun(
+                "Заголовок",
+                "Лид статьи без мусора и с нормальной длиной.",
+                "deepseek-chat",
+                json.dumps(
+                    [
+                        {"name": "Астана", "type": "place"},
+                        {"name": "Минфин", "type": "gov"},
+                    ],
+                    ensure_ascii=False,
+                ),
+                "Лид статьи без мусора и с нормальной длиной.",
             )
         )
 

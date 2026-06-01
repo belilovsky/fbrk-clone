@@ -227,7 +227,37 @@ def _normalize_summary_short(text: str, fallback: str = "") -> str:
         candidate = _strip_source_prefix(fallback)
     if not candidate:
         candidate = _strip(fallback)
+    candidate = re.sub(r"\s+([,.;:!?])", r"\1", candidate)
     return _trim_summary_short(candidate, SUMMARY_SHORT_MAX_CHARS)
+
+
+def _summary_alternative_from_article(article: dict | None, avoid: list[str] | tuple[str, ...] = ()) -> str:
+    if not article:
+        return ""
+
+    blocked = {_strip(item) for item in avoid if _strip(item)}
+    title = article.get("title") or ""
+
+    for section in article.get("sections") or []:
+        if not isinstance(section, dict):
+            continue
+        paragraph = _strip_source_prefix(section.get("p") or "")
+        if not paragraph:
+            continue
+
+        for candidate in re.split(r"(?<=[.!?])\s+", paragraph):
+            normalized = _normalize_summary_short(candidate, fallback=title)
+            if not normalized:
+                continue
+            if _strip(normalized) in blocked:
+                continue
+            return normalized
+
+        normalized_paragraph = _normalize_summary_short(paragraph, fallback=title)
+        if normalized_paragraph and _strip(normalized_paragraph) not in blocked:
+            return normalized_paragraph
+
+    return ""
 
 
 def _guess_entity_type(name: str) -> str:
@@ -286,7 +316,7 @@ def _fallback_entities_from_texts(*texts: str, limit: int = ENTITY_MAX_COUNT) ->
 
 
 def _needs_quality_rerun(title: str, summary_short: str, model: str,
-                         entities_json: str | None = None) -> bool:
+                         entities_json: str | None = None, dek: str = "") -> bool:
     if (model or "").strip() == "fallback-local":
         return True
     raw = _strip(summary_short)
@@ -296,6 +326,8 @@ def _needs_quality_rerun(title: str, summary_short: str, model: str,
     if normalized != raw:
         return True
     if normalized == (title or "").strip():
+        return True
+    if dek and normalized == _strip(dek):
         return True
     entity_count = _entity_count(entities_json)
     if entity_count < ENTITY_MIN_COUNT or entity_count > ENTITY_MAX_COUNT:
@@ -524,6 +556,16 @@ def _sanitize_result(raw: dict, article: dict | None = None) -> dict:
         _str(raw.get("summary_short"), SUMMARY_SHORT_HARD_CAP),
         fallback=fallback_summary,
     )
+    if article and _strip(summary_short) in {
+        _strip(article.get("title") or ""),
+        _strip(article.get("dek") or ""),
+    }:
+        alt_summary = _summary_alternative_from_article(
+            article,
+            avoid=[summary_short, article.get("title") or "", article.get("dek") or ""],
+        )
+        if alt_summary:
+            summary_short = alt_summary
     if article and len(entities) < ENTITY_MIN_COUNT:
         existing = {str(item.get("name") or "").casefold() for item in entities}
         for extra in _fallback_entities_from_texts(
@@ -565,6 +607,13 @@ def _fallback_result(a: dict) -> dict:
 
     lead = _strip_source_prefix(dek) or _strip_source_prefix(paragraphs[0] if paragraphs else "")
     summary_short = _normalize_summary_short(lead or title, fallback=title)
+    if _strip(summary_short) in {_strip(title), dek}:
+        alt_summary = _summary_alternative_from_article(
+            a,
+            avoid=[summary_short, title, dek],
+        )
+        if alt_summary:
+            summary_short = alt_summary
     summary_tts = " ".join(
         x for x in [_strip_source_prefix(dek), _strip_source_prefix(paragraphs[0] if paragraphs else "")] if x
     ).strip()
@@ -662,6 +711,7 @@ def _select_pending(limit: int | None, only_id: str | None, retry_errors: bool,
                 row["_meta_summary_short"] or "",
                 row["_meta_model"] or "",
                 row["_meta_entities_json"] or "",
+                art.get("dek", "") or "",
             ):
                 filtered.append(art)
         articles = filtered
