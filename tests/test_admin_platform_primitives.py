@@ -13,6 +13,7 @@ sys.path.insert(0, str(ROOT / "admin"))
 
 from app.admin_platform.access import ROLE_ADMIN, has_role, principal_from_user, require_role
 from app.admin_platform.audit import compact_details, record_audit
+from app.admin_platform.control_plane import build_control_plane_profile
 from app.admin_platform.csrf import make_csrf_token, verify_csrf_token
 from app.admin_platform.qaz_bridge import bridge_status
 from app.admin_platform.paths import safe_join
@@ -90,6 +91,45 @@ class AdminPlatformPrimitiveTests(unittest.TestCase):
                 sys.modules.pop("qaz_admin.uploads", None)
             else:
                 sys.modules["qaz_admin.uploads"] = previous_uploads
+
+    def test_control_plane_profile_uses_local_and_manifest_metadata(self) -> None:
+        profile = build_control_plane_profile()
+        self.assertEqual(profile["project_id"], "fbrk")
+        self.assertEqual(profile["adoption_target"], "content_admins")
+        self.assertEqual(profile["source"], "local")
+        self.assertIn("policy_check", profile["pipeline_stages"])
+        self.assertIn("source_verification", profile["policy_hooks"])
+        self.assertGreaterEqual(profile["counts"]["entity_types"], 8)
+
+        manifest_profile = build_control_plane_profile(
+            {
+                "consumer_adoption_targets": {
+                    "content_admins": {
+                        "status": "partial",
+                        "next_gate": "manifest next gate",
+                    }
+                },
+                "product_packages": {
+                    "media_compliance_kit": {
+                        "name": "Manifest Compliance",
+                        "wave": "second",
+                        "readiness": "ready",
+                    }
+                },
+                "project_bindings": {
+                    "fbrk": {
+                        "entity_types": ["story", "report"],
+                        "policy_hooks": ["editorial_policy"],
+                    }
+                },
+            }
+        )
+        self.assertEqual(manifest_profile["source"], "manifest")
+        self.assertEqual(manifest_profile["status"], "partial")
+        self.assertEqual(manifest_profile["next_gate"], "manifest next gate")
+        self.assertEqual(manifest_profile["product_packages"][0]["name"], "Manifest Compliance")
+        self.assertEqual(manifest_profile["entity_types"], ["story", "report"])
+        self.assertEqual(manifest_profile["policy_hooks"], ["editorial_policy"])
 
     def test_record_audit_is_best_effort(self) -> None:
         conn = sqlite3.connect(":memory:")

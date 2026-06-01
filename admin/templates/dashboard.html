@@ -12,6 +12,23 @@
     <div class="kpi-card"><div class="kpi-label">Рекламные слоты</div><div class="kpi-value">{{ stats.ads_total }}</div></div>
     <div class="kpi-card"><div class="kpi-label">Активные кампании</div><div class="kpi-value">{{ stats.ads_active }}</div></div>
   </div>
+  {% if control_plane %}
+  <div class="section-card" style="margin-top:16px">
+    <h3>Control plane</h3>
+    <p class="muted" style="margin-top:-4px">
+      {{ control_plane.product_packages | map(attribute='name') | join(', ') }}
+      · stages {{ control_plane.counts.pipeline_stages }}
+      · policy hooks {{ control_plane.counts.policy_hooks }}
+      · {{ control_plane.source }}
+    </p>
+    <div class="recent-list" style="display:flex;gap:8px;flex-wrap:wrap;margin-top:10px">
+      <span class="tag-chip">{{ control_plane.status }}</span>
+      {% for item in control_plane.pipeline_stages[:4] %}
+      <span class="tag-chip">{{ item }}</span>
+      {% endfor %}
+    </div>
+  </div>
+  {% endif %}
   <div class="section-card" style="margin-top:24px">
     <h3>Последние материалы</h3>
     {% if recent %}

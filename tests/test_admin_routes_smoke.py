@@ -119,6 +119,12 @@ def test_admin_login_and_protected_dashboard(tmp_path: Path) -> None:
         assert dashboard.status_code == 200
         assert "Материалов пока нет" in dashboard.text
         assert 'name="csrf-token" content="' in dashboard.text
+        assert "Control plane" in dashboard.text
+        assert "Media Compliance Kit" in dashboard.text
+
+        profile = client.get("/api/admin/control-plane-profile")
+        assert profile.status_code == 200
+        assert profile.json()["project_id"] == "fbrk"
 
 
 def test_admin_form_csrf_reject_and_accept(tmp_path: Path) -> None:

@@ -149,6 +149,27 @@ Verification highlights:
 - production image upload through session + CSRF -> OK, generated WebP URLs
   returned `200`, smoke files/DB row removed after verification.
 
+## Control Plane Pass 2026-06-01
+
+Added the first FBRK admin adapter for the shared qdev ecosystem control plane:
+
+- `admin/app/admin_platform/control_plane.py` exposes local fallback metadata for
+  packages, pipeline stages, evidence events, entity types and policy hooks;
+- `/admin/` and `/admin/home` render a compact Control plane card without
+  changing existing dashboard URLs or article workflows;
+- `/api/admin/control-plane-profile` returns the same profile behind existing
+  admin auth for smoke/debug checks;
+- regression tests cover local fallback metadata, manifest overrides, dashboard
+  rendering and the protected JSON endpoint.
+
+Verification:
+
+- `python3 -m pytest -q` -> `24 passed`;
+- `python3 -m py_compile admin/app/admin_platform/control_plane.py admin/app/main.py`
+  -> OK;
+- `python3 -m ruff check admin/app/admin_platform/control_plane.py` -> OK;
+- `node tests/article_js_filters.test.mjs` -> OK.
+
 ## Night Pass 2026-05-17
 
 Дополнительный спокойный проход по связке `new.fbrk.kz` + `fbrk.qdev.run`

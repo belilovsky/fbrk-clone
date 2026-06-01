@@ -34,6 +34,7 @@ from slugify import slugify
 
 from .config import settings
 from .admin_platform.audit import record_audit
+from .admin_platform.control_plane import build_control_plane_profile
 from .admin_platform.csrf import make_csrf_token, verify_csrf_token
 from .admin_platform.paths import upload_url_to_public_path, uploads_dir as platform_uploads_dir
 from .admin_platform.templating import AdminJinja2Templates
@@ -353,6 +354,7 @@ def dashboard(request: Request):
             "stats": stats,
             "recent": recent,
             "audit": audit,
+            "control_plane": build_control_plane_profile(),
         },
     )
 
@@ -855,7 +857,12 @@ def _admin_home(request: Request):
     u = current_user(request)
     if not u: return _auth_or_redirect(request)
     stats, recent, audit = _kpi_stats()
-    return _t2.TemplateResponse("dashboard.html", {"request":request,"user":u,"stats":stats,"recent":recent,"audit":audit})
+    return _t2.TemplateResponse("dashboard.html", {"request":request,"user":u,"stats":stats,"recent":recent,"audit":audit,"control_plane":build_control_plane_profile()})
+
+
+@app.get("/api/admin/control-plane-profile")
+def control_plane_profile(_user: str = Depends(require_auth)):
+    return build_control_plane_profile()
 
 
 # ---- v0.5 ads management ----
