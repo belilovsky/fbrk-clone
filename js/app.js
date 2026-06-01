@@ -1785,8 +1785,8 @@ function liveBadgeHtml(a) {
     .map((x) => x.trim())
     .filter(Boolean)
     .map((p) => ({ h: '', p }));
-  const bodySections = sectionItems.length ? sectionItems : fallbackParagraphs;
   const heroDek = articleHeroDek(a, sectionItems);
+  const bodySections = trimRepeatedLeadFromSections(sectionItems.length ? sectionItems : fallbackParagraphs, heroDek);
   const articleDateLabel = articleDateLabelFromData(a);
 
   document.title = `${a.title} — ФБРК`;
@@ -1995,6 +1995,36 @@ function articleHeroDek(a, sectionItems = []) {
   }
 
   return '';
+}
+
+function trimRepeatedLeadFromSections(sections, heroDek) {
+  const items = Array.isArray(sections) ? sections.slice() : [];
+  const normalizedLead = normalizedArticleText(heroDek);
+  if (!items.length || !normalizedLead) return items;
+
+  const first = items[0] || {};
+  const heading = String(first.h || '').trim();
+  const paragraph = String(first.p || '').trim();
+  if (!paragraph) return items;
+
+  const normalizedParagraph = normalizedArticleText(paragraph);
+  const lengthDelta = Math.abs(normalizedParagraph.length - normalizedLead.length);
+  const looksRepeatedLead = normalizedParagraph
+    && (normalizedParagraph === normalizedLead
+      || normalizedParagraph.startsWith(normalizedLead)
+      || normalizedLead.startsWith(normalizedParagraph))
+    && lengthDelta <= Math.max(48, Math.round(normalizedLead.length * 0.2));
+
+  if (!looksRepeatedLead) return items;
+  if (items.length < 2) {
+    return heading ? [{ ...first, p: '' }].filter((section) => String(section?.h || '').trim()) : [];
+  }
+  if (heading) {
+    return [{ ...first, p: '' }, ...items.slice(1)].filter((section) => {
+      return String(section?.h || '').trim() || String(section?.p || '').trim();
+    });
+  }
+  return items.slice(1);
 }
 
 function articleTags(a, excludedNames = []) {
@@ -2293,6 +2323,8 @@ function renderArticleTags(tags) {
   const activeEl = document.querySelector('[data-archive-active]');
   const activeListEl = document.querySelector('[data-archive-active-list]');
   const emptyMessageEl = document.querySelector('[data-archive-empty-message]');
+  const filtersEl = document.querySelector('.archive__filters');
+  const advancedToggleBtn = document.querySelector('[data-archive-advanced-toggle]');
 
   const MONTHS = ['Январь','Февраль','Март','Апрель','Май','Июнь','Июль','Август','Сентябрь','Октябрь','Ноябрь','Декабрь'];
   const PAGE = 24;
@@ -2411,6 +2443,18 @@ function renderArticleTags(tags) {
       button.hidden = button.classList.contains('archive__reset--ghost') ? !items.length : false;
     });
     return items;
+  }
+
+  function archiveHasAdvancedFilters(state) {
+    return Boolean(state.topic || state.region || state.series || state.status || state.label);
+  }
+
+  function syncArchiveAdvancedFilters(state) {
+    if (!filtersEl || !advancedToggleBtn) return;
+    const expanded = archiveHasAdvancedFilters(state) || filtersEl.classList.contains('is-expanded');
+    filtersEl.classList.toggle('is-expanded', expanded);
+    advancedToggleBtn.setAttribute('aria-expanded', String(expanded));
+    advancedToggleBtn.textContent = expanded ? 'Скрыть доп. фильтры' : 'Ещё фильтры';
   }
 
   function setArchiveSeo(title, description, state) {
@@ -2535,6 +2579,7 @@ function renderArticleTags(tags) {
   function filter() {
     const state = archiveState();
     const q = state.q.toLowerCase();
+    syncArchiveAdvancedFilters(state);
     updateHeader(state);
     const activeFilters = renderArchiveActiveFilters(state);
     filtered = all.filter((a) => {
@@ -2639,6 +2684,14 @@ function renderArticleTags(tags) {
   }
 
   [catSel, yearSel, monthSel, topicSel, regionSel, seriesSel, statusSel, labelSel].forEach((el) => el && el.addEventListener('change', filter));
+  if (advancedToggleBtn && filtersEl) {
+    advancedToggleBtn.addEventListener('click', () => {
+      const nextExpanded = !filtersEl.classList.contains('is-expanded');
+      filtersEl.classList.toggle('is-expanded', nextExpanded);
+      advancedToggleBtn.setAttribute('aria-expanded', String(nextExpanded));
+      advancedToggleBtn.textContent = nextExpanded ? 'Скрыть доп. фильтры' : 'Ещё фильтры';
+    });
+  }
   if (qInput) {
     let t;
     qInput.addEventListener('input', () => { clearTimeout(t); t = setTimeout(filter, 120); });
@@ -2856,7 +2909,7 @@ function renderArticleTags(tags) {
   banner.setAttribute('data-cookie-banner', '');
   banner.setAttribute('role', 'status');
   banner.innerHTML = `
-    <p>Сайт использует функциональные cookie.</p>
+    <p>Только функциональные cookie.</p>
     <div class="cookie-banner__actions">
       <a class="btn--secondary" href="/privacy.html">Подробнее</a>
       <button class="btn--primary" type="button" data-cookie-ok>OK</button>
