@@ -7,18 +7,22 @@ examples. With ``--apply`` it updates ``dek``, ``sections_json`` and
 ``body_json`` in SQLite, then regenerates public payloads.
 
 Typical VPS run:
-  cd /opt/fbrk-admin && set -a && . /etc/fbrk-admin/fbrk-admin.env && set +a \
-    && python3 admin/scripts/proofread_db.py --limit 25 --apply
+  cd /opt/fbrk-admin && set -a && . /etc/fbrk-admin/fbrk-admin.env && . ./.env && set +a \
+    && python3 ./scripts/proofread_db.py --limit 25 --apply
 """
 from __future__ import annotations
 
 import argparse
+import html
 import json
 import os
+import re
 import sqlite3
 import sys
+import time
 import urllib.error
 import urllib.request
+from collections import Counter
 from datetime import datetime, timezone
 from pathlib import Path
 
@@ -49,11 +53,16 @@ SYSTEM_PROMPT = """Ты — литературный редактор ФБРК. 
 Правила:
 - Не добавляй новые факты и не меняй смысл.
 - Исправляй только базовую грамматику, пунктуацию, синтаксис, опечатки и шероховатости.
+- Если исходный `dek` пустой, совпадает с заголовком или состоит только из служебной пометки вроде даты/источника, создай новый короткий лид на 1-2 предложения строго по содержанию статьи.
 - Подзаголовки из КАПСЛОКА переводи в обычный регистр, но сохраняй аббревиатуры вроде МВД, КНБ, РК, ДТП, АЭС.
 - Сохраняй количество секций, их порядок и общую структуру.
 - Если в параграфе уже есть inline HTML (<a>, <strong>, <em>, <blockquote>, <ul>, <ol>, <li>, <br>, <img>, <hr>), постарайся его сохранить.
 - Не сокращай текст агрессивно и не переписывай стиль заново.
 - Если правка не нужна, верни исходный текст."""
+
+SOURCE_HINT_RE = re.compile(r"(?:источник|источники|source)\s*:", re.IGNORECASE)
+DATE_PREFIX_RE = re.compile(r"^\(?\s*\d{1,2}\s+[A-Za-zА-Яа-яЁё]+")
+LEAD_HARD_CAP = 240
 
 
 def _is_caps_heading(text: str) -> bool:
@@ -68,15 +77,53 @@ def _is_caps_heading(text: str) -> bool:
     return lower == 0 and upper / max(len(letters), 1) >= 0.72
 
 
-def _needs_proofread(article: dict) -> bool:
+def _plain_text(text: str) -> str:
+    value = re.sub(r"<[^>]+>", " ", str(text or ""))
+    value = html.unescape(value)
+    return re.sub(r"\s+", " ", value).strip()
+
+
+def _is_metadata_only_dek(text: str) -> bool:
+    value = str(text or "").strip()
+    if not value:
+        return False
+    lower = value.casefold()
+    if SOURCE_HINT_RE.search(value):
+        return True
+    if value.startswith("(") and value.endswith(")") and (DATE_PREFIX_RE.match(value) or "|" in value or "•" in value):
+        return True
+    return lower.startswith("источник:") or lower.startswith("источники:")
+
+
+def _needs_lead_generation(article: dict) -> bool:
+    dek = _plain_text(article.get("dek") or "")
+    title = _plain_text(article.get("title") or "")
+    if not dek:
+        return True
+    if _is_metadata_only_dek(dek):
+        return True
+    return bool(title and dek == title)
+
+
+def _candidate_reasons(article: dict) -> list[str]:
+    reasons: list[str] = []
     sections = article.get("sections") or []
-    return any(_is_caps_heading((section or {}).get("h", "")) for section in sections if isinstance(section, dict))
+    if any(_is_caps_heading((section or {}).get("h", "")) for section in sections if isinstance(section, dict)):
+        reasons.append("caps_headings")
+    if _needs_lead_generation(article):
+        reasons.append("lead")
+    return reasons
+
+
+def _needs_proofread(article: dict) -> bool:
+    return bool(_candidate_reasons(article))
 
 
 def _article_input(article: dict) -> dict:
     return {
         "title": str(article.get("title") or "").strip(),
         "dek": str(article.get("dek") or "").strip(),
+        "needs_lead_generation": _needs_lead_generation(article),
         "sections": [
             {
                 "h": str((section or {}).get("h") or "").strip(),
@@ -123,7 +170,8 @@ def _call_deepseek(payload: dict, model: str) -> dict:
 
 
 def _sanitize_result(article: dict, result: dict) -> tuple[str, list[dict]]:
-    original_dek = str(article.get("dek") or "").strip()
+    original_dek = _plain_text(article.get("dek") or "")
+    title = _plain_text(article.get("title") or "")
     original_sections = [
         {
             "h": str((section or {}).get("h") or "").strip(),
@@ -134,7 +182,11 @@ def _sanitize_result(article: dict, result: dict) -> tuple[str, list[dict]]:
     ]
     context = " ".join(filter(None, [str(article.get("title") or "").strip(), original_dek]))
 
-    new_dek = str(result.get("dek") or "").strip() or original_dek
+    new_dek = _plain_text(result.get("dek") or "") or original_dek
+    if _needs_lead_generation(article) and (not new_dek or _is_metadata_only_dek(new_dek) or (title and new_dek == title)):
+        new_dek = _fallback_lead(article, fallback=original_dek or title)
+    if len(new_dek) > LEAD_HARD_CAP:
+        new_dek = _trim_lead(new_dek, LEAD_HARD_CAP)
     sections_in = result.get("sections") if isinstance(result.get("sections"), list) else []
     if len(sections_in) != len(original_sections):
       sections_in = original_sections
@@ -151,6 +203,47 @@ def _sanitize_result(article: dict, result: dict) -> tuple[str, list[dict]]:
         cleaned_sections.append({"h": heading, "p": paragraph})
 
     return new_dek, cleaned_sections
+
+
+def _trim_lead(text: str, maxlen: int = LEAD_HARD_CAP) -> str:
+    value = _plain_text(text)
+    if len(value) <= maxlen:
+        return value
+    sentences = re.split(r"(?<=[.!?])\s+", value)
+    acc = []
+    current = 0
+    for sentence in sentences:
+        if not sentence:
+            continue
+        extra = len(sentence) + (1 if acc else 0)
+        if current + extra > maxlen and acc:
+            break
+        acc.append(sentence)
+        current += extra
+        if current >= 120:
+            break
+    if acc:
+        return " ".join(acc).strip()
+    cut = value[:maxlen].rsplit(" ", 1)[0].strip()
+    return (cut or value[:maxlen]).rstrip(" ,;:-—")
+
+
+def _fallback_lead(article: dict, fallback: str = "") -> str:
+    title = _plain_text(article.get("title") or "")
+    if fallback and not _is_metadata_only_dek(fallback) and fallback != title:
+        return _trim_lead(fallback)
+    paragraphs: list[str] = []
+    for section in article.get("sections") or []:
+        if not isinstance(section, dict):
+            continue
+        text = _plain_text(section.get("p") or "")
+        if text:
+            paragraphs.append(text)
+    if paragraphs:
+        lead = _trim_lead(paragraphs[0])
+        if lead:
+            return lead
+    return _trim_lead(title)
 
 
 def _backup_db() -> Path:
@@ -205,6 +298,7 @@ def main() -> int:
     parser.add_argument("--limit", type=int, default=20, help="max published articles to inspect in dry-run mode")
     parser.add_argument("--only", help="proofread a single article by id or slug")
     parser.add_argument("--model", default=DEFAULT_MODEL, help="DeepSeek model id")
+    parser.add_argument("--sleep", type=float, default=0.15, help="sleep between API calls when applying")
     args = parser.parse_args()
 
     articles = _load_articles(args.limit, args.only)
@@ -215,13 +309,19 @@ def main() -> int:
         return 0
 
     print(f"Candidates: {len(candidates)}")
+    reason_counts = Counter()
+    for article in candidates:
+        for reason in _candidate_reasons(article):
+            reason_counts[reason] += 1
+    if reason_counts:
+        print("Reasons: " + ", ".join(f"{key}={reason_counts[key]}" for key in sorted(reason_counts)))
     for article in candidates[:10]:
         headings = [
             str((section or {}).get("h") or "").strip()
             for section in (article.get("sections") or [])
             if isinstance(section, dict) and str((section or {}).get("h") or "").strip()
         ]
-        print(f"- {article['slug']}: {headings[:3]}")
+        print(f"- {article['slug']}: reasons={','.join(_candidate_reasons(article)) or '-'} headings={headings[:3]}")
 
     if not args.apply:
         print("Dry-run only. Re-run with --apply to update the DB.")
@@ -231,20 +331,28 @@ def main() -> int:
     print(f"Backup: {backup}")
 
     changed = 0
-    for article in candidates:
-        payload = _article_input(article)
-        result = _call_deepseek(payload, args.model)
-        dek, sections = _sanitize_result(article, result)
-        if dek == str(article.get("dek") or "").strip() and sections == (article.get("sections") or []):
-            continue
-        _apply_article(article, dek, sections)
-        changed += 1
-        print(f"updated: {article['slug']}")
+    failed = 0
+    for idx, article in enumerate(candidates, 1):
+        try:
+            payload = _article_input(article)
+            result = _call_deepseek(payload, args.model)
+            dek, sections = _sanitize_result(article, result)
+            if dek == _plain_text(article.get("dek") or "") and sections == (article.get("sections") or []):
+                continue
+            _apply_article(article, dek, sections)
+            changed += 1
+            print(f"updated: {article['slug']}")
+        except Exception as exc:
+            failed += 1
+            print(f"failed: {article['slug']}: {type(exc).__name__}: {exc}")
+        if args.sleep and idx < len(candidates):
+            time.sleep(args.sleep)
 
     regen = regenerate_data_js()
     print(f"Proofread changes applied: {changed}")
+    print(f"Proofread errors: {failed}")
     print(f"Public payload regenerated: {regen}")
-    return 0
+    return 1 if failed else 0
 
 
 if __name__ == "__main__":
