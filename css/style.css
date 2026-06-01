@@ -1162,6 +1162,10 @@ input {
   margin-bottom: var(--space-5);
   max-width: 68ch;
 }
+.article__body strong,
+.article__body b {
+  font-weight: 600;
+}
 .article__body h2 {
   font-family: var(--font-display);
   font-size: var(--text-xl);
