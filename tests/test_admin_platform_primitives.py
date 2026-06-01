@@ -5,7 +5,10 @@ import sys
 import tempfile
 import types
 import unittest
+from io import BytesIO
 from pathlib import Path
+
+from PIL import Image
 
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -17,7 +20,7 @@ from app.admin_platform.csrf import make_csrf_token, verify_csrf_token
 from app.admin_platform.qaz_bridge import bridge_status
 from app.admin_platform.paths import safe_join
 from app.admin_platform.session import session_cookie_from_settings
-from app.admin_platform.uploads import detect_image_mime, validate_image_upload
+from app.admin_platform.uploads import detect_image_mime, store_optimized_image, validate_image_upload
 
 
 class AdminPlatformPrimitiveTests(unittest.TestCase):
@@ -67,6 +70,25 @@ class AdminPlatformPrimitiveTests(unittest.TestCase):
         self.assertFalse(mismatch.ok)
         self.assertIn("does not match", mismatch.error)
         self.assertFalse(validate_image_upload(b"not-image", content_type="image/png").ok)
+
+    def test_store_optimized_image_creates_full_and_thumb_pairs(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            buf = BytesIO()
+            Image.new("RGB", (2200, 1100), color=(10, 20, 30)).save(buf, format="PNG")
+            stored = store_optimized_image(
+                buf.getvalue(),
+                uploads_dir=tmp,
+                uploads_url_prefix="/img/uploads",
+                basename="fixed-name",
+            )
+            self.assertEqual(stored.thumb_url, "/img/uploads/thumb/fixed-name.webp")
+            self.assertEqual(stored.full_url, "/img/uploads/web/fixed-name.webp")
+            self.assertTrue(stored.thumb_path.exists())
+            self.assertTrue(stored.full_path.exists())
+            with Image.open(stored.full_path) as full_image:
+                self.assertEqual(full_image.width, 1600)
+            with Image.open(stored.thumb_path) as thumb_image:
+                self.assertEqual(thumb_image.width, 800)
 
     def test_qaz_admin_bridge_delegates_when_package_is_available(self) -> None:
         fake_package = types.ModuleType("qaz_admin")

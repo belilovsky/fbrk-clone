@@ -17,7 +17,6 @@ Routes:
 from __future__ import annotations
 
 from contextlib import asynccontextmanager
-import io
 import json
 import logging
 import uuid
@@ -30,7 +29,6 @@ from fastapi import (
 )
 from fastapi.responses import HTMLResponse, RedirectResponse
 from fastapi.staticfiles import StaticFiles
-from PIL import Image
 from slugify import slugify
 
 from .config import settings
@@ -38,7 +36,7 @@ from .admin_platform.audit import record_audit
 from .admin_platform.csrf import make_csrf_token, verify_csrf_token
 from .admin_platform.paths import upload_url_to_public_path, uploads_dir as platform_uploads_dir
 from .admin_platform.templating import AdminJinja2Templates
-from .admin_platform.uploads import validate_image_upload
+from .admin_platform.uploads import store_optimized_image, validate_image_upload
 from .db import db, init_db, row_to_article
 from .editorial_hubs import (
     annotate_article,
@@ -803,58 +801,35 @@ async def api_upload(file: UploadFile = File(...), actor: str = Depends(require_
     if not validation.ok:
         raise HTTPException(400, validation.error)
 
-    # Normalize to webp, write full + thumb
-    uploads_dir = Path(settings.uploads_dir)
-    uploads_dir.mkdir(parents=True, exist_ok=True)
-    (uploads_dir / "web").mkdir(exist_ok=True)
-    (uploads_dir / "thumb").mkdir(exist_ok=True)
-
-    name = f"{datetime.utcnow().strftime('%Y%m%d-%H%M%S')}-{uuid.uuid4().hex[:6]}"
     try:
-        im = Image.open(io.BytesIO(raw)).convert("RGB")
-    except Exception as e:
-        raise HTTPException(400, f"bad image: {e}")
-
-    w, h = im.size
-    if w > 1600:
-        im_full = im.resize((1600, int(h * 1600 / w)), Image.LANCZOS)
-    else:
-        im_full = im
-    fw, fh = im_full.size
-    if fw > 800:
-        im_th = im_full.resize((800, int(fh * 800 / fw)), Image.LANCZOS)
-    else:
-        im_th = im_full
-
-    full_path = uploads_dir / "web" / f"{name}.webp"
-    thumb_path = uploads_dir / "thumb" / f"{name}.webp"
-    im_full.save(full_path, "WEBP", quality=82, method=6)
-    im_th.save(thumb_path, "WEBP", quality=78, method=6)
-
-    # URLs for the public site (relative so it works with any base path)
-    full_url = f"{settings.uploads_url_prefix}/web/{name}.webp"
-    thumb_url = f"{settings.uploads_url_prefix}/thumb/{name}.webp"
+        stored = store_optimized_image(
+            raw,
+            uploads_dir=settings.uploads_dir,
+            uploads_url_prefix=settings.uploads_url_prefix,
+        )
+    except ValueError as exc:
+        raise HTTPException(400, str(exc)) from exc
 
     with db() as conn:
         conn.execute(
             "INSERT INTO uploads (filename, url, size_bytes) VALUES (?, ?, ?)",
-            (f"{name}.webp", thumb_url, full_path.stat().st_size),
+            (stored.basename, stored.thumb_url, stored.full_size_bytes),
         )
         record_audit(
             conn,
             user=actor,
             action="upload",
             entity="media",
-            entity_id=f"{name}.webp",
+            entity_id=stored.basename,
             details={"source": file.filename or "", "mime": validation.detected_mime},
         )
 
     # Editor.js image tool expects {success:1, file:{url}}
     return {
         "success": 1,
-        "file": {"url": thumb_url, "urlFull": full_url},
-        "thumb": thumb_url,
-        "full": full_url,
+        "file": {"url": stored.thumb_url, "urlFull": stored.full_url},
+        "thumb": stored.thumb_url,
+        "full": stored.full_url,
     }
 
 

@@ -137,6 +137,32 @@ set -a && . /etc/fbrk-admin/fbrk-admin.env && . ./.env && set +a
 заново сгенерировать публичные payload'ы и прогнать штатную синхронизацию
 split-фронта.
 
+## Миграция и оптимизация legacy-изображений
+
+Для переноса картинок с `fbrk.kz` в локальные `/img/uploads/...` есть
+`admin/scripts/migrate_fbrk_images.py`.
+
+Типовой безопасный прогон:
+
+```
+cd /opt/fbrk-admin
+./.venv/bin/python ./scripts/migrate_fbrk_images.py
+```
+
+Боевой прогон с изменением БД и публичных payload'ов:
+
+```
+cd /opt/fbrk-admin
+./.venv/bin/python ./scripts/migrate_fbrk_images.py --apply
+```
+
+Что делает скрипт:
+- находит в `articles.image`, `body_json` и `sections_json` внешние `fbrk.kz` изображения;
+- для `--apply` создаёт SQLite backup перед записью;
+- скачивает оригиналы, прогоняет их через тот же WebP helper, что и `/api/upload`;
+- переписывает cover на local thumb, inline-изображения статьи на local web;
+- регенерирует `data.js`, `data-archive.js` и `article-full.js`.
+
 ## Cron
 
 ```
