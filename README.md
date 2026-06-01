@@ -35,9 +35,9 @@ fbrk/
 ├── js/
 │   ├── app.js            — рендереры + ⌘K-поиск + listing
 │   ├── runtime-config.js — runtime overrides (split-hosting mode)
-│   ├── data.js           — 80 свежих статей (генерируется)
-│   ├── data-archive.js   — полный архив карточек (генерируется)
-│   └── article-full.js   — полные публичные тела статей для static `/a/*` (генерируется)
+│   ├── data.js           — tracked snapshot последних публикаций
+│   ├── data-archive.js   — optional local cache полного архива карточек
+│   └── article-full.js   — optional local cache полных публичных тел для static `/a/*`
 ├── img/                  — обложки, бренд
 ├── admin/                — mirror backend-кода (FastAPI; на VPS `/opt/fbrk-admin`)
 └── data/                 — DB-снепшоты (gitignored)
@@ -72,6 +72,13 @@ docker inspect -f '{{.State.Health.Status}}' fbrk-admin
 ```
 ./scripts/verify_preprod.sh
 ```
+
+### Generated payload hygiene
+
+- `js/data.js` — это tracked snapshot, он участвует в локальном preview и smoke-checks.
+- `js/data-archive.js` и `js/article-full.js` — backend-owned caches. Они не должны быть источником истины для деплоя и могут отсутствовать локально.
+- Штатная упаковка фронта уже тянет свежие payloads с backend origin через `admin/scripts/build_new_frontend_static_package.sh`, поэтому raw `rsync js/` из рабочего дерева делать не надо.
+- `./scripts/verify_preprod.sh` теперь запускает `scripts/check_generated_payload_hygiene.py` и валится, если локальный optional cache битый или расходится с backend-копией.
 
 Примечание: полный Python smoke-набор нужно запускать через repo `.venv`
 (`.venv/bin/python`). Системный `python3` на этой машине может не содержать

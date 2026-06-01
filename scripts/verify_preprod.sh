@@ -16,19 +16,22 @@ fi
 
 cd "${REPO_ROOT}"
 
-echo "[1/5] JS syntax"
+echo "[1/6] Local generated payload hygiene"
+"${PYTHON_BIN}" ./scripts/check_generated_payload_hygiene.py
+
+echo "[2/6] JS syntax"
 "${NODE_BIN}" --check js/app.js
 
-echo "[2/5] JS unit tests"
+echo "[3/6] JS unit tests"
 "${NODE_BIN}" --test tests/article_js_filters.test.mjs
 
-echo "[3/5] Python test suite"
+echo "[4/6] Python test suite"
 "${PYTHON_BIN}" -m pytest -q
 
-echo "[4/5] Python compile checks"
-"${PYTHON_BIN}" -m py_compile admin/app/*.py admin/enrich.py admin/scripts/*.py
+echo "[5/6] Python compile checks"
+"${PYTHON_BIN}" -m py_compile admin/app/*.py admin/enrich.py admin/scripts/*.py scripts/*.py
 
-echo "[5/5] Live frontend linkage"
+echo "[6/6] Live frontend linkage"
 ./admin/scripts/check_split_linkage.sh "${NEW_ORIGIN}" "${BACKEND_ORIGIN}" --strict
 
 echo "STATUS=ok"
