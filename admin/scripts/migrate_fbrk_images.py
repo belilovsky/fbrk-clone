@@ -11,7 +11,7 @@ import time
 from datetime import datetime
 from pathlib import Path
 from typing import Any
-from urllib.parse import urlparse
+from urllib.parse import quote, urlparse, urlsplit, urlunsplit
 from urllib.request import Request, build_opener
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
@@ -31,7 +31,7 @@ from app.publish import regenerate_data_js
 LOG = logging.getLogger("migrate_fbrk_images")
 UA = "Mozilla/5.0 (compatible; FBRK-image-migrator/1.0; +https://fbrk.qdev.run)"
 STATE_VERSION = 1
-DEFAULT_STATE_FILE = Path(settings.project_root) / ".cache" / "fbrk-image-migration-state.json"
+DEFAULT_STATE_FILE = Path(__file__).resolve().parents[1] / ".cache" / "fbrk-image-migration-state.json"
 
 
 def parse_args() -> argparse.Namespace:
@@ -101,12 +101,14 @@ def open_db() -> sqlite3.Connection:
 
 def fetch_candidate_rows(conn: sqlite3.Connection, slug: str | None, limit: int) -> list[sqlite3.Row]:
     where = """
-        WHERE image LIKE '%fbrk.kz%'
-           OR image LIKE '%/sites/default/files/%'
-           OR body_json LIKE '%fbrk.kz%'
-           OR body_json LIKE '%/sites/default/files/%'
-           OR sections_json LIKE '%fbrk.kz%'
-           OR sections_json LIKE '%/sites/default/files/%'
+        WHERE (
+               image LIKE '%fbrk.kz%'
+            OR image LIKE '%/sites/default/files/%'
+            OR body_json LIKE '%fbrk.kz%'
+            OR body_json LIKE '%/sites/default/files/%'
+            OR sections_json LIKE '%fbrk.kz%'
+            OR sections_json LIKE '%/sites/default/files/%'
+        )
     """
     args: list[Any] = []
     if slug:
@@ -151,6 +153,13 @@ def guess_content_type(url: str, declared: str | None) -> str:
     return "image/jpeg"
 
 
+def requestable_url(url: str) -> str:
+    parts = urlsplit(url)
+    path = quote(parts.path or "", safe="/%:@+~,.-")
+    query = quote(parts.query or "", safe="=&%:@+~,.-")
+    return urlunsplit((parts.scheme, parts.netloc, path, query, parts.fragment))
+
+
 def migrate_source_image(
     opener,
     conn: sqlite3.Connection,
@@ -165,7 +174,7 @@ def migrate_source_image(
         if migrated is not None:
             return migrated
 
-    request = Request(source_url, headers={"User-Agent": UA})
+    request = Request(requestable_url(source_url), headers={"User-Agent": UA})
     with opener.open(request, timeout=45) as response:
         raw = response.read()
         declared = guess_content_type(source_url, response.headers.get("content-type"))

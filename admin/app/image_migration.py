@@ -52,6 +52,8 @@ def normalize_fbrk_source_image_url(url: str, base_origin: str = FBRK_SOURCE_ORI
     raw = str(url or "").strip()
     if not raw or raw.startswith("data:"):
         return ""
+    if raw.startswith("img/uploads/") or raw.startswith("/img/uploads/"):
+        return ""
     if raw.startswith("//"):
         raw = f"https:{raw}"
     absolute = urljoin(base_origin, raw)
@@ -62,6 +64,8 @@ def normalize_fbrk_source_image_url(url: str, base_origin: str = FBRK_SOURCE_ORI
 
     path = unquote(parsed.path or "")
     if not path:
+        return ""
+    if path.startswith("/img/uploads/"):
         return ""
     path = DRUPAL_STYLE_RE.sub("/sites/default/files/", path)
     if not IMAGE_PATH_RE.search(path):
