@@ -122,12 +122,29 @@
         </div>
       </section>
 
+      <section class="section section--quick-links" id="quick-links" aria-labelledby="sec-quick-links">
+        <div class="container">
+          <header class="section__header section__header--stacked">
+            <div class="section__copy">
+              <div class="section__eyebrow">Быстрый вход</div>
+              <h2 class="section__title" id="sec-quick-links">Куда перейти дальше</h2>
+              <p class="section__description">Расследования, регионы, серии, архив и безопасная связь с редакцией без лишнего поиска по меню.</p>
+            </div>
+          </header>
+          <div class="quick-links" data-home-shortcuts></div>
+        </div>
+      </section>
+
       <!-- Investigations -->
       <section class="section" id="investigations" aria-labelledby="sec-inv">
         <div class="container">
-          <header class="section__header">
-            <h2 class="section__title" id="sec-inv">Расследования</h2>
-            <a class="section__link" href="archive.html?cat=investigation">Все расследования →</a>
+          <header class="section__header section__header--stacked">
+            <div class="section__copy">
+              <div class="section__eyebrow" data-home-focus-eyebrow>Редакционный фокус</div>
+              <h2 class="section__title" id="sec-inv" data-home-focus-title>Расследования</h2>
+              <p class="section__description" data-home-focus-description>Материалы с документами, фигурантами, деньгами и длинными сюжетами, за которыми стоит следить отдельно от новостной ленты.</p>
+            </div>
+            <a class="section__link" href="archive.html?cat=investigation" data-home-focus-link>Все расследования →</a>
           </header>
           <div class="card-grid" data-investigations></div>
         </div>
@@ -144,20 +161,6 @@
             <a class="section__link" href="/resonance.html" data-home-block-link="resonance">Вся подборка →</a>
           </header>
           <div class="card-grid" data-home-resonance></div>
-        </div>
-      </section>
-
-      <!-- Video showcase -->
-      <section class="section section--videos" id="videos" aria-labelledby="sec-videos">
-        <div class="container">
-          <header class="section__header">
-            <div>
-              <div class="section__eyebrow">Видео</div>
-              <h2 class="section__title" id="sec-videos">Смотрите на YouTube</h2>
-            </div>
-            <a class="section__link" href="https://www.youtube.com/@fbrk_news" target="_blank" rel="noopener" data-site-youtube-link>На канал →</a>
-          </header>
-          <div class="video-grid" data-videos></div>
         </div>
       </section>
 
@@ -182,11 +185,11 @@
                 </a>
               </div>
               <div class="widget">
-                <div class="widget__label">Темы</div>
-                <h3 class="widget__title">О чём мы пишем</h3>
-                <div class="tag-cloud" data-tags></div>
-              </div>
-              <div class="widget">
+              <div class="widget__label">Темы</div>
+              <h3 class="widget__title">О чём мы пишем</h3>
+              <div class="tag-cloud" data-tags></div>
+            </div>
+              <div class="widget" data-series-widget>
                 <div class="widget__label">Серии</div>
                 <h3 class="widget__title">Длинные редакционные линии</h3>
                 <ul class="content-list widget-list" role="list" data-series-links></ul>
@@ -207,6 +210,20 @@
             <a class="section__link" href="/regions.html" data-home-block-link="regions">Все регионы →</a>
           </header>
           <div class="content-grid" data-home-regions></div>
+        </div>
+      </section>
+
+      <!-- Video showcase -->
+      <section class="section section--videos" id="videos" aria-labelledby="sec-videos">
+        <div class="container">
+          <header class="section__header">
+            <div>
+              <div class="section__eyebrow">Видео</div>
+              <h2 class="section__title" id="sec-videos">Смотрите на YouTube</h2>
+            </div>
+            <a class="section__link" href="https://www.youtube.com/@fbrk_news" target="_blank" rel="noopener" data-site-youtube-link>На канал →</a>
+          </header>
+          <div class="video-grid" data-videos></div>
         </div>
       </section>
     </main>

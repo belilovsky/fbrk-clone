@@ -1308,7 +1308,7 @@ function formatArticleSectionHeading(text, context = '') {
   if (letters.length < 4) return raw;
   const lowerCount = (raw.match(/[a-zа-яё]/g) || []).length;
   const upperCount = (raw.match(/[A-ZА-ЯЁ]/g) || []).length;
-  if (lowerCount || upperCount / Math.max(letters.length, 1) < 0.72) return raw;
+  if (lowerCount > 0 || upperCount / Math.max(letters.length, 1) < 0.72) return raw;
 
   const restore = headingContextMap(context);
   const normalized = raw.replace(/[A-Za-zА-Яа-яЁё0-9-]+/g, (token) => {
@@ -1388,6 +1388,109 @@ function liveBadgeHtml(a) {
   return '<span class="live-badge" aria-label="Свежая публикация сегодня по времени Алматы"><span class="live-badge__dot" aria-hidden="true"></span>СЕГОДНЯ</span>';
 }
 
+function renderHomeShortcuts(all) {
+  const root = document.querySelector('[data-home-shortcuts]');
+  if (!root) return;
+
+  const formatter = new Intl.NumberFormat('ru-KZ');
+  const totalCount = Array.isArray(all) ? all.length : 0;
+  const investigationCount = all.filter((article) => article.category === 'investigation').length;
+  const resonanceCount = all.filter((article) => isResonanceArticle(article)).length;
+  const topicItems = editorialCatalogValue('topics');
+  const regionItems = editorialCatalogValue('regions');
+  const seriesItems = editorialCatalogValue('series');
+  const site = currentSiteMeta();
+  const telegramUrl = site.telegram || 'https://t.me/fund_kz_bot';
+
+  const shortcuts = [
+    {
+      title: 'Расследования',
+      href: '/archive.html?cat=investigation',
+      meta: investigationCount > 0 ? `${formatter.format(investigationCount)} материалов` : 'Редакционный раздел',
+      desc: investigationCount > 0
+        ? 'Главные расследовательские публикации и длинные линии.'
+        : 'Переход в расследовательский срез архива и длинные редакционные сюжеты.',
+    },
+    {
+      title: 'Резонанс',
+      href: '/resonance.html',
+      meta: `${formatter.format(resonanceCount)} важных материалов`,
+      desc: 'Самые значимые сюжеты, которые редакция выделяет отдельно.',
+    },
+    {
+      title: 'Темы',
+      href: '/topics.html',
+      meta: `${formatter.format(Array.isArray(topicItems) ? topicItems.length : 0)} направлений`,
+      desc: 'Коррупция, земля, активы, госзакупки, суды и экология.',
+    },
+    {
+      title: 'Регионы',
+      href: '/regions.html',
+      meta: `${formatter.format(Array.isArray(regionItems) ? regionItems.length : 0)} регионов`,
+      desc: 'Локальные сюжеты и быстрый вход в материалы по городам и областям.',
+    },
+    {
+      title: 'Серии',
+      href: '/series.html',
+      meta: Array.isArray(seriesItems) && seriesItems.length
+        ? `${formatter.format(seriesItems.length)} редакционных линий`
+        : 'Навигационный хаб',
+      desc: Array.isArray(seriesItems) && seriesItems.length
+        ? 'Сюжеты, за которыми удобно следить в развитии.'
+        : 'Страница для длинных сюжетов и серий, которые редакция собирает по линиям.',
+    },
+    {
+      title: 'Архив',
+      href: '/archive.html',
+      meta: `${formatter.format(totalCount)} публикаций`,
+      desc: 'Полная база материалов с фильтрами и поиском.',
+    },
+    {
+      title: 'Редполитика',
+      href: '/editorial-policy.html',
+      meta: 'Как мы работаем',
+      desc: 'Проверка фактов, источники, право на ответ и стандарты редакции.',
+    },
+    {
+      title: 'Анонимно',
+      href: telegramUrl,
+      meta: 'Безопасный канал',
+      desc: 'Передать сигнал редакции через Telegram-бот.',
+      external: true,
+      accent: true,
+    },
+  ];
+
+  root.innerHTML = shortcuts.map((item) => `
+    <a
+      class="quick-link${item.accent ? ' quick-link--accent' : ''}"
+      href="${item.href}"
+      ${item.external ? 'target="_blank" rel="noopener"' : ''}
+    >
+      <span class="quick-link__meta">${escapeHtml(item.meta)}</span>
+      <span class="quick-link__title">${escapeHtml(item.title)}</span>
+      <span class="quick-link__desc">${escapeHtml(item.desc)}</span>
+    </a>
+  `).join('');
+}
+
+function homeFocusCards(all, shownIds, limit = 6) {
+  const hidden = shownIds instanceof Set ? shownIds : new Set(shownIds || []);
+  const investigations = all
+    .filter((a) => a.category === 'investigation' && !hidden.has(a.id))
+    .slice(0, limit);
+  if (investigations.length) {
+    return {
+      mode: 'investigation',
+      items: investigations,
+    };
+  }
+  return {
+    mode: 'latest',
+    items: all.filter((a) => !hidden.has(a.id)).slice(0, limit),
+  };
+}
+
 // ---------- Home page renderer ----------
 (function () {
   const leadRoot = document.querySelector('[data-lead]');
@@ -1397,6 +1500,8 @@ function liveBadgeHtml(a) {
   const featured = all.find((a) => a.featured) || all[0];
   if (!featured) return;
   const shownIds = new Set([featured.id]);
+  const site = currentSiteMeta();
+  const telegramUrl = site.telegram || 'https://t.me/fund_kz_bot';
 
   function renderHomepageBlockCopy(kind) {
     const meta = homepageBlockMeta(kind);
@@ -1440,6 +1545,7 @@ function liveBadgeHtml(a) {
       <img src="${fullCover(featured)}" alt="${escapeHtml(featured.title)}" width="1200" height="800" loading="eager"/>
     </a>
     <div class="lead__body">
+      <div class="lead__eyebrow">Независимое расследовательское издание Казахстана</div>
       <div class="kicker">${featured.categoryLabel}</div>
       <h1 class="lead__title">
         <a href="${articleHref(featured)}">${escapeHtml(featured.title)}</a>
@@ -1448,26 +1554,54 @@ function liveBadgeHtml(a) {
       <div class="lead__meta">
         <span>${fmtDateLong(featured.dateIso) || featured.date}</span>
       </div>
+      <div class="lead__actions">
+        <a class="btn btn--primary lead__cta" href="${articleHref(featured)}">Читать материал</a>
+        <a class="btn btn--secondary lead__cta" href="${telegramUrl}" target="_blank" rel="noopener">Сообщить анонимно</a>
+      </div>
+      <p class="lead__trust">Расследования, регионы, редакционные серии и безопасный канал для источников.</p>
     </div>
   `;
+  renderHomeShortcuts(all);
 
-  // Investigations grid — top 6 non-featured "investigation" articles,
-  // fallback to latest news if there aren't enough tagged investigations
+  // Investigations grid — keep this block editorially honest:
+  // only investigation-tagged materials should appear here.
   const invRoot = document.querySelector('[data-investigations]');
   if (invRoot) {
-    let invs = all
-      .filter((a) => a.category === 'investigation' && !shownIds.has(a.id))
-      .slice(0, 6);
-    if (invs.length < 6) {
-      const need = 6 - invs.length;
-      const usedIds = new Set([...shownIds, ...invs.map((x) => x.id)]);
-      const extras = all.filter((a) => !usedIds.has(a.id)).slice(0, need);
-      invs = invs.concat(extras);
+    const invSection = document.querySelector('#investigations');
+    const focusEyebrow = document.querySelector('[data-home-focus-eyebrow]');
+    const focusTitle = document.querySelector('[data-home-focus-title]');
+    const focusDescription = document.querySelector('[data-home-focus-description]');
+    const focusLink = document.querySelector('[data-home-focus-link]');
+    const focus = homeFocusCards(all, shownIds, 6);
+    if (focus.mode !== 'investigation') {
+      if (focusEyebrow) focusEyebrow.textContent = 'Текущий фокус';
+      if (focusTitle) focusTitle.textContent = 'Главное сейчас';
+      if (focusDescription) {
+        focusDescription.textContent = 'Ключевые свежие материалы, которые формируют повестку прямо сейчас, пока отдельная расследовательская линия пополняется.';
+      }
+      if (focusLink) {
+        focusLink.setAttribute('href', '/archive.html');
+        focusLink.textContent = 'Весь архив →';
+      }
+      if (invSection) invSection.hidden = !focus.items.length;
+      invRoot.innerHTML = focus.items.map((a) => renderHomeStoryCard(a)).join('');
+      focus.items.forEach((a) => shownIds.add(a.id));
+    } else {
+      if (focusEyebrow) focusEyebrow.textContent = 'Редакционный фокус';
+      if (focusTitle) focusTitle.textContent = 'Расследования';
+      if (focusDescription) {
+        focusDescription.textContent = 'Материалы с документами, фигурантами, деньгами и длинными сюжетами, за которыми стоит следить отдельно от новостной ленты.';
+      }
+      if (focusLink) {
+        focusLink.setAttribute('href', '/archive.html?cat=investigation');
+        focusLink.textContent = 'Все расследования →';
+      }
+      if (invSection) invSection.hidden = false;
+      invRoot.innerHTML = focus.items
+        .map((a) => renderHomeStoryCard(a))
+        .join('');
+      focus.items.forEach((a) => shownIds.add(a.id));
     }
-    invs.forEach((a) => shownIds.add(a.id));
-    invRoot.innerHTML = invs
-      .map((a) => renderHomeStoryCard(a))
-      .join('');
   }
 
   const resonanceSection = document.querySelector('[data-home-resonance-section]');
@@ -1574,12 +1708,16 @@ function liveBadgeHtml(a) {
 
   const seriesRoot = document.querySelector('[data-series-links]');
   if (seriesRoot) {
+    const seriesWidget = document.querySelector('[data-series-widget]');
     const seriesItems = editorialCatalogValue('series');
     if (Array.isArray(seriesItems) && seriesItems.length) {
       seriesRoot.innerHTML = seriesItems
         .slice(0, 5)
         .map((series) => `<li><a href="${series.url || `/archive.html?series=${encodeURIComponent(series.slug)}`}">${escapeHtml(series.title)}</a></li>`)
         .join('');
+      if (seriesWidget) seriesWidget.hidden = false;
+    } else if (seriesWidget) {
+      seriesWidget.hidden = true;
     }
   }
 

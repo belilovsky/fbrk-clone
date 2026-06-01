@@ -82,7 +82,7 @@ def normalize_section_heading(text: str, context: str = "") -> str:
 
     lower_count = len(re.findall(r"[a-zа-яё]", clean))
     upper_count = len(re.findall(r"[A-ZА-ЯЁ]", clean))
-    if lower_count or upper_count / max(len(letters), 1) < 0.72:
+    if lower_count > 0 or upper_count / max(len(letters), 1) < 0.72:
         return clean
 
     restore = _heading_context_map(context)

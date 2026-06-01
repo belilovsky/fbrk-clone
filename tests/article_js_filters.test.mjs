@@ -197,6 +197,27 @@ test('article renderer keeps summary, mentions, and share below the body', () =>
   assert.ok(shareIdx > entitiesIdx);
 });
 
+test('homepage focus cards keep investigations honest and fallback to latest when needed', () => {
+  const shownIds = new Set(['featured']);
+  const investigationFocus = context.homeFocusCards([
+    { id: 'featured', category: 'news' },
+    { id: 'i1', category: 'investigation' },
+    { id: 'n1', category: 'news' },
+  ], shownIds, 6);
+
+  assert.equal(investigationFocus.mode, 'investigation');
+  assert.equal(JSON.stringify(investigationFocus.items.map((item) => item.id)), JSON.stringify(['i1']));
+
+  const latestFocus = context.homeFocusCards([
+    { id: 'featured', category: 'news' },
+    { id: 'n1', category: 'news' },
+    { id: 'n2', category: 'news' },
+  ], shownIds, 6);
+
+  assert.equal(latestFocus.mode, 'latest');
+  assert.equal(JSON.stringify(latestFocus.items.map((item) => item.id)), JSON.stringify(['n1', 'n2']));
+});
+
 test('article hero dek uses summary when compact cards do not have sections yet', () => {
   assert.equal(
     context.articleHeroDek(
