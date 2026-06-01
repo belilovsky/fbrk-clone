@@ -2,6 +2,8 @@ import re
 import subprocess
 from pathlib import Path
 
+from admin.app.seo import _hero_dek, _sections_to_html
+
 
 ROOT = Path(__file__).resolve().parents[1]
 STATIC_SHELLS = [
@@ -133,6 +135,45 @@ def test_frontend_css_keeps_article_spacing_readable() -> None:
     assert ".card__media.image-kind-ai::after" not in css
     assert "ИЛЛЮСТРАЦИЯ ФБРК · ИИ" not in css
     assert "ИИ-изображение. Не является фотоматериалом" in js
+    assert re.search(r"\.article__body\s*\{[\s\S]*margin-top:\s*var\(--space-8\);", css)
+    assert ".article__body figure {" in css
+
+
+def test_ssr_article_wraps_plain_section_text_into_paragraphs() -> None:
+    html = _sections_to_html(
+        [{"h": "Что произошло", "p": "Первый абзац.\n\nВторой абзац с <b>выделением</b>."}],
+        "https://fbrk.qdev.run",
+    )
+
+    assert "<h2>Что произошло</h2>" in html
+    assert "<p>Первый абзац.</p>" in html
+    assert "<p>Второй абзац с <b>выделением</b>.</p>" in html
+
+
+def test_ssr_article_hides_summary_when_it_repeats_first_section() -> None:
+    assert _hero_dek(
+        "",
+        "В апреле этого года СМИ активно писали о разрушении канала К-30 в Жетысайском районе Туркестанской области.",
+        [
+            {
+                "h": "",
+                "p": "В апреле этого года СМИ активно писали о разрушении <b>канала К-30</b> в Жетысайском районе Туркестанской области. Далее идёт основной текст.",
+            }
+        ],
+    ) == ""
+
+
+def test_ssr_article_hides_near_duplicate_editorial_lead_with_punctuation_drift() -> None:
+    assert _hero_dek(
+        "В апреле этого года СМИ активно писали о разрушении канала К-30 в Жетысайском районе Туркестанской области, от которого зависит орошение 1700 га сельхозугодий. Берега сооружения обваливались, пропускная способность падала.",
+        "",
+        [
+            {
+                "h": "",
+                "p": "В апреле этого года СМИ активно писали о разрушении <b>канала К-30</b> в Жетысайском районе Туркестанской области, от которого зависит орошение 1700 га сельхозугодий. Берега сооружения обваливались, пропускная способность падала, а аграрии сёл рисковали остаться без воды.",
+            }
+        ],
+    ) == ""
 
 
 def test_home_shell_exposes_editorial_homepage_sections() -> None:

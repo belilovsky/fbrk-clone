@@ -179,18 +179,59 @@ def _sections_to_plain(sections: list) -> str:
     return "\n\n".join(p for p in parts if p)
 
 
-def _header_dek(dek: str, sections: list) -> str:
-    value = _strip_html(dek or "").strip()
-    if not value or not sections:
+def _normalized_article_text(value: str) -> str:
+    return re.sub(r"\s+", " ", _strip_html(value or "")).strip()
+
+
+def _lead_compare_text(value: str) -> str:
+    return re.sub(r"[^\w]+", " ", _normalized_article_text(value).casefold()).strip()
+
+
+def _truncate_text(value: str, limit: int) -> str:
+    text = str(value or "").strip()
+    if len(text) <= limit:
+        return text
+    return text[:limit].rsplit(" ", 1)[0].rstrip(".,;:") + "…"
+
+
+def _is_metadata_only_lede(value: str) -> bool:
+    clean = _normalized_article_text(value).replace("\xa0", " ").strip()
+    if not clean:
+        return True
+    return bool(re.fullmatch(r"\([^)]{0,220}\)", clean))
+
+
+def _header_dek_candidate(value: str, sections: list) -> str:
+    text = _strip_html(value or "").strip()
+    if not text or len(text) > 420 or "\n\n" in text or _is_metadata_only_lede(text):
         return ""
-    if len(value) > 420 or "\n\n" in value:
-        return ""
+    if not sections:
+        return _truncate_text(text, 420)
 
     first = sections[0] if isinstance(sections[0], dict) else {}
-    first_text = _strip_html(f"{first.get('h') or ''} {first.get('p') or ''}")
-    if first_text.startswith(value):
+    first_text = _lead_compare_text(f"{first.get('h') or ''} {first.get('p') or ''}")
+    normalized = _lead_compare_text(text)
+    if normalized and first_text.startswith(normalized):
         return ""
-    return value
+    return text
+
+
+def _hero_dek(dek: str, summary_short: str, sections: list) -> str:
+    normalized_sections = sections or []
+    first_paragraph = _strip_html((dek or "").split("\n\n", 1)[0]).strip()
+
+    if not normalized_sections:
+        for candidate in (summary_short, first_paragraph, dek):
+            text = _header_dek_candidate(candidate, [])
+            if text:
+                return text
+        return ""
+
+    for candidate in (dek, first_paragraph, summary_short):
+        text = _header_dek_candidate(candidate, normalized_sections)
+        if text:
+            return text
+    return ""
 
 
 RU_MONTHS_GENITIVE = [
@@ -207,6 +248,9 @@ RU_MONTHS_GENITIVE = [
     "ноября",
     "декабря",
 ]
+
+
+_BLOCK_HTML_RE = re.compile(r"<(?:p|div|ul|ol|li|blockquote|pre|figure|table|iframe|video|audio|h[1-6]|hr)\b", re.IGNORECASE)
 
 
 def _kicker_date_label(date_value: str, current_year: int) -> str:
@@ -238,6 +282,19 @@ def _kicker_date_label(date_value: str, current_year: int) -> str:
     return raw
 
 
+def _section_paragraph_html(raw: str) -> str:
+    value = str(raw or "").replace("\r\n", "\n").strip()
+    if not value:
+        return ""
+    if _BLOCK_HTML_RE.search(value):
+        return value
+
+    parts = [part.strip() for part in re.split(r"\n{2,}", value) if part.strip()]
+    if not parts:
+        return ""
+    return "\n".join(f"<p>{part.replace(chr(10), '<br>')}</p>" for part in parts)
+
+
 def _sections_to_html(sections: list, site_url: str, context: str = "") -> str:
     """Render sections as clean semantic HTML for SSR body + RSS content:encoded."""
     out: list[str] = []
@@ -254,8 +311,7 @@ def _sections_to_html(sections: list, site_url: str, context: str = "") -> str:
             cap = html.escape(str(s.get("caption") or ""))
             out.append(f'<figure><img src="{src}" alt="{cap}" /></figure>')
         if p:
-            # Body may already contain <p>/<strong>/<em>/<a>. Keep as-is.
-            out.append(str(p))
+            out.append(_section_paragraph_html(str(p)))
     return "\n".join(out)
 
 
@@ -493,21 +549,16 @@ def ssr_article(slug: str, request: Request):
     title = a["title"]
     raw_dek = a.get("dek") or ""
     dek = _strip_html(raw_dek)
-    plain_body = _sections_to_plain(a.get("sections") or [])
-    header_dek = _header_dek(raw_dek, a.get("sections") or [])
-    if header_dek:
-        hero_dek = header_dek
-    elif summary_short := (meta.get("summary_short") or "").strip():
-        hero_dek = summary_short
-    elif a.get("sections"):
-        hero_dek = ""
-    else:
-        hero_dek = dek if dek and len(dek) <= 420 and "\n\n" not in dek else ""
+    sections = a.get("sections") or []
+    summary_short = (meta.get("summary_short") or "").strip()
+    plain_body = _sections_to_plain(sections)
+    hero_dek = _hero_dek(raw_dek, summary_short, sections)
+    header_dek = _header_dek_candidate(raw_dek, sections)
     # Prefer AI short summary when available (tighter, better for SEO/LLMs)
     desc = (meta.get("summary_short") or dek or plain_body[:240]).strip()[:240]
     image = _abs_url(a.get("image") or "", site_url)
     heading_context = " ".join(filter(None, [str(a.get("title") or "").strip(), str(a.get("dek") or "").strip()]))
-    body_html = _sections_to_html(a.get("sections") or [], site_url, context=heading_context)
+    body_html = _sections_to_html(sections, site_url, context=heading_context)
     word_count = len((plain_body or "").split())
     read_min = max(1, round(len((" ".join(part for part in [hero_dek, plain_body] if part)).split()) / 180))
 
