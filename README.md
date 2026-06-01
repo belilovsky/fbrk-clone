@@ -46,11 +46,12 @@ fbrk/
 ## Деплой
 
 Backend VPS: `148.230.117.131`. Web-root: `/var/www/fbrk.qdev.run/`.
-Backend/admin работает в Docker-контейнере `fbrk-admin` из
-`admin/deploy/docker-compose.fbrk.yml`, порт `127.0.0.1:8787 -> 8787`.
-Legacy systemd-юнит `fbrk-admin.service` должен оставаться inactive/disabled.
-DB: `/opt/fbrk-admin/fbrk.db` монтируется в контейнер как
-`/host/fbrk-admin/fbrk.db`.
+Текущий live runtime на этом хосте: `fbrk-admin.service`, который запускает
+`uvicorn app.main:app` из `/opt/fbrk-admin/.venv` и слушает `127.0.0.1:8787`.
+Репозиторный Docker Compose (`admin/deploy/docker-compose.fbrk.yml`) остаётся в
+кодовой базе, но на проверенном прод-хосте 2026-06-01 активным процессом был
+именно systemd-юнит, а не контейнер.
+DB живёт по пути `/opt/fbrk-admin/fbrk.db`.
 
 Перед любым прод-изменением:
 ```
@@ -60,13 +61,16 @@ test -s /opt/fbrk-admin/backups/fbrk-$TS-pre-<area>.db
 rsync -a /var/www/fbrk.qdev.run/ /opt/fbrk-admin/web-snapshots/$TS-pre-<area>/
 ```
 
-После копирования backend/admin файлов:
+После копирования backend/admin файлов на текущем прод-хосте:
 ```
 chown -R www-data:www-data /opt/fbrk-admin/...
-cd /opt/fbrk-admin/deploy
-docker compose -f docker-compose.fbrk.yml up -d --build admin
-docker inspect -f '{{.State.Health.Status}}' fbrk-admin
+systemctl restart fbrk-admin.service
+systemctl is-active fbrk-admin.service
 ```
+
+Если рантайм снова будет возвращён на Docker, сначала отдельно подтвердите это
+на хосте, и только после этого используйте `admin/deploy/docker-compose.fbrk.yml`
+как основной путь выкладки.
 
 Локальная pre-prod проверка из репозитория:
 ```
