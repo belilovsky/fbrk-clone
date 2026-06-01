@@ -94,6 +94,108 @@
       </div>
 
       <div class="a-card">
+        <h3>Темы, регионы, серии и метки</h3>
+        <p class="a-muted a-hubs-note">Если поля не трогать, сайт продолжит автоопределение по тегам и NLP-метаданным.</p>
+
+        <label class="a-field">
+          <span>Регион</span>
+          <select id="f-region">
+            <option value="">Автоопределение</option>
+            {% for item in editorial.region_options %}
+            <option value="{{ item.slug }}" {% if editorial.selected_region == item.slug %}selected{% endif %}>{{ item.title }}</option>
+            {% endfor %}
+          </select>
+        </label>
+
+        <label class="a-field">
+          <span>Серия</span>
+          <select id="f-series">
+            <option value="">Автоопределение</option>
+            {% for item in editorial.series_options %}
+            <option value="{{ item.slug }}" {% if editorial.selected_series == item.slug %}selected{% endif %}>{{ item.title }}</option>
+            {% endfor %}
+          </select>
+        </label>
+
+        <label class="a-field">
+          <span>Резонанс</span>
+          <select id="f-resonance">
+            <option value="auto" {% if editorial.selected_resonance == 'auto' %}selected{% endif %}>Автоопределение</option>
+            <option value="yes" {% if editorial.selected_resonance == 'yes' %}selected{% endif %}>Всегда показывать</option>
+            <option value="no" {% if editorial.selected_resonance == 'no' %}selected{% endif %}>Не показывать</option>
+          </select>
+        </label>
+
+        <label class="a-field">
+          <span>Статус материала</span>
+          <select id="f-status">
+            <option value="">Без статуса</option>
+            {% for item in editorial.status_options %}
+            <option value="{{ item.slug }}" {% if editorial.selected_status == item.slug %}selected{% endif %}>{{ item.title }}</option>
+            {% endfor %}
+          </select>
+        </label>
+
+        <div class="a-field">
+          <span>Темы</span>
+          <div class="a-hub-checklist">
+            {% for item in editorial.topic_options %}
+            <label class="a-hub-option">
+              <input class="f-topic" type="checkbox" value="{{ item.slug }}" {% if item.slug in editorial.selected_topics %}checked{% endif %}/>
+              <span>
+                <strong>{{ item.title }}</strong>
+                <small>{{ item.description }}</small>
+              </span>
+            </label>
+            {% endfor %}
+          </div>
+        </div>
+
+        <div class="a-field">
+          <span>Редакционные метки</span>
+          <div class="a-hub-checklist">
+            {% for item in editorial.label_options %}
+            <label class="a-hub-option">
+              <input class="f-label" type="checkbox" value="{{ item.slug }}" {% if item.slug in editorial.selected_labels %}checked{% endif %}/>
+              <span>
+                <strong>{{ item.title }}</strong>
+                <small>{{ item.description }}</small>
+              </span>
+            </label>
+            {% endfor %}
+          </div>
+        </div>
+
+        {% if editorial.auto_topics or editorial.auto_series or editorial.auto_resonance %}
+        <div class="a-hubs-auto">
+          <div class="a-hubs-auto__title">Авто сейчас определяет</div>
+          {% if editorial.auto_topics %}
+          <div class="a-hubs-auto__row">
+            <b>Темы:</b>
+            <span>{{ editorial.auto_topics | map(attribute='title') | join(', ') }}</span>
+          </div>
+          {% endif %}
+          {% if editorial.auto_region %}
+          <div class="a-hubs-auto__row">
+            <b>Регион:</b>
+            <span>{{ editorial.auto_region.title }}</span>
+          </div>
+          {% endif %}
+          {% if editorial.auto_series %}
+          <div class="a-hubs-auto__row">
+            <b>Серия:</b>
+            <span>{{ editorial.auto_series.title }}</span>
+          </div>
+          {% endif %}
+          <div class="a-hubs-auto__row">
+            <b>Резонанс:</b>
+            <span>{{ 'Да' if editorial.auto_resonance else 'Нет' }}</span>
+          </div>
+        </div>
+        {% endif %}
+      </div>
+
+      <div class="a-card">
         <h3>Обложка</h3>
         <div class="a-cover" id="coverPreview">
           {% if article.image %}<img src="{{ admin_asset_url(article.image) }}" alt=""/>{% endif %}
@@ -204,6 +306,12 @@ async function gather(publish = null) {
   const tags = document.getElementById('f-tags').value
     .split(',').map(s => s.trim()).filter(Boolean);
   const publishedFlag = document.getElementById('f-published').checked;
+  const topicSlugs = Array.from(document.querySelectorAll('.f-topic:checked'))
+    .map((input) => input.value.trim())
+    .filter(Boolean);
+  const labelSlugs = Array.from(document.querySelectorAll('.f-label:checked'))
+    .map((input) => input.value.trim())
+    .filter(Boolean);
   return {
     id: document.getElementById('f-id').value.trim(),
     title: document.getElementById('f-title').value.trim(),
@@ -216,6 +324,14 @@ async function gather(publish = null) {
     tags,
     featured: document.getElementById('f-featured').checked,
     published: publish === null ? publishedFlag : publish,
+    editorial: {
+      topic_slugs: topicSlugs,
+      region_slug: document.getElementById('f-region').value.trim(),
+      series_slug: document.getElementById('f-series').value.trim(),
+      resonance: document.getElementById('f-resonance').value,
+      status_slug: document.getElementById('f-status').value.trim(),
+      label_slugs: labelSlugs,
+    },
     body,
   };
 }

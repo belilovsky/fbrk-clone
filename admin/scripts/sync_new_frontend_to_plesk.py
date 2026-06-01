@@ -44,8 +44,12 @@ ROOT_FILES = (
     "contacts.html",
     "editorial-policy.html",
     "privacy.html",
+    "regions.html",
+    "resonance.html",
     "search.html",
+    "series.html",
     "sitemap.html",
+    "topics.html",
     "404.html",
 )
 SEO_FILES = ("robots.txt", "sitemap.xml", "feed.xml")
@@ -326,8 +330,16 @@ def build_package(
     generate_article_pages: bool,
 ) -> list[Path]:
     uploaded: list[Path] = []
+    checkout_root = Path(__file__).resolve().parents[2]
+
+    def checkout_or_web_root(rel: str) -> Path:
+        source = checkout_root / rel
+        if source.exists():
+            return source
+        return web_root / rel
+
     for name in ROOT_FILES:
-        source = web_root / name
+        source = checkout_or_web_root(name)
         if not source.exists():
             raise SyncError(f"missing source HTML: {source}")
         target = out_dir / name
@@ -382,7 +394,7 @@ def build_package(
             "img/brand/logo.svg",
             "img/favicon.svg",
         ):
-            source = web_root / rel
+            source = checkout_or_web_root(rel)
             if not source.exists():
                 raise SyncError(f"missing source static file: {source}")
             target = out_dir / rel
@@ -518,6 +530,11 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--full", action="store_true", help="also upload css/app.js/AV DS fonts")
     parser.add_argument("--no-verify", action="store_true", help="skip final strict linkage check")
     parser.add_argument("--dry-run", action="store_true", help="build package and print upload plan without uploading")
+    parser.add_argument(
+        "--build-only",
+        action="store_true",
+        help="build package and print upload plan without requiring Plesk credentials",
+    )
     parser.add_argument("--keep-package", action="store_true", help="keep the generated package after a successful upload")
     args = parser.parse_args(argv)
 
@@ -571,7 +588,7 @@ def main(argv: list[str] | None = None) -> int:
     for current_dir, file_path in plan:
         print(f"PLAN {current_dir}/{file_path.name}")
 
-    if args.dry_run:
+    if args.dry_run or args.build_only:
         print("STATUS=dry-run")
         return 0
 

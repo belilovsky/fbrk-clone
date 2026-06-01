@@ -8,7 +8,7 @@
 ## Стек
 
 - **Frontend**: статический сайт (HTML/CSS/Vanilla JS) с client-side роутингом
-  через nginx try_files. AV DS `3.7.1`, шрифт — Onest, бренд-цвет
+  через nginx try_files. AV DS `4`, шрифт — Onest, бренд-цвет
   `#0C115F`. Тёмная тема.
 - **Backend** (`/admin`): FastAPI + Uvicorn, SQLite, Editor.js для тел статей,
   AI-обогащение (importance, TL;DR, сущности).

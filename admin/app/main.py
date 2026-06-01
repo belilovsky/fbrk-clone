@@ -19,6 +19,7 @@ from __future__ import annotations
 from contextlib import asynccontextmanager
 import io
 import json
+import logging
 import uuid
 from datetime import datetime
 from pathlib import Path
@@ -39,6 +40,21 @@ from .admin_platform.paths import upload_url_to_public_path, uploads_dir as plat
 from .admin_platform.templating import AdminJinja2Templates
 from .admin_platform.uploads import validate_image_upload
 from .db import db, init_db, row_to_article
+from .editorial_hubs import (
+    annotate_article,
+    label_options,
+    load_hub_pages,
+    load_homepage_blocks,
+    load_editorial_override,
+    normalize_override,
+    region_options,
+    save_editorial_override,
+    save_hub_pages,
+    save_homepage_blocks,
+    series_options,
+    status_options,
+    topic_options,
+)
 from .editorial_policy import (
     POLICY_FIELDS,
     SECTION_FIELDS,
@@ -50,6 +66,16 @@ from .editorial_policy import (
 )
 from .editorjs import editorjs_to_sections, sections_to_editorjs
 from .publish import regenerate_data_js
+from .public_page_shell import asset_version as extract_public_asset_version
+from .public_pages import (
+    ABOUT_FIELDS,
+    CONTACT_FIELDS,
+    PRIVACY_FIELDS,
+    load_public_pages,
+    public_pages_status,
+    save_public_pages,
+    write_public_pages,
+)
 from .security import (
     COOKIE_NAME, api_key_matches, current_user, hash_password, issue_token, require_auth,
     verify_password,
@@ -60,6 +86,7 @@ from .seo import router as seo_router
 # App setup
 # -----------------------------------------------------------------------------
 BASE = Path(__file__).resolve().parent.parent  # admin/
+logger = logging.getLogger(__name__)
 
 
 @asynccontextmanager
@@ -78,6 +105,12 @@ app.mount(
     StaticFiles(directory=str(BASE / "static")),
     name="admin-static",
 )
+if (settings.project_root / "fonts").exists():
+    app.mount(
+        "/fonts",
+        StaticFiles(directory=str(settings.project_root / "fonts")),
+        name="public-fonts",
+    )
 
 templates = AdminJinja2Templates(directory=str(BASE / "templates"))
 
@@ -94,6 +127,26 @@ def admin_asset_url(value: str | None) -> str:
 
 
 templates.env.globals["admin_asset_url"] = admin_asset_url
+
+
+def public_asset_version() -> str:
+    index_path = Path(settings.public_root) / "index.html"
+    try:
+        return extract_public_asset_version(index_path.read_text(encoding="utf-8"))
+    except OSError:
+        return datetime.now().strftime("%Y%m%d%H%M%S")
+
+
+def admin_asset_version() -> str:
+    css_path = BASE / "static" / "admin.css"
+    try:
+        return datetime.fromtimestamp(css_path.stat().st_mtime).strftime("%Y%m%d%H%M%S")
+    except OSError:
+        return public_asset_version()
+
+
+templates.env.globals["public_asset_version"] = public_asset_version
+templates.env.globals["admin_asset_version"] = admin_asset_version
 
 LOGIN_CSRF_SUBJECT = "admin-login"
 
@@ -120,6 +173,96 @@ MONTHS_RU = [
     "января", "февраля", "марта", "апреля", "мая", "июня",
     "июля", "августа", "сентября", "октября", "ноября", "декабря",
 ]
+
+
+def _resonance_mode(value: object) -> str:
+    if value is True:
+        return "yes"
+    if value is False:
+        return "no"
+    return "auto"
+
+
+def _editorial_form_context(article: dict, *, meta: dict | None = None, override: object = None) -> dict:
+    meta = meta or {}
+    normalized_override = normalize_override(override or {})
+    auto = annotate_article(
+        article,
+        auto_tags=meta.get("tags_auto") or [],
+        entities=meta.get("entities") or [],
+    )
+    return {
+        "topic_options": topic_options(),
+        "region_options": region_options(),
+        "series_options": series_options(),
+        "status_options": status_options(),
+        "label_options": label_options(),
+        "selected_topics": normalized_override["topic_slugs"],
+        "selected_region": normalized_override["region_slug"],
+        "selected_series": normalized_override["series_slug"],
+        "selected_resonance": _resonance_mode(normalized_override["resonance"]),
+        "selected_status": normalized_override["status_slug"],
+        "selected_labels": normalized_override["label_slugs"],
+        "auto_topics": auto.get("topics") or [],
+        "auto_region": auto.get("regionRef"),
+        "auto_series": auto.get("series"),
+        "auto_resonance": bool(auto.get("resonance")),
+    }
+
+
+def _hub_page_rows(pages: dict[str, dict[str, str]]) -> list[dict]:
+    labels = {
+        "topics": "Темы",
+        "regions": "Регионы",
+        "series": "Серии",
+        "resonance": "Резонанс",
+    }
+    return [
+        {
+            "slug": kind,
+            "label": labels[kind],
+            "public_url": f"/{kind}.html" if kind != "resonance" else "/resonance.html",
+            "fields": pages.get(kind, {}),
+        }
+        for kind in ("topics", "regions", "series", "resonance")
+    ]
+
+
+def _homepage_block_rows(blocks: dict[str, dict[str, str]]) -> list[dict]:
+    labels = {
+        "resonance": "Главная - Резонанс",
+        "regions": "Главная - Регионы",
+    }
+    urls = {
+        "resonance": "/resonance.html",
+        "regions": "/regions.html",
+    }
+    return [
+        {
+            "slug": kind,
+            "label": labels[kind],
+            "public_url": urls[kind],
+            "fields": blocks.get(kind, {}),
+        }
+        for kind in ("resonance", "regions")
+    ]
+
+
+def _public_page_rows(statuses: dict[str, dict[str, object]]) -> list[dict]:
+    labels = {
+        "about": "О нас",
+        "contacts": "Контакты",
+        "privacy": "Конфиденциальность",
+    }
+    return [
+        {
+            "slug": slug,
+            "label": labels[slug],
+            "public_url": f"/{slug}.html",
+            "status": statuses.get(slug, {}),
+        }
+        for slug in ("about", "contacts", "privacy")
+    ]
 
 
 def _date_label(iso: str) -> str:
@@ -391,7 +534,14 @@ def new_article_page(request: Request):
     }
     return templates.TemplateResponse(
         "editor.html",
-        {"request": request, "article": empty, "is_new": True, "user": user},
+        {
+            "request": request,
+            "article": empty,
+            "is_new": True,
+            "user": user,
+            "meta": {"entities": [], "tags_auto": [], "importance": None, "sentiment": None, "region": "", "summary_short": ""},
+            "editorial": _editorial_form_context(empty),
+        },
     )
 
 
@@ -402,6 +552,7 @@ def edit_article_page(article_id: str, request: Request):
         return RedirectResponse(url="/admin/login", status_code=302)
     meta = {"entities": [], "tags_auto": [], "importance": None, "sentiment": None, "region": "", "summary_short": ""}
     mrow = None
+    override = {}
     with db() as conn:
         row = conn.execute(
             "SELECT * FROM articles WHERE id = ?", (article_id,)
@@ -414,6 +565,7 @@ def edit_article_page(article_id: str, request: Request):
             ).fetchone()
         except Exception:
             mrow = None
+        override = load_editorial_override(conn, article_id)
     if not row:
         raise HTTPException(404, "Not found")
     article = row_to_article(row)
@@ -434,7 +586,14 @@ def edit_article_page(article_id: str, request: Request):
             pass
     return templates.TemplateResponse(
         "editor.html",
-        {"request": request, "article": article, "is_new": False, "user": user, "meta": meta},
+        {
+            "request": request,
+            "article": article,
+            "is_new": False,
+            "user": user,
+            "meta": meta,
+            "editorial": _editorial_form_context(article, meta=meta, override=override),
+        },
     )
 
 
@@ -501,6 +660,11 @@ def _save_article(payload: dict, article_id: Optional[str] = None, actor: str | 
                 record,
             )
             audit_action = "create"
+        editorial_override = save_editorial_override(
+            conn,
+            aid,
+            payload.get("editorial") or {},
+        )
         # Only one featured article at a time
         if payload.get("featured"):
             conn.execute("UPDATE articles SET featured=0 WHERE id != ?", (aid,))
@@ -515,6 +679,7 @@ def _save_article(payload: dict, article_id: Optional[str] = None, actor: str | 
                 "title": title,
                 "published": bool(payload.get("published", True)),
                 "featured": bool(payload.get("featured")),
+                "editorial": editorial_override,
             },
         )
         row = conn.execute("SELECT * FROM articles WHERE id = ?", (aid,)).fetchone()
@@ -1099,7 +1264,8 @@ def _cats_add(request: Request, _csrf: None = Depends(require_admin_csrf), slug:
                 entity="category",
                 details={"slug": slug.strip(), "label": label.strip()},
             )
-        except Exception as e: print(e)
+        except Exception:
+            logger.exception("Failed to add category", extra={"slug": slug.strip()})
         db.commit(); db.close()
     return _RR(url="/admin/categories/list", status_code=303)
 
@@ -1176,6 +1342,118 @@ def _editorial_policy_page(r: Request, saved: int = 0, published: int = 0):
             "published": bool(published),
         },
     )
+
+
+@app.get("/admin/editorial-hubs", response_class=_HR2)
+def _editorial_hubs_page(r: Request, saved: int = 0):
+    u = current_user(r)
+    if not u:
+        return _auth_or_redirect(r)
+    with db() as conn:
+        pages = load_hub_pages(conn)
+        home_blocks = load_homepage_blocks(conn)
+    return _t2.TemplateResponse(
+        "editorial_hubs.html",
+        {
+            "request": r,
+            "user": u,
+            "title": "Редакционные хабы",
+            "section": "editorial_hubs",
+            "saved": bool(saved),
+            "pages": _hub_page_rows(pages),
+            "home_blocks": _homepage_block_rows(home_blocks),
+            "topics": topic_options(),
+            "regions": region_options(),
+            "series": series_options(),
+        },
+    )
+
+
+@app.get("/admin/public-pages", response_class=_HR2)
+def _public_pages_page(r: Request, saved: int = 0, published: int = 0):
+    u = current_user(r)
+    if not u:
+        return _auth_or_redirect(r)
+    with db() as conn:
+        pages = load_public_pages(conn)
+    return _t2.TemplateResponse(
+        "public_pages.html",
+        {
+            "request": r,
+            "user": u,
+            "title": "Публичные страницы",
+            "section": "public_pages",
+            "saved": bool(saved),
+            "published": bool(published),
+            "pages": pages,
+            "about_fields": ABOUT_FIELDS,
+            "contact_fields": CONTACT_FIELDS,
+            "privacy_fields": PRIVACY_FIELDS,
+            "statuses": _public_page_rows(public_pages_status()),
+        },
+    )
+
+
+@app.post("/admin/public-pages")
+async def _public_pages_save(r: Request, _csrf: None = Depends(require_admin_csrf)):
+    u = current_user(r)
+    if not u:
+        return _auth_or_redirect(r)
+    form = await r.form()
+    with db() as conn:
+        changed = save_public_pages(conn, form)
+        result = write_public_pages(conn)
+        record_audit(
+            conn,
+            user=u,
+            action="update",
+            entity="public_pages",
+            entity_id="trust_pages",
+            details={"changed": changed, **result},
+        )
+    regenerate_data_js()
+    return _RR(url="/admin/public-pages?saved=1", status_code=303)
+
+
+@app.post("/admin/public-pages/publish")
+def _public_pages_publish(r: Request, _csrf: None = Depends(require_admin_csrf)):
+    u = current_user(r)
+    if not u:
+        return _auth_or_redirect(r)
+    with db() as conn:
+        result = write_public_pages(conn)
+        record_audit(
+            conn,
+            user=u,
+            action="publish",
+            entity="public_pages",
+            entity_id="trust_pages",
+            details=result,
+        )
+    regenerate_data_js()
+    return _RR(url="/admin/public-pages?published=1", status_code=303)
+
+
+@app.post("/admin/editorial-hubs")
+async def _editorial_hubs_save(r: Request, _csrf: None = Depends(require_admin_csrf)):
+    u = current_user(r)
+    if not u:
+        return _auth_or_redirect(r)
+    form = await r.form()
+    values = dict(form)
+    with db() as conn:
+        changed = save_hub_pages(conn, values)
+        changed += save_homepage_blocks(conn, values)
+        record_audit(
+            conn,
+            user=u,
+            action="set",
+            entity="editorial_hubs",
+            entity_id="public_pages",
+            details={"changed": changed},
+        )
+    regenerate_data_js()
+    return _RR(url="/admin/editorial-hubs?saved=1", status_code=303)
 
 
 @app.post("/admin/editorial-policy")

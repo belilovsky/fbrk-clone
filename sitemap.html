@@ -13,8 +13,8 @@
     <meta property="og:description" content="Основные разделы и последние материалы ФБРК." />
     <meta property="og:url" content="https://fbrk.qdev.run/sitemap.html" />
     <link rel="icon" type="image/png" sizes="32x32" href="/img/brand/favicon-32.png" />
-    <link rel="stylesheet" href="/fonts/avds/avds-fonts.css?v=20260527160712" />
-    <link rel="stylesheet" href="/css/style.css?v=20260527160712" />
+    <link rel="stylesheet" href="/fonts/avds/avds-fonts.css?v=20260601113124" />
+    <link rel="stylesheet" href="/css/style.css?v=20260601113124" />
     <script>try{const t=localStorage.getItem("theme")||localStorage.getItem("fbrk_theme");document.documentElement.dataset.theme=t==="dark"||t==="light"?t:(matchMedia("(prefers-color-scheme: dark)").matches?"dark":"light");}catch(_){}</script>
   </head>
   <body>
@@ -74,6 +74,10 @@
               <li><a href="/archive.html?cat=investigation">Расследования</a></li>
               <li><a href="/archive.html?cat=news">Новости</a></li>
               <li><a href="/archive.html">Архив</a></li>
+              <li><a href="/topics.html">Темы</a></li>
+              <li><a href="/regions.html">Регионы</a></li>
+              <li><a href="/series.html">Серии</a></li>
+              <li><a href="/resonance.html">Резонанс</a></li>
               <li><a href="/about.html">О нас</a></li>
               <li><a href="/contacts.html">Контакты</a></li>
               <li><a href="/editorial-policy.html">Редакционная политика</a></li>
@@ -87,6 +91,13 @@
               <li><a href="/archive.html?cat=investigation">Расследования</a></li>
               <li><a href="/archive.html?cat=news">Новости</a></li>
             </ul>
+          </section>
+          <section class="content-card">
+            <h2>Темы, регионы и серии</h2>
+            <ul class="content-list" role="list" data-sitemap-topics></ul>
+            <ul class="content-list" role="list" data-sitemap-regions></ul>
+            <ul class="content-list" role="list" data-sitemap-series></ul>
+            <ul class="content-list" role="list" data-sitemap-resonance></ul>
           </section>
           <section class="content-card">
             <h2>Последние материалы</h2>
@@ -112,6 +123,10 @@
               <li><a href="/archive.html?cat=investigation">Расследования</a></li>
               <li><a href="/archive.html?cat=news">Новости</a></li>
               <li><a href="/archive.html">Архив</a></li>
+              <li><a href="/topics.html">Темы</a></li>
+              <li><a href="/regions.html">Регионы</a></li>
+              <li><a href="/series.html">Серии</a></li>
+              <li><a href="/resonance.html">Резонанс</a></li>
             </ul>
           </div>
           <div>
@@ -137,7 +152,7 @@
           <div class="site-footer__legal">
             <span>© 2023–2026 ФБРК</span>
             <span aria-hidden="true">·</span>
-            <span class="site-footer__version">AV DS 3.7.1</span>
+            <span class="site-footer__version">AV DS 4</span>
             <span aria-hidden="true">·</span>
             <span>Астана, Казахстан</span>
           </div>
@@ -168,13 +183,14 @@
     </div>
 
 
-    <script src="/js/data.js?v=20260527160712"></script>
+    <script src="/js/data.js?v=20260601113124"></script>
+    <script src="/js/data-archive.js?v=20260601113124"></script>
     <script>
       const root = document.querySelector('[data-sitemap-latest]');
       if (root && window.FBRK_DATA) {
         root.innerHTML = FBRK_DATA.articles.slice(0, 50).map((a) => `<li><a href="/a/${encodeURIComponent(a.slug || a.id)}">${a.title}</a></li>`).join('');
       }
     </script>
-    <script src="/js/app.js?v=20260527160712"></script>
+    <script src="/js/app.js?v=20260601113124"></script>
   </body>
 </html>

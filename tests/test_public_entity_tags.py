@@ -10,7 +10,8 @@ ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT / "admin"))
 
 import enrich  # noqa: E402
-from app.publish import _article_full_shape  # noqa: E402
+from app.editorial_hubs import annotate_article  # noqa: E402
+from app.publish import _article_full_shape, _public_shape  # noqa: E402
 from app.seo import _visible_entities  # noqa: E402
 
 
@@ -299,6 +300,58 @@ class PublicEntityTagsTest(unittest.TestCase):
         )
 
         self.assertNotIn("updatedAt", shape)
+
+    def test_public_shape_adds_curated_topics_series_and_resonance(self) -> None:
+        shape = _public_shape(
+            _article(
+                title="Латифундисты Казахстана. Глава 9: Шымкент",
+                dek="ФБРК разбирает крупнейшие земельные массивы, пастбища и агробизнес региона.",
+                category="investigation",
+                categoryLabel="Расследование",
+                _meta_importance=4,
+                _meta_region="Шымкент",
+                _meta_tags_auto=json.dumps(["земля", "латифундисты"], ensure_ascii=False),
+            )
+        )
+
+        self.assertEqual(shape["series"]["slug"], "latifundisty-kazakhstana")
+        self.assertIn("land-and-agro", {item["slug"] for item in shape["topics"]})
+        self.assertTrue(shape["resonance"])
+
+    def test_annotate_article_respects_manual_editorial_override(self) -> None:
+        annotated = annotate_article(
+            _article(
+                title="Министерство обновило планы сезонной обработки полей",
+                dek="Материал про региональные работы, подрядчиков и сельхозсезон.",
+                tags=["сельхоз", "земля"],
+                importance=5,
+            ),
+            override={
+                "topic_slugs": ["corruption"],
+                "series_slug": "dezinsekciya-2025",
+                "resonance": False,
+                "status_slug": "follow-up",
+                "label_slugs": ["documents", "data"],
+            },
+        )
+
+        self.assertEqual(
+            [item["slug"] for item in annotated.get("topics") or []],
+            ["corruption"],
+        )
+        self.assertEqual(
+            (annotated.get("series") or {}).get("slug"),
+            "dezinsekciya-2025",
+        )
+        self.assertEqual(
+            (annotated.get("editorialStatus") or {}).get("slug"),
+            "follow-up",
+        )
+        self.assertEqual(
+            [item["slug"] for item in annotated.get("editorialLabels") or []],
+            ["documents", "data"],
+        )
+        self.assertNotIn("resonance", annotated)
 
 
 if __name__ == "__main__":

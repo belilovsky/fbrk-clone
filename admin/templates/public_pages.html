@@ -1,0 +1,102 @@
+{% extends "base.html" %}
+{% block title %}Публичные страницы — Админка ФБРК{% endblock %}
+{% block page_title %}Публичные страницы{% endblock %}
+{% block topbar_actions %}
+  <a class="a-btn" href="/about.html" target="_blank" rel="noopener">О нас</a>
+  <a class="a-btn" href="/contacts.html" target="_blank" rel="noopener">Контакты</a>
+  <a class="a-btn" href="/privacy.html" target="_blank" rel="noopener">Конфиденциальность</a>
+{% endblock %}
+{% block content %}
+  {% if saved %}
+    <div class="a-alert a-alert--ok">Изменения сохранены, trust-страницы обновлены.</div>
+  {% endif %}
+  {% if published %}
+    <div class="a-alert a-alert--ok">Публичные страницы перегенерированы.</div>
+  {% endif %}
+
+  <div class="policy-admin-grid">
+    <section class="section-card">
+      <h3>Публичный статус</h3>
+      <dl class="policy-status-list">
+        {% for item in statuses %}
+          <div>
+            <dt>{{ item.label }}</dt>
+            <dd>
+              <a class="a-link" href="{{ item.public_url }}" target="_blank" rel="noopener">{{ item.public_url }}</a><br />
+              {% if item.status.exists %}
+                <span class="a-pill a-pill--ok">опубликовано</span>
+                <span class="muted">{{ item.status.updated_at }} · {{ item.status.size }} байт</span><br />
+                <span class="muted">{{ item.status.path }}</span>
+              {% else %}
+                <span class="a-pill a-pill--mute">нет файла</span>
+              {% endif %}
+            </dd>
+          </div>
+        {% endfor %}
+      </dl>
+      <form method="post" action="/admin/public-pages/publish" class="policy-action-form">
+        <button type="submit" class="a-btn a-btn--primary">Перегенерировать страницы</button>
+      </form>
+    </section>
+
+    <section class="section-card">
+      <h3>Как это устроено</h3>
+      <p class="muted">Здесь хранятся trust-страницы сайта. Они остаются статическим HTML для SEO и отказоустойчивости, но их copy и контакты теперь управляются из админки.</p>
+      <ul class="hub-admin-links" role="list">
+        <li><a class="a-link" href="/about.html" target="_blank" rel="noopener">/about.html</a> — страница о редакции.</li>
+        <li><a class="a-link" href="/contacts.html" target="_blank" rel="noopener">/contacts.html</a> — официальный контактный слой.</li>
+        <li><a class="a-link" href="/privacy.html" target="_blank" rel="noopener">/privacy.html</a> — страница обработки данных и cookie.</li>
+        <li><a class="a-link" href="/admin/editorial-policy">Редполитика</a> — соседний публичный trust-блок.</li>
+      </ul>
+    </section>
+  </div>
+
+  <form method="post" action="/admin/public-pages" class="section-card policy-editor-form">
+    <h3>О нас</h3>
+    <div class="policy-form-grid">
+      {% for field in about_fields %}
+        <label class="policy-field {% if field.kind == 'textarea' %}policy-field--textarea{% endif %}">
+          <span>{{ field.label }}</span>
+          {% if field.kind == "textarea" %}
+            <textarea name="{{ field.name }}" rows="4" {% if field.required %}required{% endif %}>{{ pages[field.name] }}</textarea>
+          {% else %}
+            <input name="{{ field.name }}" value="{{ pages[field.name] }}" {% if field.required %}required{% endif %}>
+          {% endif %}
+        </label>
+      {% endfor %}
+    </div>
+
+    <h3>Контакты</h3>
+    <div class="policy-form-grid">
+      {% for field in contact_fields %}
+        <label class="policy-field {% if field.kind == 'textarea' %}policy-field--textarea{% endif %}">
+          <span>{{ field.label }}</span>
+          {% if field.kind == "textarea" %}
+            <textarea name="{{ field.name }}" rows="4" {% if field.required %}required{% endif %}>{{ pages[field.name] }}</textarea>
+          {% else %}
+            <input name="{{ field.name }}" value="{{ pages[field.name] }}" {% if field.required %}required{% endif %}>
+          {% endif %}
+        </label>
+      {% endfor %}
+    </div>
+
+    <h3>Конфиденциальность</h3>
+    <div class="policy-form-grid">
+      {% for field in privacy_fields %}
+        <label class="policy-field {% if field.kind == 'textarea' %}policy-field--textarea{% endif %}">
+          <span>{{ field.label }}</span>
+          {% if field.kind == "textarea" %}
+            <textarea name="{{ field.name }}" rows="4" {% if field.required %}required{% endif %}>{{ pages[field.name] }}</textarea>
+          {% else %}
+            <input name="{{ field.name }}" value="{{ pages[field.name] }}" {% if field.required %}required{% endif %}>
+          {% endif %}
+        </label>
+      {% endfor %}
+    </div>
+
+    <div class="policy-form-actions">
+      <button type="submit" class="a-btn a-btn--primary">Сохранить и опубликовать</button>
+      <a class="a-btn" href="/admin/settings/list">Все настройки</a>
+    </div>
+  </form>
+{% endblock %}

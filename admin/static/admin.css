@@ -1,5 +1,5 @@
 /* ==========================================================
-   FBRK Admin — AV DS 3.7.1 (matches public fbrk.qdev.run)
+   FBRK Admin — AV DS 4 (matches public fbrk.qdev.run)
    ========================================================== */
 :root {
   --c-bg: #f7f6f2;
@@ -284,6 +284,57 @@ table { border-collapse: collapse; }
   font-size: 14px;
 }
 .a-check input { width: 16px; height: 16px; accent-color: var(--c-primary); }
+.a-hubs-note { margin: 0 0 var(--sp-4); font-size: 13px; line-height: 1.45; }
+.a-hub-checklist { display: grid; gap: 8px; }
+.a-hub-option {
+  display: grid;
+  grid-template-columns: 18px minmax(0, 1fr);
+  gap: 10px;
+  align-items: start;
+  padding: 10px 12px;
+  border: 1px solid var(--c-divider);
+  border-radius: var(--radius-sm);
+  background: color-mix(in oklab, var(--c-surface) 90%, var(--c-offset));
+  cursor: pointer;
+}
+.a-hub-option input {
+  margin-top: 2px;
+  width: 16px;
+  height: 16px;
+  accent-color: var(--c-primary);
+}
+.a-hub-option strong {
+  display: block;
+  margin-bottom: 3px;
+  color: var(--c-text);
+  font-size: 13px;
+}
+.a-hub-option small {
+  display: block;
+  color: var(--c-muted);
+  line-height: 1.4;
+}
+.a-hubs-auto {
+  margin-top: var(--sp-4);
+  padding-top: var(--sp-4);
+  border-top: 1px solid var(--c-divider);
+  display: grid;
+  gap: 8px;
+}
+.a-hubs-auto__title {
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--c-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+.a-hubs-auto__row {
+  display: grid;
+  gap: 2px;
+  font-size: 13px;
+  line-height: 1.4;
+}
+.a-hubs-auto__row b { color: var(--c-text); }
 
 #f-title {
   width: 100%; font-family: var(--font-display);
@@ -425,8 +476,16 @@ html,body{margin:0;}
 .policy-section legend{padding:0 6px;font-weight:700;color:#0f1330;}
 .policy-section .policy-field + .policy-field{margin-top:12px;}
 .policy-form-actions{display:flex;flex-wrap:wrap;gap:10px;}
+.hub-admin-links{margin:14px 0 0;padding-left:18px;color:#4a5278;display:grid;gap:8px;}
+.hub-admin-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:16px;margin-top:16px;}
+.hub-admin-cards{display:grid;gap:12px;}
+.hub-admin-card{border:1px solid #e6e8f2;border-radius:14px;padding:14px 16px;background:#fbfcff;}
+.hub-admin-card__title{font-weight:700;color:#0f1330;margin-bottom:4px;}
+.hub-admin-card__slug{font-size:12px;color:#6b7299;margin-bottom:8px;}
+.hub-admin-card p{margin:0;color:#4a5278;line-height:1.45;}
+.hub-admin-page-meta{margin:0 0 10px;}
 @media (max-width: 900px){
-  .policy-admin-grid,.policy-form-grid,.policy-sections{grid-template-columns:1fr;}
+  .policy-admin-grid,.policy-form-grid,.policy-sections,.hub-admin-grid{grid-template-columns:1fr;}
 }
 
 .tag-cloud{display:flex;flex-wrap:wrap;gap:8px;}

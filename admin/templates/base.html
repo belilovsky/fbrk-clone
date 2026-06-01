@@ -7,8 +7,8 @@
   <meta name="csrf-token" content="{{ csrf_token(request) if user else '' }}"/>
   <title>{% block title %}Админка ФБРК{% endblock %}</title>
   <link rel="icon" href="/admin/static/favicon.svg" type="image/svg+xml"/>
-  <link rel="stylesheet" href="/fonts/avds/avds-fonts.css?v=20260517081342"/>
-  <link rel="stylesheet" href="/admin/static/admin.css?v=8"/>
+  <link rel="stylesheet" href="/fonts/avds/avds-fonts.css?v={{ public_asset_version() }}"/>
+  <link rel="stylesheet" href="/admin/static/admin.css?v={{ admin_asset_version() }}"/>
   {% block head %}{% endblock %}
 </head>
 <body class="a-body">
@@ -17,7 +17,7 @@
     <a class="a-brand" href="/admin/">
       <span class="a-brand__dot"></span>
       <span>ФБРК · админка</span>
-      <span class="a-badge" title="Версия дизайн-системы">AV DS 3.7.1</span>
+      <span class="a-badge" title="Версия дизайн-системы">AV DS 4</span>
     </a>
     <nav class="a-side-nav">
       <a href="/admin/home" class="a-side-link">📊 Дашборд</a>
@@ -29,7 +29,9 @@
       <a href="/admin/ads" class="a-side-link">💰 Реклама</a>
       <a href="/admin/uploads" class="a-side-link">🖼️ Медиа</a>
       <a href="/admin/users" class="a-side-link">👥 Пользователи</a>
-      <a href="/admin/editorial-policy" class="a-side-link">Редполитика</a>
+      <a href="/admin/public-pages" class="a-side-link">📄 Страницы</a>
+      <a href="/admin/editorial-policy" class="a-side-link">🛡️ Редполитика</a>
+      <a href="/admin/editorial-hubs" class="a-side-link">🧭 Хабы</a>
       <a href="/admin/settings" class="a-side-link">⚙️ Настройки</a>
       <a href="/admin/audit" class="a-side-link">📜 Аудит</a>
       <div class="a-side-sep"></div>
@@ -37,7 +39,7 @@
     </nav>
     <div class="a-side-foot">
       {% if user %}<span class="a-user">{{ user }}</span> · <a class="a-logout" href="/admin/logout">Выйти</a>{% endif %}
-      <div class="a-side-foot__small">ФБРК админка · AV DS 3.7.1</div>
+      <div class="a-side-foot__small">ФБРК админка · AV DS 4</div>
     </div>
   </aside>
   <div class="a-shell">

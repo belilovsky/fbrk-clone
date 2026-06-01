@@ -7,7 +7,6 @@ set -euo pipefail
 
 PUBLIC_ORIGIN="${PUBLIC_ORIGIN:-https://new.fbrk.kz}"
 BACKEND_ORIGIN="${BACKEND_ORIGIN:-https://fbrk.qdev.run}"
-FBRK_WEB_ROOT="${FBRK_WEB_ROOT:-/var/www/fbrk.qdev.run}"
 TARGET_HOST="${NEW_FBRK_VPS_HOST:-213.155.22.190}"
 TARGET_USER="${NEW_FBRK_VPS_USER:-root}"
 TARGET_ROOT="${NEW_FBRK_VPS_ROOT:-/var/www/new.fbrk.kz}"
@@ -20,6 +19,13 @@ ASSET_VERSION="${ASSET_VERSION:-$(date -u +%Y%m%d%H%M%S)}"
 SSH_RSH="ssh -o BatchMode=yes -o StrictHostKeyChecking=accept-new"
 SSH_CMD=(ssh -o BatchMode=yes -o StrictHostKeyChecking=accept-new)
 SSH_KEY_PATH="${NEW_FBRK_SSH_KEY:-}"
+SYNC_DRY_RUN="${SYNC_DRY_RUN:-0}"
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+REPO_ROOT="$(cd "${SCRIPT_DIR}/../.." && pwd)"
+FBRK_WEB_ROOT="${FBRK_WEB_ROOT:-/var/www/fbrk.qdev.run}"
+if [[ ! -d "${FBRK_WEB_ROOT}/img" && -d "${REPO_ROOT}/img" ]]; then
+  FBRK_WEB_ROOT="${REPO_ROOT}"
+fi
 if [[ -z "${SSH_KEY_PATH}" && -f "${HOME}/.ssh/fbrk_new_frontend_sync" ]]; then
   SSH_KEY_PATH="${HOME}/.ssh/fbrk_new_frontend_sync"
 fi
@@ -27,7 +33,6 @@ if [[ -n "${SSH_KEY_PATH}" ]]; then
   SSH_RSH="${SSH_RSH} -i ${SSH_KEY_PATH}"
   SSH_CMD+=(-i "${SSH_KEY_PATH}")
 fi
-SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 PLESK_BUILDER="${SCRIPT_DIR}/sync_new_frontend_to_plesk.py"
 DEPLOY_DIR="$(cd "${SCRIPT_DIR}/../deploy" && pwd)"
 GUARD_SCRIPT_SOURCE="${DEPLOY_DIR}/new-fbrk-frontend-guard.sh"
@@ -56,13 +61,20 @@ cleanup() {
 }
 trap cleanup EXIT
 
+builder_args=(--force --full --keep-package --no-verify)
+if [[ "${SYNC_DRY_RUN}" == "1" ]]; then
+  builder_args+=(--dry-run)
+else
+  builder_args+=(--build-only)
+fi
+
 PUBLIC_ORIGIN="${PUBLIC_ORIGIN}" \
 BACKEND_ORIGIN="${BACKEND_ORIGIN}" \
 FBRK_WEB_ROOT="${FBRK_WEB_ROOT}" \
 PLESK_SYNC_WORKDIR="${WORKDIR}" \
 ASSET_VERSION="${ASSET_VERSION}" \
 GENERATE_STATIC_ARTICLE_PAGES=1 \
-python3 "${PLESK_BUILDER}" --force --full --dry-run --keep-package --no-verify | tee "${log_file}"
+python3 "${PLESK_BUILDER}" "${builder_args[@]}" | tee "${log_file}"
 
 package_dir="$(awk -F= '/^PACKAGE_DIR=/{print $2}' "${log_file}" | tail -1)"
 if [[ -z "${package_dir}" || ! -d "${package_dir}" ]]; then

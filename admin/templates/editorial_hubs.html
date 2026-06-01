@@ -1,0 +1,149 @@
+{% extends "base.html" %}
+{% block title %}Редакционные хабы — Админка ФБРК{% endblock %}
+{% block page_title %}Редакционные хабы{% endblock %}
+{% block topbar_actions %}
+  <a class="a-btn" href="/topics.html" target="_blank" rel="noopener">Темы</a>
+  <a class="a-btn" href="/regions.html" target="_blank" rel="noopener">Регионы</a>
+  <a class="a-btn" href="/series.html" target="_blank" rel="noopener">Серии</a>
+  <a class="a-btn" href="/resonance.html" target="_blank" rel="noopener">Резонанс</a>
+{% endblock %}
+{% block content %}
+  {% if saved %}
+    <div class="a-alert a-alert--ok">Публичные тексты обновлены и сразу включены в data.js.</div>
+  {% endif %}
+
+  <div class="policy-admin-grid">
+    <section class="section-card">
+      <h3>Как это связано</h3>
+      <p class="muted">Здесь хранится copy для hub-страниц. Сами материалы размечаются в редакторе статьи: темы, серия и резонанс можно оставить на автоопределении или закрепить вручную.</p>
+      <ul class="hub-admin-links" role="list">
+        <li><a class="a-link" href="/admin/new">Новый материал</a> — ручная привязка темы, региона, серии и резонанса.</li>
+        <li><a class="a-link" href="/topics.html" target="_blank" rel="noopener">/topics.html</a> — директория тем.</li>
+        <li><a class="a-link" href="/regions.html" target="_blank" rel="noopener">/regions.html</a> — директория регионов.</li>
+        <li><a class="a-link" href="/series.html" target="_blank" rel="noopener">/series.html</a> — директория серий.</li>
+        <li><a class="a-link" href="/resonance.html" target="_blank" rel="noopener">/resonance.html</a> — витрина резонансных материалов.</li>
+      </ul>
+    </section>
+
+    <section class="section-card">
+      <h3>Слой управления</h3>
+      <p class="muted">Без правок в коде редакция может менять заголовок, eyebrow, описание и SEO-формулировку для hub-страниц, а также тексты секций на главной.</p>
+    </section>
+  </div>
+
+  <form method="post" action="/admin/editorial-hubs" class="section-card policy-editor-form">
+    <h3>Публичные страницы</h3>
+    <div class="policy-sections">
+      {% for page in pages %}
+        <fieldset class="policy-section">
+          <legend>{{ page.label }}</legend>
+          <div class="hub-admin-page-meta">
+            <a class="a-link" href="{{ page.public_url }}" target="_blank" rel="noopener">{{ page.public_url }}</a>
+          </div>
+          <label class="policy-field">
+            <span>Eyebrow</span>
+            <input name="page_{{ page.slug }}_eyebrow" value="{{ page.fields.eyebrow }}" required>
+          </label>
+          <label class="policy-field">
+            <span>Заголовок</span>
+            <input name="page_{{ page.slug }}_title" value="{{ page.fields.title }}" required>
+          </label>
+          <label class="policy-field policy-field--textarea">
+            <span>Описание</span>
+            <textarea name="page_{{ page.slug }}_description" rows="4" required>{{ page.fields.description }}</textarea>
+          </label>
+          <label class="policy-field">
+            <span>SEO title</span>
+            <input name="page_{{ page.slug }}_seo_title" value="{{ page.fields.seo_title }}" required>
+          </label>
+          <label class="policy-field policy-field--textarea">
+            <span>SEO description</span>
+            <textarea name="page_{{ page.slug }}_seo_description" rows="3" required>{{ page.fields.seo_description }}</textarea>
+          </label>
+        </fieldset>
+      {% endfor %}
+    </div>
+
+    <div class="policy-form-actions">
+      <button type="submit" class="a-btn a-btn--primary">Сохранить и обновить фронт</button>
+      <a class="a-btn" href="/admin/settings/list">Все настройки</a>
+    </div>
+  </form>
+
+  <form method="post" action="/admin/editorial-hubs" class="section-card policy-editor-form">
+    <h3>Главная страница</h3>
+    <p class="muted">Эти тексты управляют редакционными секциями на главной, не меняя сами подборки материалов.</p>
+    <div class="policy-sections">
+      {% for block in home_blocks %}
+        <fieldset class="policy-section">
+          <legend>{{ block.label }}</legend>
+          <div class="hub-admin-page-meta">
+            <a class="a-link" href="{{ block.public_url }}" target="_blank" rel="noopener">{{ block.public_url }}</a>
+          </div>
+          <label class="policy-field">
+            <span>Eyebrow</span>
+            <input name="home_{{ block.slug }}_eyebrow" value="{{ block.fields.eyebrow }}" required>
+          </label>
+          <label class="policy-field">
+            <span>Заголовок</span>
+            <input name="home_{{ block.slug }}_title" value="{{ block.fields.title }}" required>
+          </label>
+          <label class="policy-field policy-field--textarea">
+            <span>Описание</span>
+            <textarea name="home_{{ block.slug }}_description" rows="4" required>{{ block.fields.description }}</textarea>
+          </label>
+          <label class="policy-field">
+            <span>Текст ссылки</span>
+            <input name="home_{{ block.slug }}_link_label" value="{{ block.fields.link_label }}" required>
+          </label>
+        </fieldset>
+      {% endfor %}
+    </div>
+
+    <div class="policy-form-actions">
+      <button type="submit" class="a-btn a-btn--primary">Сохранить и обновить главную</button>
+      <a class="a-btn" href="/">Открыть главную</a>
+    </div>
+  </form>
+
+  <div class="hub-admin-grid">
+    <section class="section-card">
+      <h3>Текущие темы</h3>
+      <div class="hub-admin-cards">
+        {% for item in topics %}
+          <article class="hub-admin-card">
+            <div class="hub-admin-card__title">{{ item.title }}</div>
+            <div class="hub-admin-card__slug">{{ item.slug }}</div>
+            <p>{{ item.description }}</p>
+          </article>
+        {% endfor %}
+      </div>
+    </section>
+
+    <section class="section-card">
+      <h3>Текущие регионы</h3>
+      <div class="hub-admin-cards">
+        {% for item in regions %}
+          <article class="hub-admin-card">
+            <div class="hub-admin-card__title">{{ item.title }}</div>
+            <div class="hub-admin-card__slug">{{ item.slug }}</div>
+            <p>{{ item.description }}</p>
+          </article>
+        {% endfor %}
+      </div>
+    </section>
+
+    <section class="section-card">
+      <h3>Текущие серии</h3>
+      <div class="hub-admin-cards">
+        {% for item in series %}
+          <article class="hub-admin-card">
+            <div class="hub-admin-card__title">{{ item.title }}</div>
+            <div class="hub-admin-card__slug">{{ item.slug }}</div>
+            <p>{{ item.description }}</p>
+          </article>
+        {% endfor %}
+      </div>
+    </section>
+  </div>
+{% endblock %}

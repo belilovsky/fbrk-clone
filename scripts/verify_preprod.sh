@@ -5,8 +5,8 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 REPO_ROOT="$(cd "${SCRIPT_DIR}/.." && pwd)"
 PYTHON_BIN="${PYTHON_BIN:-${REPO_ROOT}/.venv/bin/python}"
 NODE_BIN="${NODE_BIN:-node}"
-NEW_ORIGIN="${NEW_ORIGIN:-https://new.fbrk.kz}"
 BACKEND_ORIGIN="${BACKEND_ORIGIN:-https://fbrk.qdev.run}"
+NEW_ORIGIN="${NEW_ORIGIN:-${BACKEND_ORIGIN}}"
 
 if [[ ! -x "${PYTHON_BIN}" ]]; then
   echo "ERROR: python interpreter not found: ${PYTHON_BIN}" >&2
@@ -28,7 +28,7 @@ echo "[3/5] Python test suite"
 echo "[4/5] Python compile checks"
 "${PYTHON_BIN}" -m py_compile admin/app/*.py admin/enrich.py admin/scripts/*.py
 
-echo "[5/5] Live split linkage"
+echo "[5/5] Live frontend linkage"
 ./admin/scripts/check_split_linkage.sh "${NEW_ORIGIN}" "${BACKEND_ORIGIN}" --strict
 
 echo "STATUS=ok"

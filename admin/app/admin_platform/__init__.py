@@ -5,5 +5,4 @@ the private package a production dependency.
 """
 
 ADMIN_PLATFORM_VERSION = "0.1"
-AV_DS_VERSION = "3.7.1"
-
+AV_DS_VERSION = "4"

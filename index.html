@@ -67,8 +67,8 @@
     <link rel="icon" type="image/png" sizes="192x192" href="/img/brand/favicon-192.png" />
     <link rel="apple-touch-icon" href="/img/brand/apple-touch-icon.png" />
     <link rel="icon" type="image/svg+xml" href="/img/brand/logo.svg" />
-    <link rel="stylesheet" href="/fonts/avds/avds-fonts.css?v=20260527160712" />
-    <link rel="stylesheet" href="css/style.css?v=20260527160712" />
+    <link rel="stylesheet" href="/fonts/avds/avds-fonts.css?v=20260601113124" />
+    <link rel="stylesheet" href="/css/style.css?v=20260601113124" />
     <link rel="alternate" type="application/rss+xml" title="ФБРК — RSS" href="/feed.xml" />
   </head>
   <body>
@@ -133,6 +133,20 @@
         </div>
       </section>
 
+      <section class="section" id="home-resonance" aria-labelledby="sec-home-resonance" data-home-resonance-section hidden>
+        <div class="container">
+          <header class="section__header section__header--stacked">
+            <div class="section__copy">
+              <div class="section__eyebrow" data-home-block-eyebrow="resonance">Выбор редакции</div>
+              <h2 class="section__title" id="sec-home-resonance" data-home-block-title="resonance">Резонанс</h2>
+              <p class="section__description" data-home-block-description="resonance">Материалы с повышенной редакционной значимостью, которые стоит открыть в первую очередь.</p>
+            </div>
+            <a class="section__link" href="/resonance.html" data-home-block-link="resonance">Вся подборка →</a>
+          </header>
+          <div class="card-grid" data-home-resonance></div>
+        </div>
+      </section>
+
       <!-- Video showcase -->
       <section class="section section--videos" id="videos" aria-labelledby="sec-videos">
         <div class="container">
@@ -141,7 +155,7 @@
               <div class="section__eyebrow">Видео</div>
               <h2 class="section__title" id="sec-videos">Смотрите на YouTube</h2>
             </div>
-            <a class="section__link" href="https://www.youtube.com/@fbrk_news" target="_blank" rel="noopener">На канал →</a>
+            <a class="section__link" href="https://www.youtube.com/@fbrk_news" target="_blank" rel="noopener" data-site-youtube-link>На канал →</a>
           </header>
           <div class="video-grid" data-videos></div>
         </div>
@@ -163,7 +177,7 @@
                 <p class="widget__text">
                   Анонимный Telegram-бот редакции ФБРК. Мы защищаем источники и проверяем каждый сигнал.
                 </p>
-                <a class="widget__btn" href="https://t.me/fund_kz_bot" target="_blank" rel="noopener">
+                <a class="widget__btn" href="https://t.me/fund_kz_bot" target="_blank" rel="noopener" data-site-telegram-cta>
                   Открыть @fund_kz_bot →
                 </a>
               </div>
@@ -172,8 +186,27 @@
                 <h3 class="widget__title">О чём мы пишем</h3>
                 <div class="tag-cloud" data-tags></div>
               </div>
+              <div class="widget">
+                <div class="widget__label">Серии</div>
+                <h3 class="widget__title">Длинные редакционные линии</h3>
+                <ul class="content-list widget-list" role="list" data-series-links></ul>
+              </div>
             </div>
           </div>
+        </div>
+      </section>
+
+      <section class="section" id="home-regions" aria-labelledby="sec-home-regions" data-home-regions-section hidden>
+        <div class="container">
+          <header class="section__header section__header--stacked">
+            <div class="section__copy">
+              <div class="section__eyebrow" data-home-block-eyebrow="regions">География</div>
+              <h2 class="section__title" id="sec-home-regions" data-home-block-title="regions">По регионам</h2>
+              <p class="section__description" data-home-block-description="regions">Быстрый вход в архив по ключевым городам и областям, где ФБРК ведёт длинные линии и локальные сюжеты.</p>
+            </div>
+            <a class="section__link" href="/regions.html" data-home-block-link="regions">Все регионы →</a>
+          </header>
+          <div class="content-grid" data-home-regions></div>
         </div>
       </section>
     </main>
@@ -194,6 +227,10 @@
               <li><a href="/archive.html?cat=investigation">Расследования</a></li>
               <li><a href="/archive.html?cat=news">Новости</a></li>
               <li><a href="/archive.html">Архив</a></li>
+              <li><a href="/topics.html">Темы</a></li>
+              <li><a href="/regions.html">Регионы</a></li>
+              <li><a href="/series.html">Серии</a></li>
+              <li><a href="/resonance.html">Резонанс</a></li>
             </ul>
           </div>
           <div>
@@ -219,7 +256,7 @@
           <div class="site-footer__legal">
             <span>© 2023–2026 ФБРК</span>
             <span aria-hidden="true">·</span>
-            <span class="site-footer__version">AV DS 3.7.1</span>
+            <span class="site-footer__version">AV DS 4</span>
             <span aria-hidden="true">·</span>
             <span>Астана, Казахстан</span>
           </div>
@@ -260,8 +297,8 @@
       </div>
     </div>
 
-    <script src="js/runtime-config.js?v=20260527160712"></script>
-    <script src="js/data.js?v=20260527160712"></script>
-    <script src="js/app.js?v=20260527160712"></script>
+    <script src="/js/runtime-config.js?v=20260601113124"></script>
+    <script src="/js/data.js?v=20260601113124"></script>
+    <script src="/js/app.js?v=20260601113124"></script>
   </body>
 </html>

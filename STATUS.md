@@ -13,7 +13,7 @@ Branch: `release/pre-prod-audit`
 - [x] Today badge limited to same-day publications.
 - [x] AI watermark restricted to `image.kind === "ai"` or inferred AI images.
 - [x] Baseline a11y focus/tap-target improvements started.
-- [x] Footer public AV DS version is visible in the public shell (`AV DS 3.7.1`).
+- [x] Footer public AV DS version is visible in the public shell (`AV DS 4`).
 - [x] `/privacy.html` and functional cookie banner added.
 - [x] `about.html` legal/contact section expanded.
 - [x] FBRK enrichment supports DeepSeek primary (`DEEPSEEK_API_KEY`) with OpenAI fallback (`OPENAI_API_KEY`); live env is installed only on the active FBRK VPS, values are not committed.
@@ -78,9 +78,17 @@ Branch: `release/pre-prod-audit`
 - [x] `/editorial-policy.html` added as the first FBRK-specific carrier page for Editorial Hub v1.2.
 - [x] Footer, sitemap page, static sitemap generation and split-frontend package scripts include the editorial policy page.
 - [x] Public shell drift tests now require the editorial policy link in every public shell and SSR article template.
-- [x] Public asset version bumped to `20260527160712` for the carrier page rollout.
+- [x] Public asset version bumped to `20260527204143` for the carrier page rollout.
 - [x] Follow-up live QA found the policy route still served 404 before redeploy; fixed by syncing the current static package to `new.fbrk.kz`.
 - [x] About page inline styles, frontend debug logging, and a stale missing `mobile-menu-fix.js` SSR reference were removed.
 - [x] Mobile header compacted on narrow screens so search and menu remain visible without horizontal clipping.
 - [x] Desktop header container widened and the compact header breakpoint raised for 1440px QA so navigation no longer crowds the language switcher.
 - [x] Article AI key points now soften visibly truncated backend fragments instead of rendering dangling words.
+
+## Release hardening 2026-06-01
+
+- [x] Public shell and SSR article template are unified on asset version `20260601113124`.
+- [x] AV DS 4 public shell is live on `fbrk.qdev.run`, including footer version marker and local font entrypoint.
+- [x] Mobile archive filter stack was compacted into a two-column layout so cards return to the first viewport sooner.
+- [x] Mobile article typography was tightened with safer title wrapping and calmer lead spacing.
+- [x] `PYTHONPYCACHEPREFIX=/private/tmp/fbrk-pycache ./scripts/verify_preprod.sh` passes end to end with live linkage `STATUS=ok`.

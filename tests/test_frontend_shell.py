@@ -13,8 +13,12 @@ STATIC_SHELLS = [
     ROOT / "editorial-policy.html",
     ROOT / "index.html",
     ROOT / "privacy.html",
+    ROOT / "regions.html",
+    ROOT / "resonance.html",
     ROOT / "search.html",
+    ROOT / "series.html",
     ROOT / "sitemap.html",
+    ROOT / "topics.html",
 ]
 PUBLIC_SHELLS = STATIC_SHELLS + [ROOT / "admin" / "templates" / "article_ssr.html"]
 
@@ -37,6 +41,22 @@ def test_public_shells_define_early_theme_init() -> None:
         html = path.read_text(encoding="utf-8")
         assert "localStorage.getItem('theme')" in html or 'localStorage.getItem("theme")' in html, path
         assert "document.documentElement.dataset.theme" in html, path
+
+
+def test_home_shell_uses_absolute_asset_paths() -> None:
+    html = (ROOT / "index.html").read_text(encoding="utf-8")
+
+    assert 'href="/css/style.css?v=' in html
+    assert 'src="/js/runtime-config.js?v=' in html
+    assert 'src="/js/data.js?v=' in html
+    assert 'src="/js/app.js?v=' in html
+
+
+def test_public_shells_do_not_use_relative_core_asset_paths() -> None:
+    for path in PUBLIC_SHELLS:
+        html = path.read_text(encoding="utf-8")
+        assert 'href="css/style.css' not in html, path
+        assert 'src="js/' not in html, path
 
 
 def test_static_pages_share_canonical_shell_markup() -> None:
@@ -81,6 +101,12 @@ def test_public_script_references_are_available_or_generated() -> None:
             assert script_name in generated or (ROOT / src).exists(), (path, raw_src)
 
 
+def test_public_font_stylesheet_exists_for_local_preview() -> None:
+    css = ROOT / "fonts" / "avds" / "avds-fonts.css"
+    assert css.exists()
+    assert "https://fbrk.qdev.run/fonts/avds/" in css.read_text(encoding="utf-8")
+
+
 def test_public_asset_versions_are_busted_consistently() -> None:
     versions: set[str] = set()
     for path in PUBLIC_SHELLS:
@@ -88,6 +114,7 @@ def test_public_asset_versions_are_busted_consistently() -> None:
         versions.update(re.findall(r"\?v=(\d+)", html))
 
     assert versions
+    assert len(versions) == 1
     assert all(len(version) == 14 for version in versions)
     assert "3" not in versions
 
@@ -101,6 +128,46 @@ def test_frontend_css_keeps_article_spacing_readable() -> None:
     assert re.search(r"\.ad-block:empty\s*\{\s*display:\s*none;", css)
     assert re.search(r"\.site-header__nav\s*\{[\s\S]*max-height:\s*calc\(100dvh - 84px\);", css)
     assert re.search(r"\.site-header__nav\s*\{[\s\S]*border-radius:\s*20px;", css)
+    assert ".article__cover.image-kind-ai::after" in css
+    assert ".lead__media.image-kind-ai::after" not in css
+    assert ".card__media.image-kind-ai::after" not in css
+    assert "ИЛЛЮСТРАЦИЯ ФБРК · ИИ" not in css
+    assert "ИИ-изображение. Не является фотоматериалом" in js
+
+
+def test_home_shell_exposes_editorial_homepage_sections() -> None:
+    html = (ROOT / "index.html").read_text(encoding="utf-8")
+
+    assert 'data-home-resonance-section' in html
+    assert 'data-home-regions-section' in html
+    assert 'data-home-block-title="resonance"' in html
+    assert 'data-home-block-title="regions"' in html
+
+
+def test_archive_and_search_shells_expose_polish_hooks() -> None:
+    archive_html = (ROOT / "archive.html").read_text(encoding="utf-8")
+    search_html = (ROOT / "search.html").read_text(encoding="utf-8")
+
+    assert 'data-archive-active' in archive_html
+    assert 'data-archive-active-list' in archive_html
+    assert 'data-archive-empty-message' in archive_html
+    assert 'data-search-empty-message' in search_html
+
+
+def test_trust_pages_use_editorial_copy_and_consistent_contact_labels() -> None:
+    about_html = (ROOT / "about.html").read_text(encoding="utf-8")
+    contacts_html = (ROOT / "contacts.html").read_text(encoding="utf-8")
+    privacy_html = (ROOT / "privacy.html").read_text(encoding="utf-8")
+    policy_html = (ROOT / "editorial-policy.html").read_text(encoding="utf-8")
+
+    assert "<h2>Что такое ФБРК</h2>" in about_html
+    assert "<h2>Как передать информацию</h2>" in about_html
+    assert "Главный редактор:" not in contacts_html
+    assert "Для читателей и информаторов" in contacts_html
+    assert "Для комментариев, интервью, перепечаток и партнёрских запросов." in contacts_html
+    assert "не использует их для рекламного профилирования" in privacy_html
+    assert "краткая публичная версия этого стандарта" in policy_html
+    assert "Если вопрос касается конкретной публикации" in policy_html
 
 
 def test_ssr_article_keeps_summary_and_share_below_body() -> None:

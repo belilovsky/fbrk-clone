@@ -16,8 +16,8 @@
     <meta property="og:image" content="https://fbrk.qdev.run/img/brand/logo-on-brand-640.png" />
     <meta name="twitter:card" content="summary_large_image" />
     <link rel="icon" type="image/png" sizes="32x32" href="/img/brand/favicon-32.png" />
-    <link rel="stylesheet" href="/fonts/avds/avds-fonts.css?v=20260527160712" />
-    <link rel="stylesheet" href="/css/style.css?v=20260527160712" />
+    <link rel="stylesheet" href="/fonts/avds/avds-fonts.css?v=20260601113124" />
+    <link rel="stylesheet" href="/css/style.css?v=20260601113124" />
     <script>
       try {
         const t = localStorage.getItem('theme') || localStorage.getItem('fbrk_theme');
@@ -73,6 +73,7 @@
         <header class="content-page__head">
           <div class="kicker content-page__eyebrow">Поиск</div>
           <h1 class="content-page__title">Поиск по материалам</h1>
+          <p class="content-page__description search-page__description">Ищем по заголовкам, лидам, тегам, сериям, регионам и редакционным меткам.</p>
         </header>
         <div class="search-page__form">
           <label>
@@ -91,8 +92,11 @@
         <p class="search-page__count" data-search-page-count></p>
         <div class="search-page__results" data-search-page-results></div>
         <div class="search-page__empty" data-search-page-empty hidden>
-          <p>По запросу «<span data-empty-query></span>» ничего не найдено.</p>
-          <button class="btn--secondary" type="button" data-search-page-reset>Сбросить</button>
+          <p data-search-empty-message>По запросу «<span data-empty-query></span>» ничего не найдено.</p>
+          <div class="search-page__empty-actions">
+            <button class="btn--secondary" type="button" data-search-page-reset>Сбросить</button>
+            <a class="btn--link" href="/archive.html">Открыть архив</a>
+          </div>
         </div>
       </div>
     </main>
@@ -113,6 +117,10 @@
               <li><a href="/archive.html?cat=investigation">Расследования</a></li>
               <li><a href="/archive.html?cat=news">Новости</a></li>
               <li><a href="/archive.html">Архив</a></li>
+              <li><a href="/topics.html">Темы</a></li>
+              <li><a href="/regions.html">Регионы</a></li>
+              <li><a href="/series.html">Серии</a></li>
+              <li><a href="/resonance.html">Резонанс</a></li>
             </ul>
           </div>
           <div>
@@ -138,7 +146,7 @@
           <div class="site-footer__legal">
             <span>© 2023–2026 ФБРК</span>
             <span aria-hidden="true">·</span>
-            <span class="site-footer__version">AV DS 3.7.1</span>
+            <span class="site-footer__version">AV DS 4</span>
             <span aria-hidden="true">·</span>
             <span>Астана, Казахстан</span>
           </div>
@@ -169,10 +177,10 @@
     </div>
 
 
-    <script src="/js/runtime-config.js?v=20260527160712"></script>
-    <script src="/js/data.js?v=20260527160712"></script>
-    <script src="/js/data-archive.js?v=20260527160712"></script>
-    <script src="/js/search-index.js?v=20260527160712"></script>
-    <script src="/js/app.js?v=20260527160712"></script>
+    <script src="/js/runtime-config.js?v=20260601113124"></script>
+    <script src="/js/data.js?v=20260601113124"></script>
+    <script src="/js/data-archive.js?v=20260601113124"></script>
+    <script src="/js/search-index.js?v=20260601113124"></script>
+    <script src="/js/app.js?v=20260601113124"></script>
   </body>
 </html>

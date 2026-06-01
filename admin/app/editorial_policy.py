@@ -10,6 +10,7 @@ from sqlite3 import Connection
 from typing import Mapping
 
 from .config import settings
+from .public_page_shell import load_site_shell, site_url as public_site_url
 
 
 PREFIX = "editorial_policy."
@@ -51,8 +52,8 @@ SECTION_FIELDS: tuple[tuple[str, str], ...] = (
 DEFAULT_POLICY: dict[str, str] = {
     "title": "Редакционная политика",
     "description": (
-        "Редакционная политика ФБРК: фактчек, источники, AI-disclosure, "
-        "исправления, право на ответ и публичные обращения."
+        "Как ФБРК проверяет информацию, работает с источниками, правом на ответ, "
+        "исправлениями и использованием AI."
     ),
     "standard_name": "Editorial Hub v1.2",
     "standard_url": "https://edpol.qdev.run/",
@@ -63,15 +64,15 @@ DEFAULT_POLICY: dict[str, str] = {
     "contact_telegram_label": "@fund_kz_bot",
     "contact_telegram_url": "https://t.me/fund_kz_bot",
     "lede": (
-        "ФБРК использует Editorial Hub v1.2 как рабочий стандарт проверки, "
-        "публикации и исправления материалов. Эта страница фиксирует публичные "
-        "правила именно для ФБРК."
+        "Эта страница описывает публичные правила ФБРК: как мы проверяем факты, "
+        "работаем с источниками, даём право на ответ, исправляем ошибки и "
+        "обозначаем использование AI."
     ),
     "scope_title": "Статус документа",
     "scope_body": (
         "Редакционная политика действует для новостей, расследований, досье, "
-        "карточек, видео, социальных сетей и архивных обновлений, опубликованных "
-        "от имени ФБРК."
+        "карточек, видео, публикаций в социальных сетях и архивных обновлений, "
+        "которые выходят от имени ФБРК."
     ),
     "factcheck_title": "Проверка информации",
     "factcheck_body": (
@@ -87,13 +88,16 @@ DEFAULT_POLICY: dict[str, str] = {
         "фигурантам разумную возможность прокомментировать существенные обвинения "
         "до публикации.\n\n"
         "Анонимность источника возможна только когда раскрытие личности может "
-        "создать риск для источника или материала."
+        "создать риск для человека, его работы, безопасности материала или "
+        "редакционного процесса."
     ),
     "corrections_title": "Исправления и снятие материалов",
     "corrections_body": (
         "Если в материале обнаружена ошибка, редакция исправляет её и при "
         "необходимости добавляет пометку об обновлении. Существенные исправления "
-        "не скрываются."
+        "не скрываются.\n\n"
+        "Материал не снимается молча: для существенных правок, уточнений и "
+        "ответов редакция сохраняет понятный публичный след."
     ),
     "ai_title": "AI и синтетические материалы",
     "ai_body": (
@@ -108,7 +112,8 @@ DEFAULT_POLICY: dict[str, str] = {
         "Обращения читателей, источников, фигурантов и представителей организаций "
         "рассматриваются редакцией. В сообщении желательно указать ссылку на "
         "материал, суть ошибки или запроса и документы, если они есть.\n\n"
-        "Для конфиденциальной информации используйте Telegram-бот."
+        "Для конфиденциальной информации используйте Telegram-бот, а для "
+        "официальных комментариев и уточнений — редакционную почту."
     ),
 }
 
@@ -207,11 +212,11 @@ def render_policy_html(
     site_url: str | None = None,
 ) -> str:
     root = public_root or Path(settings.public_root)
-    index_html = (root / "index.html").read_text(encoding="utf-8")
-    header = _extract_shell_block(index_html, "header", root / "index.html")
-    footer = _extract_shell_block(index_html, "footer", root / "index.html")
-    version = _asset_version(index_html)
-    base_url = (site_url or _site_url()).rstrip("/")
+    shell = load_site_shell(root)
+    header = shell["header"]
+    footer = shell["footer"]
+    version = shell["version"]
+    base_url = (site_url or public_site_url()).rstrip("/")
 
     title = _value(policy, "title")
     description = _value(policy, "description")
@@ -254,6 +259,9 @@ def render_policy_html(
     <meta name="twitter:description" content="{html.escape(description)}" />
     <meta name="twitter:image" content="{base_url}/img/brand/logo-on-brand-640.png" />
     <link rel="icon" type="image/png" sizes="32x32" href="/img/brand/favicon-32.png" />
+    <link rel="icon" type="image/png" sizes="192x192" href="/img/brand/favicon-192.png" />
+    <link rel="apple-touch-icon" href="/img/brand/apple-touch-icon.png" />
+    <link rel="icon" type="image/svg+xml" href="/img/brand/logo.svg" />
     <link rel="stylesheet" href="/fonts/avds/avds-fonts.css?v={version}" />
     <link rel="stylesheet" href="/css/style.css?v={version}" />
     <script>
@@ -293,26 +301,6 @@ def render_policy_html(
 
 def safe_http_url(value: str) -> str:
     return _safe_http_url(value)
-
-
-def _extract_shell_block(source: str, block: str, path: Path) -> str:
-    match = re.search(rf"(?P<block>[ \t]*<{block} class=\"site-{block}\"[\s\S]*?</{block}>)", source)
-    if not match:
-        raise ValueError(f"{path}: missing site {block}")
-    return match.group("block")
-
-
-def _asset_version(index_html: str) -> str:
-    match = re.search(r"/css/style\.css\?v=(\d{14})", index_html)
-    if match:
-        return match.group(1)
-    return datetime.now().strftime("%Y%m%d%H%M%S")
-
-
-def _site_url() -> str:
-    import os
-
-    return (os.environ.get("FBRK_SITE_URL") or "https://fbrk.qdev.run").rstrip("/")
 
 
 def _value(policy: Mapping[str, str], key: str) -> str:
@@ -362,7 +350,7 @@ def _render_status_section(policy: Mapping[str, str], standard_name: str, standa
             <h2>{html.escape(title)}</h2>
             <p><strong>{html.escape(status)}</strong> · действует с {html.escape(effective_from)} · ответственный: {html.escape(owner)}.</p>
 {body}
-            <p>Полный операционный стандарт доступен в <a href="{html.escape(standard_url)}" target="_blank" rel="noopener">{html.escape(standard_name)}</a>. ФБРК является первым проектом-носителем этого стандарта.</p>
+            <p>Полный операционный стандарт доступен в <a href="{html.escape(standard_url)}" target="_blank" rel="noopener">{html.escape(standard_name)}</a>. Для сайта ФБРК здесь опубликована краткая публичная версия этого стандарта.</p>
           </section>"""
 
 
@@ -376,4 +364,5 @@ def _render_contacts_section(email: str, tg_label: str, tg_url: str) -> str:
     return f"""          <section class="content-card">
             <h2>Контакты по политике</h2>
             <p>Запросы на исправление, ответ, удаление или уточнение принимаются через {email_link} и Telegram-бот {tg_link}.</p>
+            <p>Если вопрос касается конкретной публикации, приложите ссылку на материал, описание проблемы и подтверждающие документы, если они есть.</p>
           </section>"""

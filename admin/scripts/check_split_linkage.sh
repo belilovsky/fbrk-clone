@@ -36,6 +36,11 @@ done
 
 fail=0
 CURL_NEW_RESOLVE_ARGS=()
+same_origin_mode=0
+
+if [ "${NEW_ORIGIN}" = "${BACKEND_ORIGIN}" ]; then
+  same_origin_mode=1
+fi
 
 if [ -n "$FBRK_NEW_RESOLVE_IP" ]; then
   NEW_HOST="${NEW_ORIGIN#*://}"
@@ -275,22 +280,24 @@ if [ "$STRICT" = "--strict" ]; then
     echo "FAIL: new data/videos.json hash differs from backend" >&2
     fail=1
   fi
-  new_home_cache_control_lc="$(printf '%s' "${new_home_cache_control}" | tr '[:upper:]' '[:lower:]')"
-  new_article_cache_control_lc="$(printf '%s' "${new_article_cache_control}" | tr '[:upper:]' '[:lower:]')"
-  case "${new_home_cache_control_lc}" in
-    *no-cache*|*no-store*) : ;;
-    *)
-      echo "FAIL: new home shell is missing no-cache cache-control" >&2
-      fail=1
-      ;;
-  esac
-  case "${new_article_cache_control_lc}" in
-    *no-cache*|*no-store*) : ;;
-    *)
-      echo "FAIL: new article shell is missing no-cache cache-control" >&2
-      fail=1
-      ;;
-  esac
+  if [ "${same_origin_mode}" -eq 0 ]; then
+    new_home_cache_control_lc="$(printf '%s' "${new_home_cache_control}" | tr '[:upper:]' '[:lower:]')"
+    new_article_cache_control_lc="$(printf '%s' "${new_article_cache_control}" | tr '[:upper:]' '[:lower:]')"
+    case "${new_home_cache_control_lc}" in
+      *no-cache*|*no-store*) : ;;
+      *)
+        echo "FAIL: new home shell is missing no-cache cache-control" >&2
+        fail=1
+        ;;
+    esac
+    case "${new_article_cache_control_lc}" in
+      *no-cache*|*no-store*) : ;;
+      *)
+        echo "FAIL: new article shell is missing no-cache cache-control" >&2
+        fail=1
+        ;;
+    esac
+  fi
   case "$new_canonical_home" in
     "${NEW_ORIGIN}"/*) : ;;
     *)

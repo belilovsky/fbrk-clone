@@ -28,13 +28,19 @@ from fastapi.responses import HTMLResponse, PlainTextResponse, Response
 from .admin_platform.templating import AdminJinja2Templates
 from .config import settings
 from .db import db, row_to_article
+from .editorial_hubs import (
+    RESONANCE,
+    SERIES_DEFINITIONS,
+    TOPIC_DEFINITIONS,
+    annotate_article,
+    load_editorial_override,
+    load_editorial_overrides,
+    pick_related_articles,
+)
 from .editorjs import normalize_section_heading
+from .public_pages import DEFAULT_PUBLIC_PAGES, load_public_pages, site_profile
 
 DEFAULT_SITE_URL = (os.environ.get("FBRK_SITE_URL") or "https://fbrk.qdev.run").rstrip("/")
-ORG_NAME = "ФБРК"
-ORG_FULL = "Фонд-бюро расследования коррупции"
-TELEGRAM = "https://t.me/fund_kz_bot"
-YOUTUBE = "https://www.youtube.com/@fbrk_news"
 
 BASE = Path(__file__).resolve().parent.parent  # admin/
 templates = AdminJinja2Templates(directory=str(BASE / "templates"))
@@ -43,6 +49,7 @@ templates = AdminJinja2Templates(directory=str(BASE / "templates"))
 # Keep it resilient: if ad table is unavailable we return empty HTML.
 _AD_DB_PATH = settings.db_path
 _AD_CACHE = {"t": 0.0, "data": {}}
+_SITE_PROFILE_CACHE = {"t": 0.0, "data": site_profile(DEFAULT_PUBLIC_PAGES)}
 
 
 def _ads_load() -> dict:
@@ -96,6 +103,20 @@ def _site_url(request: Request | None = None) -> str:
         if host:
             return f"{proto}://{host}"
     return DEFAULT_SITE_URL
+
+
+def _site_profile_data() -> dict[str, str]:
+    now = _ad_time.time()
+    if now - float(_SITE_PROFILE_CACHE.get("t", 0)) < 60 and _SITE_PROFILE_CACHE.get("data"):
+        return dict(_SITE_PROFILE_CACHE["data"])
+    try:
+        with db() as conn:
+            data = site_profile(load_public_pages(conn))
+    except Exception:
+        data = site_profile(DEFAULT_PUBLIC_PAGES)
+    _SITE_PROFILE_CACHE["t"] = now
+    _SITE_PROFILE_CACHE["data"] = dict(data)
+    return dict(data)
 
 
 def _brand_logo(site_url: str) -> str:
@@ -346,68 +367,106 @@ def _load_all_article_meta() -> list[dict]:
     return [dict(r) for r in rows]
 
 
-def _load_related_articles(article: dict, visible_tags: list[str], limit: int = 3) -> list[dict]:
-    """Return a small SSR related set without relying on split-frontend JSON fetches."""
+def _load_related_articles(
+    article: dict,
+    meta: dict,
+    visible_tags: list[str],
+    *,
+    current_override: object = None,
+    limit: int = 3,
+) -> list[dict]:
+    """Return a compact SSR related set using the same curated hubs as the split frontend."""
     slug = str(article.get("slug") or article.get("id") or "")
-    category = str(article.get("category") or "")
-    base_tags = {
-        str(tag or "").strip().casefold()
-        for tag in list(article.get("tags") or []) + list(visible_tags or [])
-        if str(tag or "").strip()
-    }
+    if not slug:
+        return []
+
+    current = annotate_article(
+        {
+            **article,
+            "tags": visible_tags or list(article.get("tags") or []),
+            "importance": meta.get("importance"),
+            "region": meta.get("region") or article.get("region"),
+        },
+        auto_tags=meta.get("tags_auto") or [],
+        entities=meta.get("entities") or [],
+        override=current_override,
+    )
 
     with db() as conn:
         rows = conn.execute(
             """
-            SELECT slug, title, date_iso, date_label, image, tags_json, category
-            FROM articles
-            WHERE published=1 AND slug != ?
-            ORDER BY
-              CASE WHEN category = ? THEN 0 ELSE 1 END,
-              date_iso DESC,
-              created_at DESC
-            LIMIT 80
+            SELECT
+              a.id,
+              a.slug,
+              a.title,
+              a.dek,
+              a.date_iso,
+              a.date_label,
+              a.category,
+              a.category_label,
+              a.image,
+              a.tags_json,
+              m.importance AS importance,
+              m.region AS region,
+              m.tags_auto AS tags_auto,
+              m.entities_json AS entities_json
+            FROM articles a
+            LEFT JOIN article_meta m ON m.article_id = a.id
+            WHERE a.published=1 AND a.slug != ?
+            ORDER BY a.date_iso DESC, a.created_at DESC
             """,
-            (slug, category),
+            (slug,),
         ).fetchall()
+        override_map = load_editorial_overrides(conn)
 
-    seen: set[str] = set()
-    candidates: list[tuple[int, str, dict]] = []
+    pool: list[dict] = []
     for row in rows:
-        item = dict(row)
-        item_slug = str(item.get("slug") or "")
-        if not item_slug or item_slug in seen:
-            continue
-        seen.add(item_slug)
         try:
-            item_tags = {
-                str(tag or "").strip().casefold()
-                for tag in json.loads(item.get("tags_json") or "[]")
-                if str(tag or "").strip()
-            }
+            tags = json.loads(row["tags_json"] or "[]")
         except Exception:
-            item_tags = set()
-        score = 0
-        if category and item.get("category") == category:
-            score += 2
-        score += 3 * len(base_tags & item_tags)
-        if item.get("image"):
-            score += 1
-        candidates.append(
-            (
-                score,
-                str(item.get("date_iso") or ""),
+            tags = []
+        try:
+            auto_tags = json.loads(row["tags_auto"] or "[]")
+        except Exception:
+            auto_tags = []
+        try:
+            entities = json.loads(row["entities_json"] or "[]")
+        except Exception:
+            entities = []
+        pool.append(
+            annotate_article(
                 {
-                    "slug": item_slug,
-                    "title": str(item.get("title") or ""),
-                    "date_label": str(item.get("date_label") or item.get("date_iso") or ""),
-                    "image": str(item.get("image") or ""),
+                    "id": row["id"],
+                    "slug": row["slug"],
+                    "title": row["title"],
+                    "dek": row["dek"],
+                    "date": row["date_label"],
+                    "dateIso": row["date_iso"],
+                    "category": row["category"],
+                    "categoryLabel": row["category_label"],
+                    "image": row["image"],
+                    "tags": tags,
+                    "importance": row["importance"],
+                    "region": row["region"],
                 },
+                auto_tags=auto_tags,
+                entities=entities,
+                override=override_map.get(row["id"]),
             )
         )
 
-    candidates.sort(key=lambda item: (item[0], item[1]), reverse=True)
-    return [item for _, __, item in candidates[: max(0, int(limit))]]
+    related = pick_related_articles(current, pool, limit=limit)
+    return [
+        {
+            "slug": item["slug"],
+            "title": item["title"],
+            "date_label": item.get("date") or item.get("dateIso") or "",
+            "image": item.get("image") or "",
+            "editorial_status": item.get("editorialStatus"),
+            "editorial_labels": item.get("editorialLabels") or [],
+        }
+        for item in related
+    ]
 
 
 # ---------------------------------------------------------------------------
@@ -420,7 +479,15 @@ def ssr_article(slug: str, request: Request):
         raise HTTPException(404, "Article not found")
 
     meta = _load_article_meta(a["id"]) or {}
+    with db() as conn:
+        editorial_override = load_editorial_override(conn, a["id"])
     site_url = _site_url(request)
+    site_profile_data = _site_profile_data()
+    org_name = site_profile_data.get("name") or "ФБРК"
+    org_full = site_profile_data.get("fullName") or "Фонд-бюро расследования коррупции"
+    telegram_url = site_profile_data.get("telegram") or "https://t.me/fund_kz_bot"
+    youtube_url = site_profile_data.get("youtube") or "https://www.youtube.com/@fbrk_news"
+    footer_about = site_profile_data.get("footerAbout") or f"Свидетельство СМИ № {site_profile_data.get('registration') or ''}."
 
     url = f"{site_url}/a/{a['slug']}"
     title = a["title"]
@@ -483,13 +550,13 @@ def ssr_article(slug: str, request: Request):
         "dateModified": modified_iso,
         "author": {
             "@type": "Organization",
-            "name": ORG_NAME,
+            "name": org_name,
             "url": site_url,
         },
         "publisher": {
             "@type": "Organization",
-            "name": ORG_NAME,
-            "legalName": ORG_FULL,
+            "name": org_name,
+            "legalName": org_full,
             "logo": {
                 "@type": "ImageObject",
                 "url": _brand_logo_mark(site_url),
@@ -530,6 +597,18 @@ def ssr_article(slug: str, request: Request):
         ],
     }
 
+    article_taxonomy = annotate_article(
+        {
+            **a,
+            "tags": visible_tags or list(a.get("tags") or []),
+            "importance": meta.get("importance"),
+            "region": meta.get("region") or a.get("region"),
+        },
+        auto_tags=meta.get("tags_auto") or [],
+        entities=meta.get("entities") or [],
+        override=editorial_override,
+    )
+
     ctx = {
         "request": request,
         "a": a,
@@ -552,11 +631,22 @@ def ssr_article(slug: str, request: Request):
         "news_article_ld": json.dumps(news_article_ld, ensure_ascii=False),
         "breadcrumb_ld": json.dumps(breadcrumb_ld, ensure_ascii=False),
         "site_url": site_url,
-        "org_name": ORG_NAME,
-        "org_full": ORG_FULL,
-        "telegram_url": TELEGRAM,
-        "youtube_url": YOUTUBE,
-        "related_articles": _load_related_articles(a, visible_tags),
+        "org_name": org_name,
+        "org_full": org_full,
+        "telegram_url": telegram_url,
+        "youtube_url": youtube_url,
+        "footer_about": footer_about,
+        "article_topics": article_taxonomy.get("topics") or [],
+        "article_series": article_taxonomy.get("series"),
+        "article_status": article_taxonomy.get("editorialStatus"),
+        "article_labels": article_taxonomy.get("editorialLabels") or [],
+        "resonance_meta": RESONANCE,
+        "related_articles": _load_related_articles(
+            a,
+            meta,
+            visible_tags,
+            current_override=editorial_override,
+        ),
     }
 
     response = templates.TemplateResponse("article_ssr.html", ctx)
@@ -638,6 +728,8 @@ def robots_txt(request: Request):
 def sitemap_xml(request: Request):
     arts = _load_all_article_meta()
     site_url = _site_url(request)
+    site_profile_data = _site_profile_data()
+    org_name = site_profile_data.get("name") or "ФБРК"
     now = datetime.now(timezone.utc).strftime("%Y-%m-%d")
     newest = arts[0]["date_iso"] if arts else now
 
@@ -677,7 +769,7 @@ def sitemap_xml(request: Request):
         if news:
             lines.append("    <news:news>")
             lines.append("      <news:publication>")
-            lines.append(f"        <news:name>{html.escape(ORG_NAME)}</news:name>")
+            lines.append(f"        <news:name>{html.escape(org_name)}</news:name>")
             lines.append("        <news:language>ru</news:language>")
             lines.append("      </news:publication>")
             lines.append(f"      <news:publication_date>{news['pubdate']}</news:publication_date>")
@@ -690,12 +782,20 @@ def sitemap_xml(request: Request):
     _url(f"{site_url}/archive.html", newest, "daily", "0.9")
     _url(f"{site_url}/archive.html?cat=investigation", newest, "daily", "0.8")
     _url(f"{site_url}/archive.html?cat=news", newest, "daily", "0.8")
+    _url(f"{site_url}/archive.html?resonance=1", newest, "daily", "0.7")
+    for topic in TOPIC_DEFINITIONS:
+        _url(f"{site_url}/archive.html?topic={topic['slug']}", newest, "weekly", "0.6")
+    for series in SERIES_DEFINITIONS:
+        _url(f"{site_url}/archive.html?series={series['slug']}", newest, "weekly", "0.6")
     _url(f"{site_url}/about.html", now, "monthly", "0.5")
     _url(f"{site_url}/contacts.html", now, "monthly", "0.5")
     _url(f"{site_url}/editorial-policy.html", now, "monthly", "0.5")
     _url(f"{site_url}/privacy.html", now, "monthly", "0.4")
     _url(f"{site_url}/search.html", now, "weekly", "0.4")
     _url(f"{site_url}/sitemap.html", now, "weekly", "0.3")
+    _url(f"{site_url}/topics.html", now, "weekly", "0.6")
+    _url(f"{site_url}/series.html", now, "weekly", "0.6")
+    _url(f"{site_url}/resonance.html", newest, "daily", "0.7")
 
     recent_ids = {a["id"] for a in recent_news}
     for a in arts:
@@ -724,6 +824,10 @@ def sitemap_xml(request: Request):
 def feed_xml(request: Request):
     arts = _load_recent_articles(limit=50)
     site_url = _site_url(request)
+    site_profile_data = _site_profile_data()
+    org_name = site_profile_data.get("name") or "ФБРК"
+    org_full = site_profile_data.get("fullName") or "Фонд-бюро расследования коррупции"
+    tagline = site_profile_data.get("tagline") or "Независимые расследования · Казахстан"
     org_logo_brand = _brand_logo_mark(site_url)
     now_rfc = datetime.now(timezone.utc).strftime("%a, %d %b %Y %H:%M:%S +0000")
     lines = [
@@ -734,13 +838,13 @@ def feed_xml(request: Request):
         '     xmlns:dc="http://purl.org/dc/elements/1.1/"',
         '     xmlns:media="http://search.yahoo.com/mrss/">',
         '  <channel>',
-        f'    <title>{html.escape(ORG_NAME)} — Независимые расследования</title>',
+        f'    <title>{html.escape(org_name)} — {html.escape(tagline.split("·", 1)[0].strip())}</title>',
         f'    <link>{site_url}/</link>',
-        f'    <description>{html.escape(ORG_FULL)}. Журналистские расследования и новости Казахстана.</description>',
+        f'    <description>{html.escape(org_full)}. Журналистские расследования и новости Казахстана.</description>',
         '    <language>ru</language>',
         f'    <lastBuildDate>{now_rfc}</lastBuildDate>',
         f'    <atom:link href="{site_url}/feed.xml" rel="self" type="application/rss+xml" />',
-        f'    <image><url>{org_logo_brand}</url><title>{html.escape(ORG_NAME)}</title><link>{site_url}/</link></image>',
+        f'    <image><url>{org_logo_brand}</url><title>{html.escape(org_name)}</title><link>{site_url}/</link></image>',
     ]
     for a in arts:
         slug = a.get("slug") or a["id"]
@@ -755,7 +859,7 @@ def feed_xml(request: Request):
         lines.append(f"      <link>{html.escape(url)}</link>")
         lines.append(f"      <guid isPermaLink=\"true\">{html.escape(url)}</guid>")
         lines.append(f"      <pubDate>{_rfc822(a.get('dateIso') or '')}</pubDate>")
-        lines.append(f"      <dc:creator>{html.escape(ORG_NAME)}</dc:creator>")
+        lines.append(f"      <dc:creator>{html.escape(org_name)}</dc:creator>")
         lines.append(f"      <category>{html.escape(a.get('categoryLabel') or '')}</category>")
         for tag in (a.get("tags") or [])[:8]:
             lines.append(f"      <category>{html.escape(str(tag))}</category>")
@@ -784,6 +888,9 @@ def _render_ia_body_html(a: dict, url: str, image: str, site_url: str) -> str:
     date_iso = a.get("dateIso") or ""
     pub_iso = _iso8601(date_iso)
     date_label = html.escape(a.get("date") or date_iso)
+    site_profile_data = _site_profile_data()
+    org_name = site_profile_data.get("name") or "ФБРК"
+    org_full = site_profile_data.get("fullName") or "Фонд-бюро расследования коррупции"
     heading_context = " ".join(filter(None, [str(a.get("title") or "").strip(), str(a.get("dek") or "").strip()]))
     body_inner = _sections_to_html(a.get("sections") or [], site_url, context=heading_context)
 
@@ -806,7 +913,7 @@ def _render_ia_body_html(a: dict, url: str, image: str, site_url: str) -> str:
         parts.append(f'<h2>{dek}</h2>')
     parts.extend([
         f'<time class="op-published" datetime="{pub_iso}">{date_label}</time>',
-        f'<address><a>{html.escape(ORG_NAME)}</a></address>',
+        f'<address><a>{html.escape(org_name)}</a></address>',
     ])
     if image:
         parts.append(
@@ -816,7 +923,7 @@ def _render_ia_body_html(a: dict, url: str, image: str, site_url: str) -> str:
         f'<h3 class="op-kicker">{category}</h3>',
         '</header>',
         body_inner,
-        '<footer><small>© ФБРК — Фонд-бюро расследования коррупции</small></footer>',
+        f'<footer><small>© {html.escape(org_name)} — {html.escape(org_full)}</small></footer>',
         '</article>',
         '</body>',
         '</html>',
@@ -828,15 +935,18 @@ def _render_ia_body_html(a: dict, url: str, image: str, site_url: str) -> str:
 def feed_ia_xml(request: Request):
     arts = _load_recent_articles(limit=100)
     site_url = _site_url(request)
+    site_profile_data = _site_profile_data()
+    org_name = site_profile_data.get("name") or "ФБРК"
+    org_full = site_profile_data.get("fullName") or "Фонд-бюро расследования коррупции"
     now_rfc = datetime.now(timezone.utc).strftime("%a, %d %b %Y %H:%M:%S +0000")
     lines = [
         '<?xml version="1.0" encoding="utf-8" standalone="no"?>',
         '<rss version="2.0"',
         '     xmlns:content="http://purl.org/rss/1.0/modules/content/">',
         '  <channel>',
-        f'    <title>{html.escape(ORG_NAME)} — Instant Articles</title>',
+        f'    <title>{html.escape(org_name)} — Instant Articles</title>',
         f'    <link>{site_url}/</link>',
-        f'    <description>{html.escape(ORG_FULL)} — Facebook Instant Articles feed</description>',
+        f'    <description>{html.escape(org_full)} — Facebook Instant Articles feed</description>',
         '    <language>ru</language>',
         f'    <lastBuildDate>{now_rfc}</lastBuildDate>',
     ]
@@ -850,7 +960,7 @@ def feed_ia_xml(request: Request):
         lines.append(f"      <link>{html.escape(url)}</link>")
         lines.append(f"      <guid>{html.escape(url)}</guid>")
         lines.append(f"      <pubDate>{_rfc822(a.get('dateIso') or '')}</pubDate>")
-        lines.append(f"      <author>{html.escape(ORG_NAME)}</author>")
+        lines.append(f"      <author>{html.escape(org_name)}</author>")
         lines.append(f"      <content:encoded><![CDATA[{body_html_ia}]]></content:encoded>")
         lines.append("    </item>")
     lines.append("  </channel>")

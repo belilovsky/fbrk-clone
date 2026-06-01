@@ -5,8 +5,8 @@
   <meta name="viewport" content="width=device-width,initial-scale=1"/>
   <meta name="robots" content="noindex, nofollow"/>
   <title>Вход — Админка ФБРК</title>
-  <link rel="stylesheet" href="/fonts/avds/avds-fonts.css?v=20260517081342"/>
-  <link rel="stylesheet" href="/admin/static/admin.css?v=8"/>
+  <link rel="stylesheet" href="/fonts/avds/avds-fonts.css?v={{ public_asset_version() }}"/>
+  <link rel="stylesheet" href="/admin/static/admin.css?v={{ admin_asset_version() }}"/>
 </head>
 <body class="a-login-body">
   <form class="a-login" method="post" action="/admin/login">
@@ -14,7 +14,7 @@
     <div class="a-login__brand">
       <span class="a-brand__dot"></span>
       <span>ФБРК · админка</span>
-      <span class="a-badge" title="Версия дизайн-системы">AV DS 3.7.1</span>
+      <span class="a-badge" title="Версия дизайн-системы">AV DS 4</span>
     </div>
     <h1>Вход</h1>
     {% if error %}<p class="a-error">Неверный логин или пароль</p>{% endif %}

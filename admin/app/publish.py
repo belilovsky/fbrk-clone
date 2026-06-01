@@ -11,7 +11,15 @@ from pathlib import Path
 
 from .config import settings
 from .db import db, row_to_article
+from .editorial_hubs import (
+    annotate_article,
+    build_catalog,
+    load_editorial_overrides,
+    load_homepage_blocks,
+    load_hub_pages,
+)
 from .editorjs import normalize_section_heading
+from .public_pages import load_public_pages, site_profile
 
 
 SITE_URL = (os.environ.get("FBRK_SITE_URL") or "https://fbrk.qdev.run").rstrip("/")
@@ -24,28 +32,18 @@ HEADER = """// ============================================================
 const FBRK_DATA =
 """
 
-SITE_META = {
-    "site": {
-        "name": "ФБРК",
-        "fullName": "Фонд-бюро расследования коррупции",
-        "tagline": "Независимые расследования · Казахстан",
-        "about": "Фонд-бюро расследования коррупции (ФБРК) — сетевое издание, "
-                 "свидетельство о регистрации СМИ № KZ83VPY00075165 от 21.08.2023. "
-                 "Мы делаем журналистские расследования, новости, публикуем информацию "
-                 "о борьбе с коррупцией в Казахстане.",
-        "mission": "Наши материалы содержат досье на олигархов, списки земель латифундистов, "
-                   "информацию о бизнесе семей чиновников и многое другое.",
-        "telegram": "https://t.me/fund_kz_bot",
-        "telegramName": "@fund_kz_bot",
-        "youtube": "https://www.youtube.com/@fbrk_news",
-        "registration": "KZ83VPY00075165 от 21.08.2023",
-    },
-    "tags": [
-        "Коррупция", "Госзакупки", "Недвижимость чиновников", "Олигархи",
-        "Силовые структуры", "Нефтегаз", "ЕНПФ", "Назарбаев", "КНБ",
-        "Уголовные дела", "Экология", "Агробизнес", "КТЖ", "Мусин",
-    ],
-}
+SITE_TAGS = [
+    "Коррупция", "Госзакупки", "Недвижимость чиновников", "Олигархи",
+    "Силовые структуры", "Нефтегаз", "ЕНПФ", "Назарбаев", "КНБ",
+    "Уголовные дела", "Экология", "Агробизнес", "КТЖ", "Мусин",
+]
+
+
+def _site_meta(conn) -> dict[str, object]:
+    return {
+        "site": site_profile(load_public_pages(conn)),
+        "tags": SITE_TAGS,
+    }
 
 
 def _json_list(raw: object) -> list:
@@ -300,6 +298,7 @@ def _load_articles() -> list[dict]:
             "FROM articles a LEFT JOIN article_meta m ON m.article_id=a.id "
             "WHERE a.published=1 ORDER BY a.date_iso DESC, a.created_at DESC"
         ).fetchall()
+        override_map = load_editorial_overrides(conn)
     out = []
     for r in rows:
         art = row_to_article(r)
@@ -314,6 +313,7 @@ def _load_articles() -> list[dict]:
             art["_meta_tags_auto"] = r["_meta_tags_auto"]
         except Exception:
             pass
+        art["_editorial_override"] = override_map.get(art["id"], {})
         out.append(art)
     return out
 
@@ -357,7 +357,12 @@ def _public_shape(a: dict) -> dict:
     reg = a.get("_meta_region")
     if reg:
         shape["region"] = reg
-    return shape
+    return annotate_article(
+        shape,
+        auto_tags=_json_list(a.get("_meta_tags_auto")),
+        entities=_json_list(a.get("_meta_entities_json")),
+        override=a.get("_editorial_override"),
+    )
 
 
 def _article_full_shape(a: dict) -> dict:
@@ -542,19 +547,36 @@ def regenerate_data_js() -> dict:
     with _PUBLISH_LOCK, _file_lock(lock_file):
         source_articles = _load_articles()
         articles = [_public_shape(a) for a in source_articles]
+        catalog = build_catalog(articles)
+        with db() as conn:
+            hub_pages = load_hub_pages(conn)
+            homepage_blocks = load_homepage_blocks(conn)
+            site_meta = _site_meta(conn)
 
         # Tier 1: data.js — homepage (last N articles). Fast initial load.
         # N is tunable via FBRK_HOME_LATEST_LIMIT env var (default 200).
         limit = max(1, int(getattr(settings, "home_latest_limit", 200)))
         recent = articles[:limit]
-        data = {**SITE_META, "articles": recent, "totalCount": len(articles)}
+        data = {
+            **site_meta,
+            "articles": recent,
+            "totalCount": len(articles),
+            "editorialHubPages": hub_pages,
+            "homepageBlocks": homepage_blocks,
+            **catalog,
+        }
         body = HEADER + json.dumps(data, ensure_ascii=False) + ";\n"
         _atomic_write(out, body)
 
         # Tier 2: data-archive.js — full archive (all articles, compact).
         # Loaded only by archive.html, not by index/article pages.
         archive_out = out.parent / "data-archive.js"
-        archive_data = {"articles": articles}
+        archive_data = {
+            "articles": articles,
+            "editorialHubPages": hub_pages,
+            "homepageBlocks": homepage_blocks,
+            **catalog,
+        }
         archive_body = "/* ФБРК archive — auto-generated. */\nwindow.ARTICLES_ARCHIVE = " + json.dumps(archive_data, ensure_ascii=False) + ";\n"
         _atomic_write(archive_out, archive_body)
 

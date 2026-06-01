@@ -19,8 +19,12 @@ STATIC_SHELL_FILES = (
     "contacts.html",
     "editorial-policy.html",
     "privacy.html",
+    "regions.html",
+    "resonance.html",
     "search.html",
+    "series.html",
     "sitemap.html",
+    "topics.html",
 )
 
 BLOCK_PATTERNS = {

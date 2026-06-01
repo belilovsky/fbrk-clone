@@ -115,6 +115,8 @@ def test_admin_login_and_protected_dashboard(tmp_path: Path) -> None:
         assert login_page.status_code == 200
         assert "Вход" in login_page.text
         assert 'name="csrf_token" value="' in login_page.text
+        assert '/fonts/avds/avds-fonts.css?v=20260527000000' in login_page.text
+        assert re.search(r'/admin/static/admin\.css\?v=\d{14}', login_page.text)
 
         login_without_csrf = client.post(
             "/admin/login",
@@ -132,6 +134,8 @@ def test_admin_login_and_protected_dashboard(tmp_path: Path) -> None:
         assert dashboard.status_code == 200
         assert "Материалов пока нет" in dashboard.text
         assert 'name="csrf-token" content="' in dashboard.text
+        assert '/fonts/avds/avds-fonts.css?v=20260527000000' in dashboard.text
+        assert "🛡️ Редполитика" in dashboard.text
 
 
 def test_admin_form_csrf_reject_and_accept(tmp_path: Path) -> None:
@@ -189,6 +193,134 @@ def test_editorial_policy_admin_saves_and_generates_static_page(tmp_path: Path) 
         assert "Редакционная политика <test>" not in html
         assert '<header class="site-header"' in html
         assert '<footer class="site-footer"' in html
+
+
+def test_editorial_hubs_admin_updates_public_data_payload(tmp_path: Path) -> None:
+    with _client(tmp_path) as client:
+        protected = client.get("/admin/editorial-hubs", follow_redirects=False)
+        assert protected.status_code == 302
+        assert protected.headers["location"] == "/admin/login"
+
+        _login(client)
+        page = client.get("/admin/editorial-hubs")
+        assert page.status_code == 200
+        assert "Редакционные хабы" in page.text
+        token = _csrf_from(page.text)
+
+        rejected = client.post(
+            "/admin/editorial-hubs",
+            data={"page_topics_title": "Досье"},
+            follow_redirects=False,
+        )
+        assert rejected.status_code == 403
+
+        accepted = client.post(
+            "/admin/editorial-hubs",
+            data={
+                "csrf_token": token,
+                "page_topics_eyebrow": "Редакционная карта",
+                "page_topics_title": "Досье и темы",
+                "page_topics_description": "Ключевые редакционные линии и быстрый вход в архив.",
+                "page_topics_seo_title": "Досье и темы",
+                "page_topics_seo_description": "Обновлённая страница тем ФБРК.",
+                "page_regions_eyebrow": "География расследований",
+                "page_regions_title": "Регионы ФБРК",
+                "page_regions_description": "Ключевые региональные хабы ФБРК.",
+                "page_regions_seo_title": "Регионы ФБРК",
+                "page_regions_seo_description": "Региональная навигация по материалам ФБРК.",
+                "page_series_eyebrow": "Длинные циклы",
+                "page_series_title": "Серии ФБРК",
+                "page_series_description": "Все длинные редакционные линии в одном месте.",
+                "page_series_seo_title": "Серии ФБРК",
+                "page_series_seo_description": "Редакционные серии и циклы ФБРК.",
+                "page_resonance_eyebrow": "В центре внимания",
+                "page_resonance_title": "Главный резонанс",
+                "page_resonance_description": "Самые заметные материалы и последствия публикаций.",
+                "page_resonance_seo_title": "Главный резонанс",
+                "page_resonance_seo_description": "Важные материалы ФБРК с повышенной редакционной значимостью.",
+                "home_resonance_eyebrow": "Выбор редакции",
+                "home_resonance_title": "Главный резонанс на старте",
+                "home_resonance_description": "Что открыть в первую очередь на главной.",
+                "home_resonance_link_label": "Смотреть подборку",
+                "home_regions_eyebrow": "География",
+                "home_regions_title": "Карта по регионам",
+                "home_regions_description": "Ключевые города и области в одном месте.",
+                "home_regions_link_label": "Открыть регионы",
+            },
+            follow_redirects=False,
+        )
+        assert accepted.status_code == 303
+        assert accepted.headers["location"] == "/admin/editorial-hubs?saved=1"
+
+        data_text = (tmp_path / "public" / "js" / "data.js").read_text(encoding="utf-8")
+        raw = data_text.split("const FBRK_DATA =", 1)[1].rsplit(";", 1)[0].strip()
+        data = json.loads(raw)
+        assert data["editorialHubPages"]["topics"]["title"] == "Досье и темы"
+        assert data["editorialHubPages"]["regions"]["title"] == "Регионы ФБРК"
+        assert data["editorialHubPages"]["series"]["eyebrow"] == "Длинные циклы"
+        assert data["editorialHubPages"]["resonance"]["seo_title"] == "Главный резонанс"
+        assert data["homepageBlocks"]["resonance"]["title"] == "Главный резонанс на старте"
+        assert data["homepageBlocks"]["regions"]["link_label"] == "Открыть регионы"
+
+
+def test_public_pages_admin_saves_and_generates_static_pages(tmp_path: Path) -> None:
+    with _client(tmp_path) as client:
+        protected = client.get("/admin/public-pages", follow_redirects=False)
+        assert protected.status_code == 302
+        assert protected.headers["location"] == "/admin/login"
+
+        _login(client)
+        page = client.get("/admin/public-pages")
+        assert page.status_code == 200
+        assert "Публичные страницы" in page.text
+        token = _csrf_from(page.text)
+
+        rejected = client.post(
+            "/admin/public-pages",
+            data={"about_title": "О нас"},
+            follow_redirects=False,
+        )
+        assert rejected.status_code == 403
+
+        accepted = client.post(
+            "/admin/public-pages",
+            data={
+                "csrf_token": token,
+                "about_title": "О редакции <test>",
+                "contacts_title": "Контакты <test>",
+                "privacy_title": "Приватность <test>",
+                "contacts_press_email": "press@fbrk.kz",
+                "contacts_telegram_url": "https://t.me/custom_tipline",
+            },
+            follow_redirects=False,
+        )
+        assert accepted.status_code == 303
+        assert accepted.headers["location"] == "/admin/public-pages?saved=1"
+
+        about_html = (tmp_path / "public" / "about.html").read_text(encoding="utf-8")
+        contacts_html = (tmp_path / "public" / "contacts.html").read_text(encoding="utf-8")
+        privacy_html = (tmp_path / "public" / "privacy.html").read_text(encoding="utf-8")
+        data_text = (tmp_path / "public" / "js" / "data.js").read_text(encoding="utf-8")
+        raw = data_text.split("const FBRK_DATA =", 1)[1].rsplit(";", 1)[0].strip()
+        data = json.loads(raw)
+
+        assert "О редакции &lt;test&gt;" in about_html
+        assert "О редакции <test>" not in about_html
+        assert "Контакты &lt;test&gt;" in contacts_html
+        assert "Контакты <test>" not in contacts_html
+        assert "Приватность &lt;test&gt;" in privacy_html
+        assert "Приватность <test>" not in privacy_html
+        assert "Главный редактор:" not in contacts_html
+        assert "Общие вопросы:" in contacts_html
+        assert "Email редакции:" in privacy_html
+        assert '<header class="site-header"' in about_html
+        assert '<footer class="site-footer"' in about_html
+        assert '<header class="site-header"' in contacts_html
+        assert '<footer class="site-footer"' in contacts_html
+        assert '<header class="site-header"' in privacy_html
+        assert '<footer class="site-footer"' in privacy_html
+        assert data["site"]["fullName"] == "О редакции <test>"
+        assert data["site"]["telegram"] == "https://t.me/custom_tipline"
 
 
 def test_upload_policy_rejects_bad_image(tmp_path: Path) -> None:
@@ -252,7 +384,7 @@ def test_session_api_mutation_requires_csrf_and_updates_frontend_data(tmp_path: 
         assert 'data-lang="en"' not in ssr.text
         assert "/data/articles.json" not in ssr.text
         assert "202605050020" not in ssr.text
-        assert "Материалы по теме" in ssr.text
+        assert "Читайте также" in ssr.text
         assert "Codex related title" in ssr.text
         assert "Уникальное описание related" not in ssr.text
 
@@ -344,6 +476,52 @@ def test_admin_edit_page_shows_existing_nlp_metadata(tmp_path: Path) -> None:
         assert "Короткое NLP-резюме для админки." in page.text
         assert "БНР" in page.text
         assert "+ статистика" in page.text
+
+
+def test_admin_editor_persists_manual_editorial_hubs(tmp_path: Path) -> None:
+    with _client(tmp_path) as client:
+        _login(client)
+        token = _csrf_from(client.get("/admin/").text)
+        payload = _article_payload("codex-hubs-smoke")
+        payload["title"] = "Нейтральный материал для ручной разметки"
+        payload["editorial"] = {
+            "topic_slugs": ["corruption"],
+            "region_slug": "astana",
+            "series_slug": "dezinsekciya-2025",
+            "resonance": "yes",
+            "status_slug": "state-response",
+            "label_slugs": ["documents", "monitoring"],
+        }
+
+        created = client.post(
+            "/api/articles",
+            json=payload,
+            headers={"X-CSRF-Token": token},
+        )
+        assert created.status_code == 200
+
+        page = client.get("/admin/edit/codex-hubs-smoke")
+        assert page.status_code == 200
+        assert "Темы, регионы, серии и метки" in page.text
+        assert 'value="astana" selected' in page.text
+        assert 'value="dezinsekciya-2025" selected' in page.text
+        assert 'value="yes" selected' in page.text
+        assert 'value="state-response" selected' in page.text
+        assert 'value="corruption" checked' in page.text
+        assert 'value="documents" checked' in page.text
+        assert 'value="monitoring" checked' in page.text
+
+        data_text = (tmp_path / "public" / "js" / "data.js").read_text(encoding="utf-8")
+        raw = data_text.split("const FBRK_DATA =", 1)[1].rsplit(";", 1)[0].strip()
+        data = json.loads(raw)
+        article = next(item for item in data["articles"] if item["id"] == "codex-hubs-smoke")
+        assert [item["slug"] for item in article["topics"]] == ["corruption"]
+        assert article["regionRef"]["slug"] == "astana"
+        assert article["region"] == "Астана"
+        assert article["series"]["slug"] == "dezinsekciya-2025"
+        assert article["resonance"] is True
+        assert article["editorialStatus"]["slug"] == "state-response"
+        assert [item["slug"] for item in article["editorialLabels"]] == ["documents", "monitoring"]
 
 
 def test_admin_editor_mutation_fetches_include_csrf_header(tmp_path: Path) -> None:

@@ -79,9 +79,9 @@ __╱╲╲╲╲╲╲╲╲╲╲╲╲╲╲╲__╱╲╲╲╲╲╲╲╲�
     <link rel="icon" type="image/png" sizes="192x192" href="/img/brand/favicon-192.png" />
     <link rel="apple-touch-icon" href="/img/brand/apple-touch-icon.png" />
     <link rel="icon" type="image/svg+xml" href="/img/brand/logo.svg" />
-    <link rel="stylesheet" href="/fonts/avds/avds-fonts.css?v=20260527204143" />
-    <link rel="stylesheet" href="/css/av-ds/tokens.css?v=20260527204143" />
-    <link rel="stylesheet" href="/css/style.css?v=20260527204143" />
+    <link rel="stylesheet" href="/fonts/avds/avds-fonts.css?v=20260601113124" />
+    <link rel="stylesheet" href="/css/av-ds/tokens.css?v=20260601113124" />
+    <link rel="stylesheet" href="/css/style.css?v=20260601113124" />
     <link rel="alternate" type="application/rss+xml" title="{{ org_name }} — RSS" href="/feed.xml" />
 
     <!-- Schema.org NewsArticle -->
@@ -161,6 +161,16 @@ __╱╲╲╲╲╲╲╲╲╲╲╲╲╲╲╲__╱╲╲╲╲╲╲╲╲�
           </div>
           <h1 class="article__title" itemprop="headline">{{ title|e }}</h1>
           {% if hero_dek %}<p class="article__dek" itemprop="description">{{ hero_dek|e }}</p>{% endif %}
+          {% if article_status or article_labels %}
+          <div class="editorial-badges editorial-badges--article" aria-label="Редакционные метки">
+            {% if article_status %}
+            <a class="editorial-badge editorial-badge--status" href="{{ article_status.url }}" title="{{ article_status.description|e }}">{{ article_status.title }}</a>
+            {% endif %}
+            {% for item in article_labels %}
+            <a class="editorial-badge editorial-badge--label" href="{{ item.url }}" title="{{ item.description|e }}">{{ item.title }}</a>
+            {% endfor %}
+          </div>
+          {% endif %}
         </header>
 
         {% if image %}
@@ -231,7 +241,7 @@ __╱╲╲╲╲╲╲╲╲╲╲╲╲╲╲╲__╱╲╲╲╲╲╲╲╲�
 
         {% if related_articles %}
         <section class="related">
-          <h2 class="related__title">Материалы по теме</h2>
+          <h2 class="related__title">Читайте также</h2>
           <div class="card-grid">
             {% for ra in related_articles[:3] %}
             <article class="card{% if not ra.image %} card--no-image{% endif %}">
@@ -242,6 +252,16 @@ __╱╲╲╲╲╲╲╲╲╲╲╲╲╲╲╲__╱╲╲╲╲╲╲╲╲�
                 </div>
                 <h3 class="card__title">{{ ra.title|e }}</h3>
               </a>
+              {% if ra.editorial_status or ra.editorial_labels %}
+              <div class="editorial-badges editorial-badges--card">
+                {% if ra.editorial_status %}
+                <a class="editorial-badge editorial-badge--status" href="{{ ra.editorial_status.url }}" title="{{ ra.editorial_status.description|e }}">{{ ra.editorial_status.title }}</a>
+                {% endif %}
+                {% for item in ra.editorial_labels[:1] %}
+                <a class="editorial-badge editorial-badge--label" href="{{ item.url }}" title="{{ item.description|e }}">{{ item.title }}</a>
+                {% endfor %}
+              </div>
+              {% endif %}
             </article>
             {% endfor %}
           </div>
@@ -259,7 +279,7 @@ __╱╲╲╲╲╲╲╲╲╲╲╲╲╲╲╲__╱╲╲╲╲╲╲╲╲�
               <span class="site-footer__brand-mark" aria-hidden="true">ФБРК</span>
               <span class="site-footer__brand-name">{{ org_full }}</span>
             </div>
-            <p class="site-footer__about">Свидетельство СМИ № KZ83VPY00075165 от 21.08.2023.</p>
+            <p class="site-footer__about">{{ footer_about }}</p>
           </div>
           <div>
             <div class="site-footer__heading">Разделы</div>
@@ -312,7 +332,7 @@ __╱╲╲╲╲╲╲╲╲╲╲╲╲╲╲╲__╱╲╲╲╲╲╲╲╲�
       </div>
     </footer>
 
-    <script src="/js/app.js?v=20260527204143"></script>
+    <script src="/js/app.js?v=20260601113124"></script>
 
     <!-- Organization + WebSite JSON-LD (global) -->
     <script type="application/ld+json">

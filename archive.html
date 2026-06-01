@@ -4,7 +4,7 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Архив материалов — ФБРК</title>
-    <meta name="description" content="Полный архив публикаций ФБРК: расследования, новости, досье. Поиск и фильтры по году, месяцу и рубрике." />
+    <meta name="description" content="Полный архив публикаций ФБРК: расследования, новости и досье с фильтрами по теме, региону, серии и рубрике." />
     <meta name="theme-color" content="#0C115F" />
     <script>try{const t=localStorage.getItem("theme")||localStorage.getItem("fbrk_theme");document.documentElement.dataset.theme=t==="dark"||t==="light"?t:(matchMedia("(prefers-color-scheme: dark)").matches?"dark":"light");}catch(_){}</script>
     <link rel="canonical" href="https://fbrk.qdev.run/archive.html" />
@@ -20,8 +20,8 @@
     <link rel="icon" type="image/png" sizes="192x192" href="/img/brand/favicon-192.png" />
     <link rel="apple-touch-icon" href="/img/brand/apple-touch-icon.png" />
     <link rel="icon" type="image/svg+xml" href="/img/brand/logo.svg" />
-    <link rel="stylesheet" href="/fonts/avds/avds-fonts.css?v=20260527204143" />
-    <link rel="stylesheet" href="css/style.css?v=20260527204143" />
+    <link rel="stylesheet" href="/fonts/avds/avds-fonts.css?v=20260601113124" />
+    <link rel="stylesheet" href="/css/style.css?v=20260601113124" />
     <link rel="alternate" type="application/rss+xml" title="ФБРК — RSS" href="/feed.xml" />
   </head>
   <body>
@@ -68,12 +68,12 @@
     </header>
 
 <main id="main">
-      <section class="archive">
+      <section class="archive" data-archive-page>
         <div class="container">
           <header class="archive__head">
             <div class="kicker kicker--muted" data-archive-kicker>Архив</div>
             <h1 class="archive__title" data-archive-title>Архив материалов</h1>
-            <p class="archive__description" data-archive-description>Полный архив публикаций ФБРК с фильтрами по рубрике, году, месяцу и теме.</p>
+            <p class="archive__description" data-archive-description>Полный архив публикаций ФБРК с фильтрами по рубрике, году, месяцу, теме, региону и серии.</p>
             <p class="archive__count" data-archive-count></p>
           </header>
 
@@ -111,11 +111,49 @@
                   <option value="12">Декабрь</option>
                 </select>
               </label>
+              <label class="archive__select">
+                <span>Тема</span>
+                <select data-archive-topic>
+                  <option value="">Все</option>
+                </select>
+              </label>
+              <label class="archive__select">
+                <span>Регион</span>
+                <select data-archive-region>
+                  <option value="">Все</option>
+                </select>
+              </label>
+              <label class="archive__select">
+                <span>Серия</span>
+                <select data-archive-series>
+                  <option value="">Все</option>
+                </select>
+              </label>
+              <label class="archive__select">
+                <span>Статус</span>
+                <select data-archive-status>
+                  <option value="">Все</option>
+                </select>
+              </label>
+              <label class="archive__select">
+                <span>Метка</span>
+                <select data-archive-label>
+                  <option value="">Все</option>
+                </select>
+              </label>
             </div>
             <label class="archive__search">
               <span>Поиск</span>
               <input type="search" placeholder="Название или тема…" data-archive-q autocomplete="off" />
             </label>
+          </div>
+
+          <div class="archive__active" data-archive-active hidden>
+            <div class="archive__active-copy">
+              <div class="archive__active-label">Сейчас выбрано</div>
+              <div class="archive__active-list" data-archive-active-list></div>
+            </div>
+            <button class="archive__reset archive__reset--ghost" type="button" data-archive-reset>Сбросить всё</button>
           </div>
 
           <div class="archive__grid" data-archive-grid></div>
@@ -125,7 +163,7 @@
           </div>
 
           <div class="archive__empty" data-archive-empty hidden>
-            <p>Ничего не найдено. Попробуйте изменить фильтры или сбросьте их.</p>
+            <p data-archive-empty-message>Ничего не найдено. Попробуйте изменить фильтры или сбросьте их.</p>
             <button class="archive__reset" type="button" data-archive-reset>Сбросить фильтры</button>
           </div>
         </div>
@@ -148,6 +186,10 @@
               <li><a href="/archive.html?cat=investigation">Расследования</a></li>
               <li><a href="/archive.html?cat=news">Новости</a></li>
               <li><a href="/archive.html">Архив</a></li>
+              <li><a href="/topics.html">Темы</a></li>
+              <li><a href="/regions.html">Регионы</a></li>
+              <li><a href="/series.html">Серии</a></li>
+              <li><a href="/resonance.html">Резонанс</a></li>
             </ul>
           </div>
           <div>
@@ -206,9 +248,9 @@
       </div>
     </div>
 
-    <script src="js/runtime-config.js?v=20260527204143"></script>
-    <script src="js/data.js?v=20260527204143"></script>
-    <script src="js/data-archive.js?v=20260527204143"></script>
-    <script src="js/app.js?v=20260527204143"></script>
+    <script src="/js/runtime-config.js?v=20260601113124"></script>
+    <script src="/js/data.js?v=20260601113124"></script>
+    <script src="/js/data-archive.js?v=20260601113124"></script>
+    <script src="/js/app.js?v=20260601113124"></script>
   </body>
 </html>

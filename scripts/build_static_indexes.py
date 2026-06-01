@@ -4,13 +4,14 @@
 from __future__ import annotations
 
 import json
+import os
 import re
 from datetime import datetime, timezone
 from pathlib import Path
 from urllib.parse import quote
 
 ROOT = Path(__file__).resolve().parents[1]
-BASE_URL = "https://fbrk.kz"
+BASE_URL = (os.environ.get("FBRK_SITE_URL") or "https://fbrk.qdev.run").rstrip("/")
 
 
 def load_js_object(path: Path, const_name: str) -> dict:
@@ -34,14 +35,31 @@ def main() -> None:
         "archive.html",
         "archive.html?cat=investigation",
         "archive.html?cat=news",
+        "archive.html?resonance=1",
         "about.html",
         "contacts.html",
         "editorial-policy.html",
         "privacy.html",
+        "regions.html",
+        "resonance.html",
         "search.html",
+        "series.html",
         "sitemap.html",
+        "topics.html",
         "feed.xml",
     ]
+    for topic in data.get("topics", []):
+        slug = quote(str(topic.get("slug") or ""))
+        if slug:
+            static_paths.append(f"archive.html?topic={slug}")
+    for region in data.get("regions", []):
+        slug = quote(str(region.get("slug") or ""))
+        if slug:
+            static_paths.append(f"archive.html?region={slug}")
+    for series in data.get("series", []):
+        slug = quote(str(series.get("slug") or ""))
+        if slug:
+            static_paths.append(f"archive.html?series={slug}")
     url_entries: list[tuple[str, str]] = []
     for path in static_paths:
       source = ROOT / (path.split("?")[0] or "index.html")
