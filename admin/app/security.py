@@ -3,6 +3,7 @@ from __future__ import annotations
 
 import hashlib
 import hmac
+import logging
 import os
 import time
 from typing import Optional
@@ -13,6 +14,7 @@ from fastapi import Header, HTTPException, Request, status
 from .config import settings
 
 COOKIE_NAME = "fbrk_admin"
+logger = logging.getLogger(__name__)
 
 # scrypt-based password hashing (stdlib). Format: scrypt$n$r$p$salt_hex$hash_hex
 _SCRYPT_N, _SCRYPT_R, _SCRYPT_P = 2 ** 14, 8, 1
@@ -51,7 +53,8 @@ def verify_password(raw: str, hashed: str) -> bool:
         else:
             return False
         return hmac.compare_digest(dk.hex(), hash_hex)
-    except Exception:
+    except (TypeError, ValueError):
+        logger.debug("Password hash verification failed due to malformed hash payload", exc_info=True)
         return False
 
 
@@ -68,7 +71,8 @@ def issue_token(username: str) -> str:
 def decode_token(token: str) -> Optional[dict]:
     try:
         return jwt.decode(token, settings.jwt_secret, algorithms=["HS256"])
-    except Exception:
+    except jwt.PyJWTError:
+        logger.debug("JWT decode failed for admin session cookie", exc_info=True)
         return None
 
 

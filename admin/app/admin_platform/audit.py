@@ -2,7 +2,10 @@
 from __future__ import annotations
 
 import json
+import logging
 from typing import Any
+
+logger = logging.getLogger(__name__)
 
 
 def actor_name(user: str | dict | None) -> str:
@@ -58,5 +61,8 @@ def record_audit(
                 (actor_name(user), action, entity, str(entity_id or "")),
             )
         except Exception:
+            logger.debug(
+                "Audit log write skipped because the legacy audit table shape is unavailable",
+                exc_info=True,
+            )
             return
-

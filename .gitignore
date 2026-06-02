@@ -21,7 +21,9 @@ __pycache__/
 *.pyd
 .venv/
 venv/
+.mypy_cache/
 .pytest_cache/
+.ruff_cache/
 
 # Editor / OS
 .DS_Store

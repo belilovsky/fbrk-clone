@@ -65,7 +65,7 @@ def main() -> None:
     try:
         server.serve_forever()
     except KeyboardInterrupt:
-        pass
+        print("Stopping FBRK preview server.")
     finally:
         server.server_close()
 
