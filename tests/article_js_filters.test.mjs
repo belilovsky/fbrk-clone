@@ -114,6 +114,23 @@ test('ai image caption uses neutral wording without illustration label', () => {
   );
 });
 
+test('photo image caption ignores generic source tokens and keeps explicit credits', () => {
+  assert.equal(
+    context.imageCaptionHtml({
+      imageKind: 'photo',
+      imageSource: 'external',
+    }),
+    '',
+  );
+  assert.equal(
+    context.imageCaptionHtml({
+      imageKind: 'photo',
+      imageSource: 'Gov.kz',
+    }),
+    '<span class="image-caption">Фото: Gov.kz</span>',
+  );
+});
+
 test('article hero dek falls back to summary for duplicated long investigation import', () => {
   const importedDek = [
     'Редакция ФБРК с конца прошлого года анализирует динамику изменения площадей крупнейших землепользователей Казахстана.',
@@ -189,12 +206,16 @@ test('article renderer keeps summary, mentions, and share below the body', () =>
   const bodyIdx = source.indexOf('<div class="article__body">');
   const tldrIdx = source.indexOf('${tldrHtml}');
   const entitiesIdx = source.indexOf('${entitiesHtml}');
-  const shareIdx = source.indexOf('${shareHtml}');
+  const postbarIdx = source.indexOf('${postbarHtml}');
+  const backIdx = source.indexOf('class="article__back"');
+  const shareIdx = source.indexOf('class="article__share"');
 
   assert.ok(bodyIdx > -1);
   assert.ok(tldrIdx > bodyIdx);
   assert.ok(entitiesIdx > tldrIdx);
-  assert.ok(shareIdx > entitiesIdx);
+  assert.ok(postbarIdx > entitiesIdx);
+  assert.ok(backIdx > -1);
+  assert.ok(shareIdx > -1);
 });
 
 test('image meta normalizes local upload paths on article routes', () => {

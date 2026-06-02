@@ -260,9 +260,19 @@ def test_ssr_article_keeps_summary_and_share_below_body() -> None:
     body_idx = html.index('class="article__body"')
     tldr_idx = html.index('class="article__tldr"')
     mentions_idx = html.index('class="entity-chips"')
+    postbar_idx = html.index('class="article__postbar"')
+    back_idx = html.index('class="article__back"')
     share_idx = html.index('class="article__share"')
 
-    assert body_idx < tldr_idx < mentions_idx < share_idx
+    assert body_idx < tldr_idx < mentions_idx < postbar_idx
+    assert back_idx < share_idx
+
+
+def test_ssr_article_cover_keeps_kind_class_and_optional_caption_slot() -> None:
+    html = (ROOT / "admin" / "templates" / "article_ssr.html").read_text(encoding="utf-8")
+
+    assert 'class="article__cover image-kind-{{ image_kind }}"' in html
+    assert 'class="image-caption"' in html
 
 
 def test_ssr_article_related_images_are_root_relative() -> None:

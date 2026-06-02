@@ -53,6 +53,7 @@ SYSTEM_PROMPT = """Ты — литературный редактор ФБРК. 
 Правила:
 - Не добавляй новые факты и не меняй смысл.
 - Исправляй только базовую грамматику, пунктуацию, синтаксис, опечатки и шероховатости.
+- Нормализуй тире: конструкции с ` - ` и ` — ` приводи к ` – `, не ломая дефисы внутри слов.
 - Если исходный `dek` пустой, совпадает с заголовком или состоит только из служебной пометки вроде даты/источника, создай новый короткий лид на 1-2 предложения строго по содержанию статьи.
 - Подзаголовки из КАПСЛОКА переводи в обычный регистр, но сохраняй аббревиатуры вроде МВД, КНБ, РК, ДТП, АЭС.
 - Сохраняй количество секций, их порядок и общую структуру.
@@ -81,6 +82,15 @@ def _plain_text(text: str) -> str:
     value = re.sub(r"<[^>]+>", " ", str(text or ""))
     value = html.unescape(value)
     return re.sub(r"\s+", " ", value).strip()
+
+
+def _normalize_typographic_dashes(text: str) -> str:
+    value = str(text or "")
+    if not value:
+        return value
+    value = re.sub(r"(?<=\S)\s*—\s*(?=\S)", " – ", value)
+    value = re.sub(r"(?<=\S)\s+-\s+(?=\S)", " – ", value)
+    return value
 
 
 def _is_metadata_only_dek(text: str) -> bool:
@@ -182,9 +192,9 @@ def _sanitize_result(article: dict, result: dict) -> tuple[str, list[dict]]:
     ]
     context = " ".join(filter(None, [str(article.get("title") or "").strip(), original_dek]))
 
-    new_dek = _plain_text(result.get("dek") or "") or original_dek
+    new_dek = _normalize_typographic_dashes(_plain_text(result.get("dek") or "")) or original_dek
     if _needs_lead_generation(article) and (not new_dek or _is_metadata_only_dek(new_dek) or (title and new_dek == title)):
-        new_dek = _fallback_lead(article, fallback=original_dek or title)
+        new_dek = _normalize_typographic_dashes(_fallback_lead(article, fallback=original_dek or title))
     if len(new_dek) > LEAD_HARD_CAP:
         new_dek = _trim_lead(new_dek, LEAD_HARD_CAP)
     sections_in = result.get("sections") if isinstance(result.get("sections"), list) else []
@@ -194,12 +204,14 @@ def _sanitize_result(article: dict, result: dict) -> tuple[str, list[dict]]:
     cleaned_sections: list[dict] = []
     for original, updated in zip(original_sections, sections_in):
         updated = updated if isinstance(updated, dict) else {}
-        heading = normalize_section_heading(updated.get("h") or original["h"], context=context)
-        paragraph = str(updated.get("p") or original["p"]).strip() or original["p"]
+        heading = _normalize_typographic_dashes(
+            normalize_section_heading(updated.get("h") or original["h"], context=context)
+        )
+        paragraph = _normalize_typographic_dashes(str(updated.get("p") or original["p"]).strip() or original["p"])
         if original["p"]:
             ratio = len(paragraph) / max(len(original["p"]), 1)
             if ratio < 0.55 or ratio > 1.8:
-                paragraph = original["p"]
+                paragraph = _normalize_typographic_dashes(original["p"])
         cleaned_sections.append({"h": heading, "p": paragraph})
 
     return new_dek, cleaned_sections

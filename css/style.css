@@ -702,6 +702,18 @@ input {
   white-space: nowrap;
   pointer-events: none;
 }
+.card__media .card__date-badge,
+.latest__thumb .card__date-badge {
+  top: var(--space-2);
+  left: var(--space-2);
+  padding: 3px 8px;
+  font-size: 10px;
+  line-height: 1.15;
+}
+.card__media:has(.live-badge) .card__date-badge,
+.latest__thumb:has(.live-badge) .card__date-badge {
+  top: calc(var(--space-2) + 24px);
+}
 .card__title,
 .card a .card__title,
 .card a:visited .card__title {
@@ -1030,6 +1042,24 @@ input {
   max-width: var(--content-narrow);
   margin: var(--space-8) auto 0;
   padding-top: var(--space-2);
+}
+.article__postbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-4);
+  flex-wrap: wrap;
+  max-width: var(--content-narrow);
+  margin: var(--space-12) auto var(--space-6);
+}
+.article__postbar .article__back,
+.article__postbar .article__share {
+  margin: 0;
+  max-width: none;
+}
+.article__postbar .article__share {
+  margin-left: auto;
+  padding-top: 0;
 }
 .article__share__label {
   font-size: var(--text-xs);
@@ -1659,11 +1689,20 @@ input {
   .article__body,
   .article__tldr,
   .entity-chips,
+  .article__postbar,
   .article__share,
   .article__source,
   .related {
     max-width: 100%;
     min-width: 0;
+  }
+  .article__postbar {
+    align-items: flex-start;
+  }
+  .article__postbar .article__share {
+    width: 100%;
+    justify-content: flex-start;
+    margin-left: 0;
   }
   .article__dek,
   .article__body,
@@ -2702,16 +2741,16 @@ button:focus-visible, a:focus-visible { outline-offset: 3px; }
 .card__media .importance-badge,
 .latest__thumb .importance-badge {
   position: absolute;
-  top: var(--space-3);
-  right: var(--space-3);
+  top: var(--space-2);
+  right: var(--space-2);
   left: auto;
   margin: 0;
-  padding: 6px 10px;
+  padding: 4px 8px;
   background: var(--color-brand);
   color: #fff;
   border-radius: 999px;
-  letter-spacing: 0.06em;
-  font-size: 11px;
+  letter-spacing: 0.05em;
+  font-size: 10px;
   font-weight: 600;
   line-height: 1.2;
   text-transform: uppercase;
@@ -2805,9 +2844,18 @@ button:focus-visible, a:focus-visible { outline-offset: 3px; }
 .card__media .live-badge,
 .latest__thumb .live-badge {
   position: absolute;
-  top: var(--space-3);
-  left: var(--space-3);
+  top: var(--space-2);
+  left: var(--space-2);
   z-index: 3;
+  gap: 4px;
+  padding: 3px 8px 3px 6px;
+  font-size: 10px;
+  letter-spacing: 0.06em;
+}
+.card__media .live-badge__dot,
+.latest__thumb .live-badge__dot {
+  width: 6px;
+  height: 6px;
 }
 @media (max-width: 420px) {
   .latest__thumb .live-badge {
@@ -3546,19 +3594,19 @@ body:has(.site-footer) .footer {
 /* ============================================================
  * AI image credit — article cover only
  * ============================================================ */
-.article__cover.image-kind-ai::after {
-  content: 'ФБРК · ИИ';
+.article__cover::after {
+  content: 'ФБРК';
   position: absolute;
-  right: 8px;
-  bottom: 8px;
-  z-index: 2;
   font-size: 11px;
+  right: 12px;
+  bottom: 12px;
+  padding: 4px 9px;
+  z-index: 2;
   font-weight: 500;
   letter-spacing: 0.06em;
   text-transform: uppercase;
   color: rgba(255, 255, 255, 0.92);
   background: rgba(0, 0, 0, 0.45);
-  padding: 4px 8px;
   border-radius: 4px;
   pointer-events: none;
   backdrop-filter: blur(4px);
@@ -3566,21 +3614,29 @@ body:has(.site-footer) .footer {
   font-family: var(--font-body, system-ui, sans-serif);
   line-height: 1;
 }
-/* Watermark removed from small latest__thumb — too cramped */
-.article__cover::after {
-  font-size: 11px;
-  right: 12px;
-  bottom: 12px;
-  padding: 4px 9px;
+.article__cover.image-kind-ai::after {
+  content: 'ФБРК · ИИ';
 }
 .image-caption {
-  display: block;
-  margin-top: var(--space-2);
-  font-size: var(--text-xs);
-  color: var(--color-text-muted);
+  position: absolute;
+  left: 12px;
+  bottom: 12px;
+  z-index: 2;
+  display: inline-flex;
+  align-items: center;
+  max-width: calc(100% - 112px);
+  padding: 4px 8px;
+  border-radius: 4px;
+  background: rgba(0, 0, 0, 0.45);
+  color: rgba(255, 255, 255, 0.92);
+  font-size: 11px;
+  font-weight: 500;
+  line-height: 1.25;
+  backdrop-filter: blur(4px);
+  -webkit-backdrop-filter: blur(4px);
 }
 .image-caption--ai {
-  color: var(--color-text);
+  color: rgba(255, 255, 255, 0.96);
 }
 
 /* ================================================================

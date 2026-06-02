@@ -1275,13 +1275,24 @@ function imageKindClass(a) {
   return `image-kind-${imageMeta(a).kind}`;
 }
 
+function imageSourceLabel(value) {
+  const raw = String(value || '').trim();
+  if (!raw) return '';
+  const normalized = raw.toLowerCase();
+  if (['external', 'internal', 'upload', 'cover', 'inline'].includes(normalized)) {
+    return '';
+  }
+  return raw;
+}
+
 function imageCaptionHtml(a) {
   const meta = imageMeta(a);
   if (meta.kind === 'ai' && meta.hasRealPerson) {
     return '<span class="image-caption image-caption--ai">ИИ-изображение. Не является фотоматериалом</span>';
   }
-  if (meta.kind === 'photo' && meta.source) {
-    return `<span class="image-caption">Фото: ${escapeHtml(meta.source)}</span>`;
+  const sourceLabel = imageSourceLabel(meta.source);
+  if (meta.kind === 'photo' && sourceLabel) {
+    return `<span class="image-caption">Фото: ${escapeHtml(sourceLabel)}</span>`;
   }
   return '';
 }
@@ -1909,6 +1920,10 @@ function homeFocusCards(all, shownIds, limit = 6) {
     <span class="article__share__label">Поделиться:</span>
     ${shareTargets.map((t) => `<a class="article__share__btn" href="${t.href}" ${t.copy ? 'data-copy' : 'target="_blank" rel="noopener"'} aria-label="${t.label}">${t.icon}</a>`).join('')}
   </div>`;
+  const postbarHtml = `<div class="article__postbar">
+    <p class="article__back"><a href="/">← Все материалы</a></p>
+    ${shareHtml}
+  </div>`;
   const rawTags = articleTags(a);
   const visibleEntities = articleEntities(a.entities, rawTags);
   const tldrHtml = renderArticleTldr(a);
@@ -1975,9 +1990,9 @@ function homeFocusCards(all, shownIds, limit = 6) {
       </div>
       ${tldrHtml}
       ${entitiesHtml}
-      ${shareHtml}
       ${tagsHtml}
       ${sourceUrl && !String(a.source || '').includes('fbrk.kz') ? `<div class="article__source">Источник: <a href="${sourceUrl}" target="_blank" rel="noopener">${sourceHost}</a></div>` : ''}
+      ${postbarHtml}
 
       <div class="ad-block ad-block--article" data-ad-slot="article-bottom"></div>
       ${relatedHtml}

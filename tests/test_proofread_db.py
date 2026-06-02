@@ -11,6 +11,7 @@ _candidate_reasons = MODULE["_candidate_reasons"]
 _fallback_lead = MODULE["_fallback_lead"]
 _is_metadata_only_dek = MODULE["_is_metadata_only_dek"]
 _needs_lead_generation = MODULE["_needs_lead_generation"]
+_normalize_typographic_dashes = MODULE["_normalize_typographic_dashes"]
 
 
 def _article(**overrides):
@@ -49,3 +50,9 @@ def test_fallback_lead_uses_first_section_when_dek_is_service_only() -> None:
     lead = _fallback_lead(_article(), fallback="")
     assert "Министерство здравоохранения Казахстана приостановило обращение серии препарата" in lead
     assert len(lead) <= 240
+
+
+def test_typographic_dash_normalization_keeps_word_hyphens() -> None:
+    assert _normalize_typographic_dashes("Астана — Алматы") == "Астана – Алматы"
+    assert _normalize_typographic_dashes("Астана - Алматы") == "Астана – Алматы"
+    assert _normalize_typographic_dashes("юго-восток Казахстана") == "юго-восток Казахстана"
