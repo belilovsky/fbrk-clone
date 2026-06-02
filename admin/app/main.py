@@ -427,9 +427,10 @@ def _dashboard_widgets(conn) -> tuple[dict, list[dict], list[dict]]:
                     if tag:
                         tags.add(tag)
             except Exception:
+                logger.debug("Failed to decode article tags_json", exc_info=True)
                 continue
     except Exception:
-        pass
+        logger.debug("Unable to gather dashboard tags", exc_info=True)
     stats["tags"] = len(tags)
 
     if _table_exists(conn, "article_meta"):
@@ -439,6 +440,7 @@ def _dashboard_widgets(conn) -> tuple[dict, list[dict], list[dict]]:
                 try:
                     data = json.loads(row["entities_json"] or "[]")
                 except Exception:
+                    logger.debug("Failed to decode entities_json in article_meta", exc_info=True)
                     continue
                 if isinstance(data, dict):
                     entities += sum(len(v) for v in data.values() if isinstance(v, list))
@@ -581,7 +583,7 @@ def edit_article_page(article_id: str, request: Request):
             meta["region"] = mrow["region"] or ""
             meta["summary_short"] = mrow["summary_short"] or ""
         except Exception:
-            pass
+            logger.debug("Failed to load editor article meta", exc_info=True)
     return templates.TemplateResponse(
         "editor.html",
         {
@@ -918,7 +920,11 @@ def _u_delete(upload_id:int, r:Request, _csrf: None = Depends(require_admin_csrf
                     th=fp.replace("/uploads/","/uploads/thumb/")
                     if os.path.exists(th): os.remove(th)
         except Exception:
-            pass
+            logger.warning(
+                "Failed to delete upload files",
+                extra={"upload_id": upload_id, "url": str(url)},
+                exc_info=True,
+            )
         c.execute("DELETE FROM uploads WHERE id=?", (upload_id,))
         db.commit()
     db.close()
@@ -970,8 +976,10 @@ def _kpi_stats():
                 arr = json.loads(row[0] or '[]')
                 for t in arr:
                     if t: tags.add(str(t).strip().lower())
-            except Exception: pass
-    except Exception: pass
+            except Exception:
+                logger.debug("Failed to decode tags_json for /admin/tags/list", exc_info=True)
+    except Exception:
+        logger.debug("Failed to aggregate admin tags", exc_info=True)
     try:
         for row in c.execute('SELECT entities_json FROM article_meta'):
             try:
@@ -981,20 +989,24 @@ def _kpi_stats():
                         if isinstance(v, list): ents += len(v)
                 elif isinstance(obj, list):
                     ents += len(obj)
-            except Exception: pass
-    except Exception: pass
+            except Exception:
+                logger.debug("Failed to parse entities_json for admin stats", exc_info=True)
+    except Exception:
+        logger.debug("Unable to aggregate article entities in admin stats", exc_info=True)
     stats['tags'] = len(tags)
     stats['entities'] = ents
     recent = []
     try:
         for row in c.execute("SELECT id,title,COALESCE(date_label,date_iso,'') as date FROM articles ORDER BY id DESC LIMIT 8"):
             recent.append({'id':row[0],'title':row[1],'date':row[2]})
-    except Exception: pass
+    except Exception:
+        logger.debug("Failed to load recent rows for admin home", exc_info=True)
     audit = []
     try:
         for row in c.execute("SELECT ts,COALESCE(user,'-') as user,COALESCE(action,'') as action,COALESCE(entity,'') as entity,COALESCE(entity_id,'') as entity_id FROM audit_log ORDER BY id DESC LIMIT 8"):
             audit.append({'ts':row[0],'user':row[1],'action':row[2],'entity':row[3],'entity_id':row[4]})
-    except Exception: pass
+    except Exception:
+        logger.debug("Failed to load audit rows for admin home", exc_info=True)
     db.close()
     return stats, recent, audit
 
@@ -1075,7 +1087,8 @@ def _validate_ad_image(url: str, ad_id: int | None = None):
         sz = os.path.getsize(fp)
         if sz > 2*1024*1024:
             return False, u, f"Слишком большой файл: {sz//1024} KB (лимит 2048 KB)"
-    except Exception: pass
+    except Exception:
+        logger.debug("Failed to calculate upload file size for ad", exc_info=True)
     try:
         from PIL import Image
         with Image.open(fp) as im:
@@ -1086,7 +1099,7 @@ def _validate_ad_image(url: str, ad_id: int | None = None):
             if w < 50 or h < 30 or w > 2000 or h > 2000:
                 return False, u, f"Недопустимые размеры: {w}x{h}"
     except ImportError:
-        pass
+        logger.debug("PIL not installed; skipping detailed ad image validation")
     except Exception as e:
         return False, u, f"Не удалось прочитать изображение: {e}"
     # --- slot size enforcement ---
@@ -1155,8 +1168,10 @@ def _agg_tags(limit=500):
                     k = str(t).strip()
                     if not k: continue
                     counts[k] = counts.get(k, 0) + 1
-            except Exception: pass
-    except Exception: pass
+            except Exception:
+                logger.debug("Failed to parse row tags for autocomplete endpoint", exc_info=True)
+    except Exception:
+        logger.debug("Unable to build tag autocomplete list", exc_info=True)
     db.close()
     items = sorted(counts.items(), key=lambda x: (-x[1], x[0].lower()))[:limit]
     return [{"tag": k, "count": v} for k, v in items]
@@ -1172,6 +1187,7 @@ def _agg_entities(limit=500):
             try:
                 obj = _json2.loads(row[0] or "[]")
             except Exception:
+                logger.debug("Failed to parse entities_json for entity autocomplete", exc_info=True)
                 continue
             entries = []
             if isinstance(obj, list):
@@ -1193,7 +1209,8 @@ def _agg_entities(limit=500):
                 if not name: continue
                 bk = type_map.get(t, "other")
                 buckets[bk][name] = buckets[bk].get(name, 0) + 1
-    except Exception: pass
+    except Exception:
+        logger.debug("Unable to aggregate entities for admin endpoint", exc_info=True)
     db.close()
     out = {}
     for bk, d in buckets.items():
@@ -1502,7 +1519,8 @@ def _api_ad_impr(slot_id: str, request: Request):
             _c.execute("UPDATE ad_placements SET impressions=COALESCE(impressions,0)+1 WHERE slot_id=?",(slot_id,))
             _c.execute("INSERT INTO ad_events(slot_id,event,ip,referer) VALUES(?,?,?,?)",(slot_id,'impr',(request.client.host if request.client else None),request.headers.get('referer')))
             _c.commit()
-    except Exception: pass
+    except Exception:
+        logger.debug("Failed to track ad impression", extra={"slot_id": slot_id}, exc_info=True)
     from fastapi.responses import Response as _R
     px = b"GIF89a\x01\x00\x01\x00\x80\x00\x00\xff\xff\xff\x00\x00\x00!\xf9\x04\x01\x00\x00\x00\x00,\x00\x00\x00\x00\x01\x00\x01\x00\x00\x02\x02D\x01\x00;"
     return _R(content=px, media_type='image/gif', headers={'Cache-Control':'no-store'})
@@ -1519,7 +1537,8 @@ def _api_ad_click(slot_id: str, request: Request):
             _c.execute("UPDATE ad_placements SET clicks=COALESCE(clicks,0)+1 WHERE slot_id=?",(slot_id,))
             _c.execute("INSERT INTO ad_events(slot_id,event,ip,referer) VALUES(?,?,?,?)",(slot_id,'click',(request.client.host if request.client else None),request.headers.get('referer')))
             _c.commit()
-    except Exception: pass
+    except Exception:
+        logger.debug("Failed to track ad click", extra={"slot_id": slot_id}, exc_info=True)
     return _RR(url=url, status_code=302)
 @app.get("/api/ads/stats/daily")
 def _api_ads_stats_daily(days: int = 14):
@@ -1555,7 +1574,8 @@ def _api_admin_uploads(request: Request, limit: int = 200):
             try:
                 st = os.stat(fp)
                 files.append((st.st_mtime, n, st.st_size))
-            except Exception: pass
+            except Exception:
+                logger.debug("Failed to stat upload file", extra={"file": fp}, exc_info=True)
         files.sort(reverse=True)
         for mt, n, sz in files[:max(1,min(int(limit or 200), 500))]:
             out.append({"name": n, "url": "/img/uploads/thumb/"+n, "size": sz})
@@ -1626,7 +1646,7 @@ async def _articles_bulk(request: Request, _csrf: None = Depends(require_admin_c
             try:
                 db.execute(f"DELETE FROM article_meta WHERE article_id IN ({qmarks})", ids)
             except Exception:
-                pass
+                logger.warning("Failed to delete article_meta on bulk delete", extra={"count": len(ids)}, exc_info=True)
         record_audit(
             db,
             user=u,

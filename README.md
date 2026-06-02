@@ -77,6 +77,14 @@ systemctl is-active fbrk-admin.service
 ./scripts/verify_preprod.sh
 ```
 
+Локальный preview со production-like article route:
+```
+./scripts/preview_server.py --host 127.0.0.1 --port 4175
+```
+Он обслуживает repo root как статику и перенаправляет `/a/<slug>` на
+`/article.html?id=<slug>&spa=1`, чтобы smoke-проверки article page совпадали
+с боевым URL-паттерном.
+
 ### Generated payload hygiene
 
 - `js/data.js` — это tracked snapshot, он участвует в локальном preview и smoke-checks.

@@ -32,7 +32,7 @@ import time
 from datetime import datetime, timezone
 from html import unescape
 from pathlib import Path
-from typing import Iterable, Optional
+from typing import Optional
 from urllib.parse import urljoin, urlparse
 
 import requests

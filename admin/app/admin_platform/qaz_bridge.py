@@ -6,9 +6,12 @@ optional runtime accelerator and keeps the local primitives as the fallback.
 """
 from __future__ import annotations
 
+import logging
 from collections.abc import Callable
 from importlib import import_module
 from typing import Any
+
+logger = logging.getLogger(__name__)
 
 
 def admin_kit_version() -> str | None:
@@ -16,6 +19,7 @@ def admin_kit_version() -> str | None:
     try:
         package = import_module("qaz_admin")
     except Exception:
+        logger.debug("qaz_admin package unavailable; using local bridge fallback", exc_info=True)
         return None
     version = getattr(package, "__version__", None)
     return str(version) if version else "unknown"
@@ -30,7 +34,7 @@ def bridge_status() -> dict[str, Any]:
             fallback="project-local upload MIME policy",
         )
     except Exception:
-        pass
+        logger.debug("qaz_admin bridge not available; using fallback status", exc_info=True)
     version = admin_kit_version()
     return {
         "available": version is not None,
@@ -45,7 +49,7 @@ def detect_image_mime(raw: bytes, fallback: Callable[[bytes], str]) -> str:
         bridge = import_module("qaz_admin.bridge")
         return str(bridge.detect_image_mime(raw, fallback=fallback) or "")
     except Exception:
-        pass
+        logger.debug("qaz_admin mime bridge unavailable; fallback local detector", exc_info=True)
     try:
         uploads = import_module("qaz_admin.uploads")
         detector = getattr(uploads, "detect_image_mime")

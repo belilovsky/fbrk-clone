@@ -35,6 +35,11 @@ from pathlib import Path
 
 DB_PATH = os.environ.get("FBRK_DB") or os.environ.get("FBRK_DB_PATH") or "/opt/fbrk-admin/fbrk.db"
 
+
+def _quote_sqlite_path(path: str) -> str:
+    """Return a path safely embeddable in a SQL VACUUM INTO literal."""
+    return "'" + str(path).replace("'", "''") + "'"
+
 # STRICT patterns — auto-promote regardless of length (these slugs are exclusively
 # used by long-form investigations on fbrk.kz; even 1-3 block summaries belong to
 # a multi-part investigation series).
@@ -213,7 +218,7 @@ def main():
         bak = f"/opt/fbrk-admin/backups/fbrk-{ts}-pre-normalize.db"
         print(f"[backup] {bak}")
         with sqlite3.connect(DB_PATH) as src:
-            src.execute(f"VACUUM INTO ?", (bak,))
+            src.execute(f"VACUUM INTO {_quote_sqlite_path(bak)}")
         print(f"[backup] OK ({Path(bak).stat().st_size / (1024*1024):.1f} MB)")
 
     con = get_con()

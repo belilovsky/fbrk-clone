@@ -251,7 +251,9 @@ def _backup_db() -> Path:
     stamp = datetime.now(timezone.utc).strftime("%Y%m%dT%H%M%SZ")
     backup = db_path.with_name(f"{db_path.stem}-proofread-{stamp}{db_path.suffix}")
     with sqlite3.connect(str(db_path)) as src:
-        src.execute("VACUUM INTO ?", (str(backup),))
+        backup_path = str(backup)
+        sql_path = "'" + backup_path.replace("'", "''") + "'"
+        src.execute(f"VACUUM INTO {sql_path}")
     return backup
 
 

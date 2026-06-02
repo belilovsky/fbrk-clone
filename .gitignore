@@ -40,6 +40,10 @@ js/article-full.js
 data/*.db
 data/*.db-journal
 data/*.sqlite
+img/uploads/
+fbrk.db
+fbrk.db-shm
+fbrk.db-wal
 
 # QA screenshots — большие, редко интересны для версионирования
 qa/*.png
