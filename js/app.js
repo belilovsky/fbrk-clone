@@ -1427,33 +1427,6 @@ function importanceBadgeHtml(a) {
   return `<span class="${cls}" aria-label="${label}">${label}</span>`;
 }
 
-function todayAlmatyString() {
-  try {
-    const parts = new Intl.DateTimeFormat('en', {
-      timeZone: 'Asia/Almaty',
-      year: 'numeric',
-      month: '2-digit',
-      day: '2-digit',
-    }).formatToParts(new Date());
-    const byType = {};
-    parts.forEach((p) => { byType[p.type] = p.value; });
-    return `${byType.year}-${byType.month}-${byType.day}`;
-  } catch (_) {
-    const today = new Date();
-    return today.getFullYear() + '-' + String(today.getMonth() + 1).padStart(2, '0') + '-' + String(today.getDate()).padStart(2, '0');
-  }
-}
-
-// Live badge — pulse dot for fresh articles (published within last 6 hours).
-// Inspired by AV DS LiveBadge.
-function liveBadgeHtml(a) {
-  if (!a || !a.dateIso) return '';
-  // dateIso is published in Kazakhstan editorial time; compare in Asia/Almaty,
-  // not in the reader browser timezone.
-  if (a.dateIso !== todayAlmatyString()) return '';
-  return '<span class="live-badge" aria-label="Свежая публикация сегодня по времени Алматы"><span class="live-badge__dot" aria-hidden="true"></span>СЕГОДНЯ</span>';
-}
-
 function homeFocusCards(all, shownIds, limit = 6) {
   const hidden = shownIds instanceof Set ? shownIds : new Set(shownIds || []);
   const investigations = all
@@ -1480,8 +1453,6 @@ function homeFocusCards(all, shownIds, limit = 6) {
   const featured = all.find((a) => a.featured) || all[0];
   if (!featured) return;
   const shownIds = new Set([featured.id]);
-  const site = currentSiteMeta();
-  const telegramUrl = site.telegram || 'https://t.me/fund_kz_bot';
 
   function renderHomepageBlockCopy(kind) {
     const meta = homepageBlockMeta(kind);
@@ -1511,7 +1482,7 @@ function homeFocusCards(all, shownIds, limit = 6) {
           <div class="card__media ${imageKindClass(a)}">
             ${mediaInner}
             <span class="card__date-badge">${fmtDateShort(a.dateIso) || a.date}</span>
-            ${importanceBadgeHtml(a)}${liveBadgeHtml(a)}
+            ${importanceBadgeHtml(a)}
           </div>
           <h3 class="card__title">${escapeHtml(a.title)}</h3>
         </a>
@@ -1533,10 +1504,6 @@ function homeFocusCards(all, shownIds, limit = 6) {
         <span class="lead__meta-label">${escapeHtml(featured.categoryLabel || 'Материал')}</span>
         <span class="lead__meta__dot" aria-hidden="true"></span>
         <span>${fmtDateLong(featured.dateIso) || featured.date}</span>
-      </div>
-      <div class="lead__actions">
-        <a class="btn btn--primary lead__cta" href="${articleHref(featured)}">Читать материал</a>
-        <a class="btn btn--secondary lead__cta" href="${telegramUrl}" target="_blank" rel="noopener">Сообщить анонимно</a>
       </div>
     </div>
   `;
@@ -1611,7 +1578,7 @@ function homeFocusCards(all, shownIds, limit = 6) {
       <li class="latest__item">
         <a class="${thumbCls} ${imageKindClass(a)}" href="${articleHref(a)}" aria-label="${escapeHtml(a.title)}">
           ${thumbInner}
-          ${importanceBadgeHtml(a)}${liveBadgeHtml(a)}
+          ${importanceBadgeHtml(a)}
         </a>
         <div>
           <h3 class="latest__title">
@@ -1949,7 +1916,7 @@ function homeFocusCards(all, shownIds, limit = 6) {
                 <div class="card__media ${imageKindClass(item)}">
                   ${mediaInner}
                   <span class="card__date-badge">${fmtDateShort(item.dateIso) || item.date}</span>
-                  ${importanceBadgeHtml(item)}${liveBadgeHtml(item)}
+                  ${importanceBadgeHtml(item)}
                 </div>
                 <h3 class="card__title">${escapeHtml(item.title)}</h3>
               </a>
@@ -2821,7 +2788,7 @@ function renderArticleTags(tags) {
           <div class="card__media ${imageKindClass(a)}">
             ${mediaInner}
             <span class="card__date-badge">${fmtDateShort(a.dateIso) || a.date}</span>
-            ${importanceBadgeHtml(a)}${liveBadgeHtml(a)}
+            ${importanceBadgeHtml(a)}
           </div>
           <h2 class="card__title">${escapeHtml(a.title)}</h2>
         </a>

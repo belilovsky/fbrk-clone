@@ -69,8 +69,8 @@
     <link rel="icon" type="image/png" sizes="192x192" href="/img/brand/favicon-192.png" />
     <link rel="apple-touch-icon" href="/img/brand/apple-touch-icon.png" />
     <link rel="icon" type="image/svg+xml" href="/img/brand/logo.svg" />
-    <link rel="stylesheet" href="/fonts/avds/avds-fonts.css?v=20260602161421" />
-    <link rel="stylesheet" href="/css/style.css?v=20260602161421" />
+    <link rel="stylesheet" href="/fonts/avds/avds-fonts.css?v=20260602155543" />
+    <link rel="stylesheet" href="/css/style.css?v=20260602155543" />
     <link rel="alternate" type="application/rss+xml" title="ФБРК — RSS" href="/feed.xml" />
   </head>
   <body>
@@ -124,6 +124,39 @@
         </div>
       </section>
 
+      <!-- Latest + sidebar -->
+      <section class="section" id="latest" aria-labelledby="sec-latest">
+        <div class="container">
+          <header class="section__header">
+            <h2 class="section__title" id="sec-latest">Последние новости</h2>
+            <a class="section__link" href="archive.html">Весь архив →</a>
+          </header>
+          <div class="latest">
+            <ul class="latest__list" role="list" data-latest></ul>
+            <div class="sidebar" aria-label="Дополнительно">
+              <div class="widget widget--brand">
+                <div class="widget__label">Анонимно</div>
+                <h3 class="widget__title">Знаете о коррупции? Напишите нам.</h3>
+                <p class="widget__text">
+                  Анонимный Telegram-бот редакции ФБРК. Мы защищаем источники и проверяем каждый сигнал.
+                </p>
+                <a class="widget__btn" href="https://t.me/fund_kz_bot" target="_blank" rel="noopener" data-site-telegram-cta>
+                  Открыть @fund_kz_bot →
+                </a>
+              </div>
+              <div class="widget">
+                <div class="widget__label">Темы</div>
+                <div class="tag-cloud" data-tags></div>
+              </div>
+              <div class="widget" data-series-widget>
+                <div class="widget__label">Серии</div>
+                <ul class="content-list widget-list" role="list" data-series-links></ul>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
       <!-- Investigations -->
       <section class="section" id="investigations" aria-labelledby="sec-inv">
         <div class="container">
@@ -146,41 +179,6 @@
             <a class="section__link" href="/resonance.html" data-home-block-link="resonance">Вся подборка →</a>
           </header>
           <div class="card-grid" data-home-resonance></div>
-        </div>
-      </section>
-
-      <!-- Latest + sidebar -->
-      <section class="section" id="latest" aria-labelledby="sec-latest">
-        <div class="container">
-          <header class="section__header">
-            <h2 class="section__title" id="sec-latest">Последнее</h2>
-            <a class="section__link" href="archive.html">Весь архив →</a>
-          </header>
-          <div class="latest">
-            <ul class="latest__list" role="list" data-latest></ul>
-            <div class="sidebar" aria-label="Дополнительно">
-              <div class="widget widget--brand">
-                <div class="widget__label">Анонимно</div>
-                <h3 class="widget__title">Знаете о коррупции? Напишите нам.</h3>
-                <p class="widget__text">
-                  Анонимный Telegram-бот редакции ФБРК. Мы защищаем источники и проверяем каждый сигнал.
-                </p>
-                <a class="widget__btn" href="https://t.me/fund_kz_bot" target="_blank" rel="noopener" data-site-telegram-cta>
-                  Открыть @fund_kz_bot →
-                </a>
-              </div>
-              <div class="widget">
-              <div class="widget__label">Темы</div>
-              <h3 class="widget__title">О чём мы пишем</h3>
-              <div class="tag-cloud" data-tags></div>
-            </div>
-              <div class="widget" data-series-widget>
-                <div class="widget__label">Серии</div>
-                <h3 class="widget__title">Сюжеты в развитии</h3>
-                <ul class="content-list widget-list" role="list" data-series-links></ul>
-              </div>
-            </div>
-          </div>
         </div>
       </section>
 
@@ -244,10 +242,10 @@
             </ul>
           </div>
           <div>
-            <div class="site-footer__heading">Анонимно</div>
+            <div class="site-footer__heading">Соцмедиа</div>
             <ul class="site-footer__list" role="list">
-              <li><a href="https://t.me/fund_kz_bot" target="_blank" rel="noopener">Telegram-бот</a></li>
-              <li><a href="https://www.youtube.com/@fbrk_news" target="_blank" rel="noopener">YouTube-канал</a></li>
+              <li><a href="https://t.me/fund_kz_bot" target="_blank" rel="noopener">Телеграм Канал</a></li>
+              <li><a href="https://www.youtube.com/@fbrk_news" target="_blank" rel="noopener">Ютуб</a></li>
             </ul>
           </div>
         </div>
@@ -296,8 +294,8 @@
       </div>
     </div>
 
-    <script src="/js/runtime-config.js?v=20260602161421"></script>
-    <script src="/js/data.js?v=20260602161421"></script>
-    <script src="/js/app.js?v=20260602161421"></script>
+    <script src="/js/runtime-config.js?v=20260602155543"></script>
+    <script src="/js/data.js?v=20260602155543"></script>
+    <script src="/js/app.js?v=20260602155543"></script>
   </body>
 </html>

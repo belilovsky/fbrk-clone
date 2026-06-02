@@ -13,8 +13,8 @@
     <meta property="og:description" content="Основные разделы и последние материалы ФБРК." />
     <meta property="og:url" content="https://fbrk.qdev.run/sitemap.html" />
     <link rel="icon" type="image/png" sizes="32x32" href="/img/brand/favicon-32.png" />
-    <link rel="stylesheet" href="/fonts/avds/avds-fonts.css?v=20260602161421" />
-    <link rel="stylesheet" href="/css/style.css?v=20260602161421" />
+    <link rel="stylesheet" href="/fonts/avds/avds-fonts.css?v=20260602155543" />
+    <link rel="stylesheet" href="/css/style.css?v=20260602155543" />
     <script>try{const t=localStorage.getItem("theme")||localStorage.getItem("fbrk_theme");document.documentElement.dataset.theme=t==="dark"||t==="light"?t:(matchMedia("(prefers-color-scheme: dark)").matches?"dark":"light");}catch(_){}</script>
   </head>
   <body>
@@ -141,10 +141,10 @@
             </ul>
           </div>
           <div>
-            <div class="site-footer__heading">Анонимно</div>
+            <div class="site-footer__heading">Соцмедиа</div>
             <ul class="site-footer__list" role="list">
-              <li><a href="https://t.me/fund_kz_bot" target="_blank" rel="noopener">Telegram-бот</a></li>
-              <li><a href="https://www.youtube.com/@fbrk_news" target="_blank" rel="noopener">YouTube-канал</a></li>
+              <li><a href="https://t.me/fund_kz_bot" target="_blank" rel="noopener">Телеграм Канал</a></li>
+              <li><a href="https://www.youtube.com/@fbrk_news" target="_blank" rel="noopener">Ютуб</a></li>
             </ul>
           </div>
         </div>
@@ -183,14 +183,14 @@
     </div>
 
 
-    <script src="/js/data.js?v=20260602161421"></script>
-    <script src="/js/data-archive.js?v=20260602161421"></script>
+    <script src="/js/data.js?v=20260602155543"></script>
+    <script src="/js/data-archive.js?v=20260602155543"></script>
     <script>
       const root = document.querySelector('[data-sitemap-latest]');
       if (root && window.FBRK_DATA) {
         root.innerHTML = FBRK_DATA.articles.slice(0, 50).map((a) => `<li><a href="/a/${encodeURIComponent(a.slug || a.id)}">${a.title}</a></li>`).join('');
       }
     </script>
-    <script src="/js/app.js?v=20260602161421"></script>
+    <script src="/js/app.js?v=20260602155543"></script>
   </body>
 </html>
