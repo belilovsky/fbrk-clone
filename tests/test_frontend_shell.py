@@ -150,6 +150,37 @@ def test_ssr_article_wraps_plain_section_text_into_paragraphs() -> None:
     assert "<p>Второй абзац с <b>выделением</b>.</p>" in html
 
 
+def test_ssr_article_normalizes_inline_upload_paths_inside_html_sections() -> None:
+    html = _sections_to_html(
+        [
+            {
+                "h": "",
+                "p": '<p>Текст с картинкой.</p><p><img src="img/uploads/web/demo.webp" alt=""/></p><p><a href="archive.html?q=test">Архив</a></p>',
+            }
+        ],
+        "https://fbrk.qdev.run",
+    )
+
+    assert 'src="https://fbrk.qdev.run/img/uploads/web/demo.webp"' in html
+    assert 'href="https://fbrk.qdev.run/archive.html?q=test"' in html
+
+
+def test_ssr_article_normalizes_inline_assets_inside_plain_paragraph_sections() -> None:
+    html = _sections_to_html(
+        [
+            {
+                "h": "",
+                "p": 'Первый абзац.\n\n<img src="img/uploads/web/demo.webp" alt=""/>\n\nСм. <a href="archive.html?q=test">архив</a>.',
+            }
+        ],
+        "https://fbrk.qdev.run",
+    )
+
+    assert "<p>Первый абзац.</p>" in html
+    assert '<p><img src="https://fbrk.qdev.run/img/uploads/web/demo.webp" alt=""/></p>' in html
+    assert '<p>См. <a href="https://fbrk.qdev.run/archive.html?q=test">архив</a>.</p>' in html
+
+
 def test_ssr_article_hides_summary_when_it_repeats_first_section() -> None:
     assert _hero_dek(
         "",

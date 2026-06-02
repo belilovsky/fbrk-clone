@@ -15,6 +15,7 @@ from __future__ import annotations
 
 import html
 import json
+import logging
 import os
 import re
 import sqlite3 as _ad_sqlite
@@ -26,6 +27,7 @@ from fastapi import APIRouter, HTTPException, Request
 from fastapi.responses import HTMLResponse, PlainTextResponse, Response
 
 from .admin_platform.templating import AdminJinja2Templates
+from .article_markup import normalize_inline_html_assets
 from .config import settings
 from .db import db, row_to_article
 from .editorial_hubs import (
@@ -44,6 +46,7 @@ DEFAULT_SITE_URL = (os.environ.get("FBRK_SITE_URL") or "https://fbrk.qdev.run").
 
 BASE = Path(__file__).resolve().parent.parent  # admin/
 templates = AdminJinja2Templates(directory=str(BASE / "templates"))
+logger = logging.getLogger(__name__)
 
 # SSR template uses ad("slot") helper for promo blocks.
 # Keep it resilient: if ad table is unavailable we return empty HTML.
@@ -68,7 +71,7 @@ def _ads_load() -> dict:
             out[r["slot_id"]] = dict(r)
         con.close()
     except Exception:
-        pass
+        logger.warning("Failed to load ad placements for SSR helper", exc_info=True)
     _AD_CACHE["t"] = now
     _AD_CACHE["data"] = out
     return out
@@ -113,6 +116,7 @@ def _site_profile_data() -> dict[str, str]:
         with db() as conn:
             data = site_profile(load_public_pages(conn))
     except Exception:
+        logger.debug("Failed to load site profile from DB, using defaults", exc_info=True)
         data = site_profile(DEFAULT_PUBLIC_PAGES)
     _SITE_PROFILE_CACHE["t"] = now
     _SITE_PROFILE_CACHE["data"] = dict(data)
@@ -268,7 +272,7 @@ def _kicker_date_label(date_value: str, current_year: int) -> str:
             return f"{day} {month} {parsed.year}"
         return f"{day} {month}"
     except Exception:
-        pass
+        logger.debug("Failed to parse date in kicker label: %s", date_value, exc_info=True)
 
     match = re.match(r"^(\d{1,2})\s+([А-Яа-яёЁ]+)\s+(\d{4})$", raw)
     if match:
@@ -282,10 +286,11 @@ def _kicker_date_label(date_value: str, current_year: int) -> str:
     return raw
 
 
-def _section_paragraph_html(raw: str) -> str:
+def _section_paragraph_html(raw: str, site_url: str) -> str:
     value = str(raw or "").replace("\r\n", "\n").strip()
     if not value:
         return ""
+    value = normalize_inline_html_assets(value, site_url)
     if _BLOCK_HTML_RE.search(value):
         return value
 
@@ -311,7 +316,7 @@ def _sections_to_html(sections: list, site_url: str, context: str = "") -> str:
             cap = html.escape(str(s.get("caption") or ""))
             out.append(f'<figure><img src="{src}" alt="{cap}" /></figure>')
         if p:
-            out.append(_section_paragraph_html(str(p)))
+            out.append(_section_paragraph_html(str(p), site_url))
     return "\n".join(out)
 
 
@@ -794,9 +799,9 @@ def sitemap_xml(request: Request):
                 if (cutoff - d).days <= 2:
                     recent_news.append(a)
             except Exception:
-                pass
+                logger.debug("Failed to parse article date for sitemap recentness", exc_info=True)
     except Exception:
-        pass
+        logger.debug("Unable to filter recent_news in sitemap", exc_info=True)
 
     lines = [
         '<?xml version="1.0" encoding="UTF-8"?>',

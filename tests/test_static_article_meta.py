@@ -162,3 +162,31 @@ def test_publish_derives_image_meta_for_public_payload():
     assert shape["imageSource"] == "cover"
     assert shape["imageKind"] == "photo"
     assert shape["imageHasRealPerson"] is False
+
+
+def test_publish_normalizes_inline_assets_inside_article_full_sections():
+    from admin.app import publish
+
+    raw = {
+        "id": "test-id",
+        "slug": "test-slug",
+        "title": "Тест",
+        "dek": "Тестовый лид",
+        "date": "1 мая 2026",
+        "dateIso": "2026-05-01",
+        "category": "news",
+        "categoryLabel": "Новости",
+        "image": "/img/covers/preview.webp",
+        "tags": [],
+        "sections": [
+            {
+                "h": "",
+                "p": 'Первый абзац.\n\n<img src="img/uploads/web/demo.webp" alt=""/>\n\nСм. <a href="archive.html?q=test">архив</a>.',
+            }
+        ],
+    }
+
+    shape = publish._article_full_shape(raw)
+
+    assert 'src="https://fbrk.qdev.run/img/uploads/web/demo.webp"' in shape["sections"][0]["p"]
+    assert 'href="https://fbrk.qdev.run/archive.html?q=test"' in shape["sections"][0]["p"]

@@ -3,12 +3,14 @@ from __future__ import annotations
 
 import html
 import hashlib
+import logging
 import json
 import os
 import re
 from datetime import datetime, timezone
 from pathlib import Path
 
+from .article_markup import normalize_inline_html_assets
 from .config import settings
 from .db import db, row_to_article
 from .editorial_hubs import (
@@ -23,6 +25,7 @@ from .public_pages import load_public_pages, site_profile
 
 
 SITE_URL = (os.environ.get("FBRK_SITE_URL") or "https://fbrk.qdev.run").rstrip("/")
+logger = logging.getLogger(__name__)
 
 HEADER = """// ============================================================
 // ФБРК — данные статей
@@ -312,7 +315,7 @@ def _load_articles() -> list[dict]:
             art["_meta_entities_json"] = r["_meta_entities_json"]
             art["_meta_tags_auto"] = r["_meta_tags_auto"]
         except Exception:
-            pass
+            logger.debug("Failed to extract enriched metadata for row", exc_info=True)
         art["_editorial_override"] = override_map.get(art["id"], {})
         out.append(art)
     return out
@@ -373,14 +376,17 @@ def _article_full_shape(a: dict) -> dict:
     """
     shape = _public_shape(a)
     context = " ".join(str(a.get(key) or "").strip() for key in ("title", "dek"))
-    shape["sections"] = [
-        {
+    shape["sections"] = []
+    for section in (a.get("sections") or []):
+        if not isinstance(section, dict):
+            continue
+        item = {
             **section,
             "h": normalize_section_heading(section.get("h") or "", context=context),
         }
-        for section in (a.get("sections") or [])
-        if isinstance(section, dict)
-    ]
+        if item.get("p"):
+            item["p"] = normalize_inline_html_assets(str(item.get("p") or ""), SITE_URL)
+        shape["sections"].append(item)
     raw_entities = _json_list(a.get("_meta_entities_json"))
     manual_tags = _manual_public_tags(
         shape.get("tags") or [],
@@ -520,7 +526,8 @@ def _atomic_write(path: Path, body: str) -> None:
     finally:
         if os.path.exists(tmp):
             try: os.unlink(tmp)
-            except OSError: pass
+            except OSError:
+                logger.debug("Failed to remove publish temp file", extra={"tmp": tmp}, exc_info=True)
 
 
 @contextmanager
@@ -531,12 +538,13 @@ def _file_lock(lock_path: str):
         try:
             os.chmod(lock_path, 0o666)
         except OSError:
-            pass
+            logger.debug("Failed to chmod publish lock file", extra={"lock_path": lock_path}, exc_info=True)
         fcntl.flock(fd, fcntl.LOCK_EX)
         yield
     finally:
         try: fcntl.flock(fd, fcntl.LOCK_UN)
-        except OSError: pass
+        except OSError:
+            logger.debug("Failed to unlock publish lock", extra={"lock_path": lock_path}, exc_info=True)
         os.close(fd)
 
 
