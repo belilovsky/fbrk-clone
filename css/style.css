@@ -1125,6 +1125,11 @@ input {
   margin-bottom: var(--space-5);
   max-width: 68ch;
 }
+.article__body p + p,
+.article__body p + blockquote,
+.article__body blockquote + p {
+  margin-top: var(--space-6);
+}
 .article__body strong,
 .article__body b {
   font-weight: 600;
@@ -1139,6 +1144,21 @@ input {
 }
 .article__body figure {
   margin: var(--space-8) 0;
+}
+.article__body blockquote {
+  max-width: 62ch;
+  margin: var(--space-8) 0;
+  padding: var(--space-5) var(--space-6);
+  border-left: 3px solid var(--color-primary);
+  border-radius: 0 var(--radius-md) var(--radius-md) 0;
+  background: color-mix(in oklab, var(--color-primary) 7%, var(--color-surface));
+  color: var(--color-text);
+  font-size: clamp(1.05rem, 1.5vw, 1.18rem);
+  line-height: 1.7;
+}
+.article__body blockquote p {
+  max-width: none;
+  margin: 0;
 }
 .article__body figure img {
   width: 100%;
@@ -1203,10 +1223,21 @@ input {
   .article__body p {
     margin-bottom: var(--space-4);
   }
+  .article__body p + p,
+  .article__body p + blockquote,
+  .article__body blockquote + p {
+    margin-top: var(--space-5);
+  }
   .article__body h2 {
     margin-top: var(--space-8);
     margin-bottom: var(--space-3);
     font-size: 1.1875rem;
+  }
+  .article__body blockquote {
+    margin: var(--space-6) 0;
+    padding: var(--space-4) var(--space-5);
+    font-size: 1.02rem;
+    line-height: 1.65;
   }
   .article__body figure {
     margin: var(--space-6) 0;

@@ -137,6 +137,7 @@ def test_frontend_css_keeps_article_spacing_readable() -> None:
     assert "ИИ-изображение. Не является фотоматериалом" in js
     assert re.search(r"\.article__body\s*\{[\s\S]*margin-top:\s*var\(--space-8\);", css)
     assert ".article__body figure {" in css
+    assert ".article__body blockquote {" in css
 
 
 def test_ssr_article_wraps_plain_section_text_into_paragraphs() -> None:
@@ -179,6 +180,22 @@ def test_ssr_article_normalizes_inline_assets_inside_plain_paragraph_sections() 
     assert "<p>Первый абзац.</p>" in html
     assert '<p><img src="https://fbrk.qdev.run/img/uploads/web/demo.webp" alt=""/></p>' in html
     assert '<p>См. <a href="https://fbrk.qdev.run/archive.html?q=test">архив</a>.</p>' in html
+
+
+def test_ssr_article_preserves_blockquote_and_wraps_surrounding_text() -> None:
+    html = _sections_to_html(
+        [
+            {
+                "h": "Какие поручения дал премьер-министр",
+                "p": "Первый абзац.\n\n<blockquote>«Особое внимание необходимо обратить...»</blockquote>\n\nВторой абзац.",
+            }
+        ],
+        "https://fbrk.qdev.run",
+    )
+
+    assert "<p>Первый абзац.</p>" in html
+    assert "<blockquote>«Особое внимание необходимо обратить...»</blockquote>" in html
+    assert "<p>Второй абзац.</p>" in html
 
 
 def test_ssr_article_hides_summary_when_it_repeats_first_section() -> None:

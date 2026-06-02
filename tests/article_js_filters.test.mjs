@@ -202,6 +202,12 @@ test('article tldr falls back to section sentences when backend key points are c
   assert.ok(!html.includes('Алматинского горного кл'));
 });
 
+test('article paragraph renderer source keeps blockquote-aware logic', () => {
+  assert.ok(source.includes("allowedBlockTags = new Set(['p', 'blockquote', 'ul', 'ol', 'li'])"));
+  assert.ok(source.includes('const BLOCK_HTML_FRAGMENT_RE = /(<(?<tag>p|div|ul|ol|li|blockquote|pre|figure|table|iframe|video|audio|h[1-6])'));
+  assert.ok(source.includes('parts.push(...renderArticleTextFragments(sanitized.slice(cursor, index)));'));
+});
+
 test('article renderer keeps summary, mentions, and share below the body', () => {
   const bodyIdx = source.indexOf('<div class="article__body">');
   const tldrIdx = source.indexOf('${tldrHtml}');

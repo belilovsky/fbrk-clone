@@ -255,6 +255,10 @@ RU_MONTHS_GENITIVE = [
 
 
 _BLOCK_HTML_RE = re.compile(r"<(?:p|div|ul|ol|li|blockquote|pre|figure|table|iframe|video|audio|h[1-6]|hr)\b", re.IGNORECASE)
+_BLOCK_FRAGMENT_RE = re.compile(
+    r"(<(?P<tag>p|div|ul|ol|li|blockquote|pre|figure|table|iframe|video|audio|h[1-6])\b[^>]*>.*?</(?P=tag)>|<hr\b[^>]*>)",
+    re.IGNORECASE | re.DOTALL,
+)
 
 
 def _kicker_date_label(date_value: str, current_year: int) -> str:
@@ -291,13 +295,26 @@ def _section_paragraph_html(raw: str, site_url: str) -> str:
     if not value:
         return ""
     value = normalize_inline_html_assets(value, site_url)
-    if _BLOCK_HTML_RE.search(value):
-        return value
+    if not _BLOCK_HTML_RE.search(value):
+        parts = [part.strip() for part in re.split(r"\n{2,}", value) if part.strip()]
+        if not parts:
+            return ""
+        return "\n".join(f"<p>{part.replace(chr(10), '<br>')}</p>" for part in parts)
 
-    parts = [part.strip() for part in re.split(r"\n{2,}", value) if part.strip()]
-    if not parts:
-        return ""
-    return "\n".join(f"<p>{part.replace(chr(10), '<br>')}</p>" for part in parts)
+    def _paragraphize(fragment: str) -> list[str]:
+        parts = [part.strip() for part in re.split(r"\n{2,}", fragment) if part.strip()]
+        return [f"<p>{part.replace(chr(10), '<br>')}</p>" for part in parts]
+
+    out: list[str] = []
+    cursor = 0
+    for match in _BLOCK_FRAGMENT_RE.finditer(value):
+        if match.start() > cursor:
+            out.extend(_paragraphize(value[cursor:match.start()]))
+        out.append(match.group(0).strip())
+        cursor = match.end()
+    if cursor < len(value):
+        out.extend(_paragraphize(value[cursor:]))
+    return "\n".join(part for part in out if part)
 
 
 def _sections_to_html(sections: list, site_url: str, context: str = "") -> str:

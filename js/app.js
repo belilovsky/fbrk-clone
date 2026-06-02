@@ -2045,8 +2045,10 @@ function safeSourceHost(rawSource) {
 
 function sanitizeArticleInlineHtml(raw) {
   const template = document.createElement('template');
-  template.innerHTML = String(raw || '');
+  const source = String(raw || '');
+  template.innerHTML = source;
   const allowedTextTags = new Set(['b', 'strong', 'i', 'em', 'u', 's', 'sub', 'sup', 'code']);
+  const allowedBlockTags = new Set(['p', 'blockquote', 'ul', 'ol', 'li']);
 
   function clean(node) {
     if (node.nodeType === Node.TEXT_NODE) return escapeHtml(node.textContent || '');
@@ -2054,6 +2056,7 @@ function sanitizeArticleInlineHtml(raw) {
     const tag = node.tagName.toLowerCase();
     const children = Array.from(node.childNodes).map(clean).join('');
     if (allowedTextTags.has(tag)) return `<${tag}>${children}</${tag}>`;
+    if (allowedBlockTags.has(tag)) return `<${tag}>${children}</${tag}>`;
     if (tag === 'br') return '<br>';
     if (tag === 'a') {
       const href = safeArticleUrl(node.getAttribute('href'));
@@ -2069,17 +2072,47 @@ function sanitizeArticleInlineHtml(raw) {
     return children;
   }
 
-  return Array.from(template.content.childNodes).map(clean).join('');
+  const nodes = template.content && template.content.childNodes ? Array.from(template.content.childNodes) : [];
+  if (!nodes.length && /<[^>]+>/.test(source)) {
+    return source;
+  }
+  return nodes.map(clean).join('');
 }
 
-function renderArticleParagraphs(raw) {
+const BLOCK_HTML_TAG_RE = /<(?:p|div|ul|ol|li|blockquote|pre|figure|table|iframe|video|audio|h[1-6]|hr)\b/i;
+const BLOCK_HTML_FRAGMENT_RE = /(<(?<tag>p|div|ul|ol|li|blockquote|pre|figure|table|iframe|video|audio|h[1-6])\b[^>]*>[\s\S]*?<\/\k<tag>>|<hr\b[^>]*>)/gi;
+
+function renderArticleTextFragments(raw) {
   return String(raw || '')
-    .replace(/\r\n/g, '\n')
     .split(/\n{2,}/)
     .map((part) => part.trim())
     .filter(Boolean)
-    .map((part) => `<p>${sanitizeArticleInlineHtml(part).replace(/\n/g, '<br>')}</p>`)
-    .join('');
+    .map((part) => `<p>${part.replace(/\n/g, '<br>')}</p>`);
+}
+
+function renderArticleParagraphs(raw) {
+  const normalized = String(raw || '').replace(/\r\n/g, '\n').trim();
+  if (!normalized) return '';
+  const sanitized = sanitizeArticleInlineHtml(normalized);
+  if (!BLOCK_HTML_TAG_RE.test(sanitized)) {
+    return renderArticleTextFragments(sanitized).join('');
+  }
+
+  const parts = [];
+  let cursor = 0;
+  BLOCK_HTML_FRAGMENT_RE.lastIndex = 0;
+  for (const match of sanitized.matchAll(BLOCK_HTML_FRAGMENT_RE)) {
+    const index = typeof match.index === 'number' ? match.index : 0;
+    if (index > cursor) {
+      parts.push(...renderArticleTextFragments(sanitized.slice(cursor, index)));
+    }
+    parts.push(match[0].trim());
+    cursor = index + match[0].length;
+  }
+  if (cursor < sanitized.length) {
+    parts.push(...renderArticleTextFragments(sanitized.slice(cursor)));
+  }
+  return parts.join('');
 }
 
 function normalizedArticleText(value) {
