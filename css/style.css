@@ -275,7 +275,7 @@ input {
   max-width: min(760px, 100%);
 }
 .section__title {
-  font-size: var(--text-xl);
+  font-size: clamp(1.0625rem, 0.98rem + 0.42vw, 1.2rem);
   font-weight: 600;
   letter-spacing: 0;
 }
@@ -594,7 +594,7 @@ input {
 }
 .lead__title {
   font-family: var(--font-display);
-  font-size: clamp(1.5rem, 1.1rem + 1.1vw, 1.875rem);
+  font-size: clamp(1.34rem, 1rem + 0.86vw, 1.68rem);
   font-weight: 600;
   line-height: 1.2;
   letter-spacing: 0;
@@ -966,7 +966,7 @@ input {
 }
 .article__title {
   font-family: var(--font-display);
-  font-size: clamp(1.5rem, 1.1rem + 1.1vw, 1.875rem);
+  font-size: clamp(1.38rem, 1rem + 0.95vw, 1.72rem);
   font-weight: 600;
   line-height: 1.2;
   letter-spacing: 0;
@@ -1624,7 +1624,7 @@ input {
     gap: var(--space-3);
   }
   .lead__title {
-    font-size: clamp(1.35rem, 4vw + 0.4rem, 1.7rem);
+    font-size: clamp(1.2rem, 3.2vw + 0.45rem, 1.45rem);
     line-height: 1.2;
     letter-spacing: 0;
   }
@@ -1725,8 +1725,8 @@ input {
     row-gap: var(--space-2);
   }
   .article__title {
-    font-size: 1.75rem;
-    line-height: 1.18;
+    font-size: 1.56rem;
+    line-height: 1.16;
     max-width: 100%;
     overflow-wrap: break-word;
   }
@@ -2190,7 +2190,7 @@ input {
 }
 .archive__title {
   font-family: var(--font-display);
-  font-size: clamp(2rem, 4vw, 3rem);
+  font-size: clamp(1.7rem, 2.4vw, 2.35rem);
   font-weight: 700;
   letter-spacing: 0;
   margin: 0;
@@ -2360,7 +2360,7 @@ input {
     margin-bottom: var(--space-4);
   }
   .archive__title {
-    font-size: clamp(1.9rem, 8.4vw, 2.45rem);
+    font-size: clamp(1.55rem, 6.8vw, 1.95rem);
   }
   .archive__description {
     max-width: 34ch;
@@ -2500,7 +2500,7 @@ input {
   margin-bottom: var(--space-10);
 }
 .content-page__title {
-  font-size: var(--text-3xl);
+  font-size: clamp(1.55rem, 1.2rem + 1vw, 2rem);
   margin-bottom: var(--space-4);
 }
 .content-grid {
@@ -2515,8 +2515,9 @@ input {
   padding: var(--space-6);
 }
 .content-card h2 {
-  font-size: var(--text-lg);
-  margin-bottom: var(--space-3);
+  font-size: 1.125rem;
+  line-height: 1.28;
+  margin-bottom: var(--space-2);
 }
 .content-card p,
 .content-card li {
@@ -2543,10 +2544,10 @@ input {
 .hub-card__meta {
   color: var(--color-text-muted);
   font-size: var(--text-sm);
-  margin-top: var(--space-4);
+  margin-top: var(--space-3);
 }
 .hub-card__latest {
-  margin-top: var(--space-4);
+  margin-top: var(--space-3);
 }
 .content-list {
   display: grid;

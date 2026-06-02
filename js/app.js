@@ -1666,13 +1666,11 @@ function homeFocusCards(all, shownIds, limit = 6) {
         .slice(0, 4)
         .map((entry) => `
           <section class="content-card hub-card">
-            <div class="hub-card__eyebrow">Регион</div>
             <h2><a href="${entry.url || '#'}">${escapeHtml(entry.title)}</a></h2>
-            <p>${escapeHtml(entry.description || '')}</p>
             <div class="hub-card__meta">Материалов: ${new Intl.NumberFormat('ru-KZ').format(entry.count || 0)}</div>
             ${Array.isArray(entry.latest) && entry.latest.length ? `
               <ul class="content-list hub-card__latest" role="list">
-                ${entry.latest.slice(0, 2).map((article) => `<li><a href="${articleUrl(article.slug || article.id || '')}">${escapeHtml(article.title)}</a></li>`).join('')}
+                ${entry.latest.slice(0, 3).map((article) => `<li><a href="${articleUrl(article.slug || article.id || '')}">${escapeHtml(article.title)}</a></li>`).join('')}
               </ul>
             ` : ''}
           </section>
