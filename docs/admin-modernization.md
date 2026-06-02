@@ -682,3 +682,35 @@ Verification:
   - `public_entities_gt_12=0`
   - split linkage strict smoke still passes with matching backend/new hashes and
     `STATUS=ok`.
+
+## 2026-06-02 canonical host cutover hardening
+
+During the platform runtime closeout, `new.fbrk.kz` no longer had a public DNS
+answer and the previous dedicated frontend VPS `213.155.22.190` presented a new
+SSH host key while rejecting the stored backend deploy key. Because of that,
+the old backend -> frontend VPS sync path could not be treated as operationally
+ready without a separate VPS recovery decision.
+
+What was tightened safely:
+
+- the fallback `new.fbrk.kz` nginx config on backend VPS `148.230.117.131` was
+  updated from an old staging mirror to the repo cutover config;
+- `/admin`, `/admin/*`, `/api`, and `/api/*` now return `404` on the canonical
+  public host config, keeping admin/API surfaces on `fbrk.qdev.run`;
+- generated payloads `data.js`, `data-archive.js`, and `article-full.js` are
+  explicitly no-cache on the public host;
+- `/a/*`, `/sitemap.xml`, `/robots.txt`, `/feed.xml`, and `/feed/*` still proxy
+  to the backend for public SSR/SEO needs;
+- `/etc/nginx/sites-available/new.fbrk.kz` and
+  `/opt/fbrk-admin/deploy/nginx-new-fbrk.conf` now match.
+
+Verification:
+
+- `.venv/bin/python -m pytest -q tests/test_nginx_new_fbrk_config.py
+  tests/test_generated_payload_hygiene.py tests/test_static_article_meta.py`
+  -> `10 passed`;
+- `PYTHON_BIN=.venv/bin/python ./scripts/verify_preprod.sh` -> `STATUS=ok`,
+  including 31 JS tests, 89 Python tests, compile checks, and live linkage;
+- backend VPS `nginx -t` -> successful;
+- `/opt/fbrk-admin/scripts/activate_new_fbrk_kz.sh` still exits before changing
+  nginx while `new.fbrk.kz` DNS is absent.
