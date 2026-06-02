@@ -564,6 +564,7 @@ def ssr_article(slug: str, request: Request):
     org_name = site_profile_data.get("name") or "ФБРК"
     org_full = site_profile_data.get("fullName") or "Фонд-бюро расследования коррупции"
     telegram_url = site_profile_data.get("telegram") or "https://t.me/fund_kz_bot"
+    telegram_channel_url = site_profile_data.get("telegramChannel") or "https://t.me/fund_anticorr"
     youtube_url = site_profile_data.get("youtube") or "https://www.youtube.com/@fbrk_news"
     footer_about = site_profile_data.get("footerAbout") or f"Свидетельство СМИ № {site_profile_data.get('registration') or ''}."
 
@@ -707,6 +708,7 @@ def ssr_article(slug: str, request: Request):
         "org_name": org_name,
         "org_full": org_full,
         "telegram_url": telegram_url,
+        "telegram_channel_url": telegram_channel_url,
         "youtube_url": youtube_url,
         "footer_about": footer_about,
         "article_topics": article_taxonomy.get("topics") or [],

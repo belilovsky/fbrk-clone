@@ -800,8 +800,9 @@ function pickRelatedArticlesClient(target, articles, limit = 3) {
         <div class="container">
           <div class="site-footer__top">
             <div class="site-footer__brand-block"><div class="site-footer__brand"><span class="site-footer__brand-name">ФБРК</span></div><p class="site-footer__about">Фонд-бюро расследования коррупции — независимое сетевое издание. Свидетельство СМИ № KZ83VPY00075165 от 21.08.2023.</p></div>
-            <div><div class="site-footer__heading">Разделы</div><ul class="site-footer__list" role="list"><li><a href="/">Главная</a></li><li><a href="/archive.html?cat=investigation">Расследования</a></li><li><a href="/archive.html?cat=news">Новости</a></li><li><a href="/archive.html">Архив</a></li><li><a href="/topics.html">Темы</a></li><li><a href="/regions.html">Регионы</a></li><li><a href="/series.html">Серии</a></li><li><a href="/resonance.html">Резонанс</a></li></ul></div>
-            <div><div class="site-footer__heading">Редакция</div><ul class="site-footer__list" role="list"><li><a href="/about.html">О нас</a></li><li><a href="/contacts.html">Контакты</a></li><li><a href="/editorial-policy.html">Редакционная политика</a></li><li><a href="/privacy.html">Политика конфиденциальности</a></li><li><a href="/feed.xml">RSS-лента</a></li><li><a href="/sitemap.html">Карта сайта</a></li></ul></div>
+            <div><div class="site-footer__heading">Разделы</div><ul class="site-footer__list" role="list"><li><a href="/">Главная</a></li><li><a href="/archive.html?cat=investigation">Расследования</a></li><li><a href="/archive.html?cat=news">Новости</a></li><li><a href="/archive.html">Архив</a></li><li><a href="/topics.html">Темы</a></li><li><a href="/regions.html">Регионы</a></li><li><a href="/series.html">Серии</a></li><li><a href="/resonance.html">Резонанс</a></li><li><a href="/feed.xml">RSS</a></li><li><a href="/sitemap.html">Карта сайта</a></li></ul></div>
+            <div><div class="site-footer__heading">Редакция</div><ul class="site-footer__list" role="list"><li><a href="/about.html">О нас</a></li><li><a href="/contacts.html">Контакты</a></li><li><a href="/editorial-policy.html">Редакционная политика</a></li><li><a href="/privacy.html">Конфиденциальность</a></li></ul></div>
+            <div><div class="site-footer__heading">Соцмедиа</div><ul class="site-footer__list" role="list"><li><a href="https://t.me/fund_anticorr" target="_blank" rel="noopener" data-footer-telegram>Telegram</a></li><li><a href="https://www.youtube.com/@fbrk_news" target="_blank" rel="noopener">YouTube</a></li><li><span class="site-footer__text">TikTok</span></li></ul></div>
           </div>
           <div class="site-footer__bottom"><div class="site-footer__legal"><span>© 2023–2026 ФБРК</span><span aria-hidden="true">·</span><span class="site-footer__version">AV DS 4</span><span aria-hidden="true">·</span><span>Астана, Казахстан</span></div></div>
         </div>
@@ -840,14 +841,12 @@ function applySiteProfile() {
   setText('.site-footer__legal span:last-child', site.city);
 
   setHref('.site-header__btn--social[aria-label="Telegram-бот"]', site.telegram);
-  setHref('.site-footer__list a[href="https://t.me/fund_kz_bot"]', site.telegram);
-  setHref('.site-footer__socials a[aria-label="Telegram"]', site.telegram);
+  setHref('[data-footer-telegram]', site.telegramChannel || 'https://t.me/fund_anticorr');
   setHref('.site-header__mobile-socials a[aria-label="Telegram-бот"]', site.telegram);
   setHref('[data-site-telegram-cta]', site.telegram);
 
   setHref('.site-header__btn--social[aria-label="YouTube"]', site.youtube);
   setHref('.site-footer__list a[href="https://www.youtube.com/@fbrk_news"]', site.youtube);
-  setHref('.site-footer__socials a[aria-label="YouTube"]', site.youtube);
   setHref('.site-header__mobile-socials a[aria-label="YouTube"]', site.youtube);
   setHref('[data-site-youtube-link]', site.youtube);
 

@@ -515,12 +515,10 @@ test('site profile hydrates footer and social links from published data', () => 
   const logoText = { textContent: '' };
   const telegramBtn = { setAttribute(name, value) { this[name] = value; } };
   const footerTelegram = { setAttribute(name, value) { this[name] = value; } };
-  const footerTelegramSocial = { setAttribute(name, value) { this[name] = value; } };
   const mobileTelegram = { setAttribute(name, value) { this[name] = value; } };
   const homepageTelegram = { textContent: '', setAttribute(name, value) { this[name] = value; } };
   const youtubeBtn = { setAttribute(name, value) { this[name] = value; } };
   const footerYoutube = { setAttribute(name, value) { this[name] = value; } };
-  const footerYoutubeSocial = { setAttribute(name, value) { this[name] = value; } };
   const mobileYoutube = { setAttribute(name, value) { this[name] = value; } };
   const homepageYoutube = { setAttribute(name, value) { this[name] = value; } };
 
@@ -534,13 +532,11 @@ test('site profile hydrates footer and social links from published data', () => 
       if (selector === '.site-footer__legal span:last-child') return [footerCity];
       if (selector === '.site-header__logo-text') return [logoText];
       if (selector === '.site-header__btn--social[aria-label="Telegram-бот"]') return [telegramBtn];
-      if (selector === '.site-footer__list a[href="https://t.me/fund_kz_bot"]') return [footerTelegram];
-      if (selector === '.site-footer__socials a[aria-label="Telegram"]') return [footerTelegramSocial];
+      if (selector === '[data-footer-telegram]') return [footerTelegram];
       if (selector === '.site-header__mobile-socials a[aria-label="Telegram-бот"]') return [mobileTelegram];
       if (selector === '[data-site-telegram-cta]') return [homepageTelegram];
       if (selector === '.site-header__btn--social[aria-label="YouTube"]') return [youtubeBtn];
       if (selector === '.site-footer__list a[href="https://www.youtube.com/@fbrk_news"]') return [footerYoutube];
-      if (selector === '.site-footer__socials a[aria-label="YouTube"]') return [footerYoutubeSocial];
       if (selector === '.site-header__mobile-socials a[aria-label="YouTube"]') return [mobileYoutube];
       if (selector === '[data-site-youtube-link]') return [homepageYoutube];
       return [];
@@ -553,6 +549,7 @@ test('site profile hydrates footer and social links from published data', () => 
       footerAbout: 'Обновлённый footer текст',
       city: 'Алматы, Казахстан',
       telegram: 'https://t.me/fbrk_secure',
+      telegramChannel: 'https://t.me/fbrk_public',
       telegramName: '@fbrk_secure',
       youtube: 'https://www.youtube.com/@fbrk_custom',
     },
@@ -564,14 +561,12 @@ test('site profile hydrates footer and social links from published data', () => 
   assert.equal(footerAbout.textContent, 'Обновлённый footer текст');
   assert.equal(footerCity.textContent, 'Алматы, Казахстан');
   assert.equal(telegramBtn.href, 'https://t.me/fbrk_secure');
-  assert.equal(footerTelegram.href, 'https://t.me/fbrk_secure');
-  assert.equal(footerTelegramSocial.href, 'https://t.me/fbrk_secure');
+  assert.equal(footerTelegram.href, 'https://t.me/fbrk_public');
   assert.equal(mobileTelegram.href, 'https://t.me/fbrk_secure');
   assert.equal(homepageTelegram.href, 'https://t.me/fbrk_secure');
   assert.equal(homepageTelegram.textContent, 'Открыть @fbrk_secure →');
   assert.equal(youtubeBtn.href, 'https://www.youtube.com/@fbrk_custom');
   assert.equal(footerYoutube.href, 'https://www.youtube.com/@fbrk_custom');
-  assert.equal(footerYoutubeSocial.href, 'https://www.youtube.com/@fbrk_custom');
   assert.equal(mobileYoutube.href, 'https://www.youtube.com/@fbrk_custom');
   assert.equal(homepageYoutube.href, 'https://www.youtube.com/@fbrk_custom');
 });

@@ -3457,11 +3457,14 @@ button:focus-visible, a:focus-visible { outline-offset: 3px; }
   flex-direction: column;
   gap: 10px;
 }
-.site-footer__list a {
+.site-footer__list a,
+.site-footer__list .site-footer__text {
   color: rgba(255, 255, 255, 0.72);
+  font-size: 0.9375rem;
+}
+.site-footer__list a {
   text-decoration: none;
   transition: color .15s ease;
-  font-size: 0.9375rem;
 }
 .site-footer__list a:hover { color: #fff; }
 .site-footer__bottom {
@@ -3492,26 +3495,6 @@ button:focus-visible, a:focus-visible { outline-offset: 3px; }
   font-weight: 700;
   line-height: 1;
 }
-.site-footer__socials {
-  display: flex;
-  gap: 8px;
-}
-.site-footer__socials a {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  width: 36px;
-  height: 36px;
-  border-radius: 50%;
-  background: rgba(255, 255, 255, 0.08);
-  color: rgba(255, 255, 255, 0.85);
-  transition: background-color .15s ease, color .15s ease;
-}
-.site-footer__socials a:hover {
-  background: #fff;
-  color: #0C115F;
-}
-.site-footer__socials svg { width: 18px; height: 18px; }
 @media (max-width: 880px) {
   .site-footer__top {
     grid-template-columns: 1fr 1fr 1fr;
@@ -3546,7 +3529,8 @@ button:focus-visible, a:focus-visible { outline-offset: 3px; }
   .site-footer__list {
     gap: 6px;
   }
-  .site-footer__list a {
+  .site-footer__list a,
+  .site-footer__list .site-footer__text {
     font-size: 0.875rem;
   }
   .site-footer__bottom {
@@ -3557,11 +3541,6 @@ button:focus-visible, a:focus-visible { outline-offset: 3px; }
   .site-footer__legal {
     gap: 8px;
   }
-  .site-footer__socials a {
-    width: 32px;
-    height: 32px;
-  }
-  .site-footer__socials svg { width: 16px; height: 16px; }
 }
 
 /* Hide legacy header/footer when new ones are present */
