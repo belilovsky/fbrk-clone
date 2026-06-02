@@ -1196,6 +1196,19 @@ function fbrkToast(message, ms = 2400) {
 })();
 
 // ---------- Helper: prefer full cover for hero ----------
+const IMAGE_FALLBACK_URL = '/img/og-default.jpg';
+
+if (!window.__fbrkImageFallback) {
+  window.__fbrkImageFallback = function fbrkImageFallback(imageEl) {
+    if (!imageEl || imageEl.tagName !== 'IMG') return;
+    if (imageEl.dataset.fbrkFallbackApplied === '1') return;
+    imageEl.dataset.fbrkFallbackApplied = '1';
+    const fallback = imageEl.getAttribute('data-fbrk-fallback') || IMAGE_FALLBACK_URL;
+    imageEl.src = fallback;
+    imageEl.removeAttribute('onerror');
+  };
+}
+
 function fullCover(a) {
   const meta = imageMeta(a);
   const image = meta.url;
@@ -1203,7 +1216,27 @@ function fullCover(a) {
   if (image && image.includes('/covers/thumb/')) {
     return image.replace('/covers/thumb/', '/covers/web/');
   }
-  return image;
+  return image || IMAGE_FALLBACK_URL;
+}
+
+function ensureImageUrl(rawUrl) {
+  const normalized = normalizeImageUrl(rawUrl);
+  return normalized || IMAGE_FALLBACK_URL;
+}
+
+function articleImageHtml(src, options = {}) {
+  const value = String(src || '').trim();
+  const alt = escapeHtml(String(options.alt || '').trim() || 'Изображение');
+  const loading = options.loading || 'lazy';
+  const decoding = options.decoding || 'async';
+  const fallback = String(options.fallback || IMAGE_FALLBACK_URL).trim() || IMAGE_FALLBACK_URL;
+  const width = Number.isFinite(options.width) ? ` width="${parseInt(options.width, 10)}"` : '';
+  const height = Number.isFinite(options.height) ? ` height="${parseInt(options.height, 10)}"` : '';
+  const safeSrc = escapeHtml(ensureImageUrl(value));
+  const safeFallback = escapeHtml(fallback);
+  const safeLoading = escapeHtml(loading);
+  const safeDecoding = escapeHtml(decoding);
+  return `<img src="${safeSrc}" alt="${alt}"${width}${height} loading="${safeLoading}" decoding="${safeDecoding}" data-fbrk-fallback="${safeFallback}" onerror="window.__fbrkImageFallback(this)"/>`;
 }
 
 function normalizeImageUrl(rawUrl) {
@@ -1279,7 +1312,13 @@ function cardPreviewDek(a) {
 function cardImageHtml(a, width = 640, height = 360) {
   const url = imageMeta(a).url;
   if (!url) return '';
-  return `<img src="${url}" alt="${escapeHtml(a.title)}" width="${width}" height="${height}" loading="lazy" decoding="async"/>`;
+  return articleImageHtml(url, {
+    alt: a && a.title,
+    width,
+    height,
+    loading: 'lazy',
+    decoding: 'async',
+  });
 }
 
 const HEADING_ACRONYMS = new Set([
@@ -1558,7 +1597,7 @@ function homeFocusCards(all, shownIds, limit = 6) {
 
   leadRoot.innerHTML = `
     <a class="lead__media ${imageKindClass(featured)}" href="${articleHref(featured)}" aria-label="${escapeHtml(featured.title)}">
-      <img src="${fullCover(featured)}" alt="${escapeHtml(featured.title)}" width="1200" height="800" loading="eager"/>
+      ${articleImageHtml(fullCover(featured), {alt: featured && featured.title, width: 1200, height: 800, loading: "eager"})}
     </a>
     <div class="lead__body">
       <div class="lead__eyebrow">Независимое расследовательское издание Казахстана</div>
@@ -1653,7 +1692,7 @@ function homeFocusCards(all, shownIds, limit = 6) {
       const hasImg = !!imageMeta(a).url;
       const thumbCls = hasImg ? 'latest__thumb' : 'latest__thumb latest__thumb--no-image';
       const thumbInner = hasImg
-        ? `<img src="${imageMeta(a).url}" alt="${escapeHtml(a.title)}" width="320" height="180" loading="lazy" decoding="async"/>`
+        ? articleImageHtml(imageMeta(a).url, {alt: a && a.title, width: 320, height: 180})
         : `<span class="latest__thumb-mark">ФБРК</span>`;
       return `
       <li class="latest__item">
@@ -1798,9 +1837,14 @@ function homeFocusCards(all, shownIds, limit = 6) {
     root.innerHTML = videos.slice(0, 9).map((v) => `
       <a class="video-card" href="https://www.youtube.com/watch?v=${v.id}" target="_blank" rel="noopener" data-video-id="${v.id}">
         <div class="video-card__media">
-          <img src="${v.thumb}"
-               onerror="this.onerror=null;this.src='${v.thumb_fallback || 'https://i.ytimg.com/vi/'+v.id+'/hqdefault.jpg'}'"
-               alt="${escapeHtml(v.title)}" width="480" height="270" loading="lazy"/>
+          ${articleImageHtml(v.thumb, {
+            alt: v && v.title,
+            width: 480,
+            height: 270,
+            loading: 'lazy',
+            decoding: 'async',
+            fallback: (v && v.thumb_fallback) || `https://i.ytimg.com/vi/${v.id}/hqdefault.jpg`,
+          })}
           <div class="video-card__play">
             <div class="video-card__play-btn" aria-hidden="true">${playSvg}</div>
           </div>
@@ -1889,7 +1933,7 @@ function homeFocusCards(all, shownIds, limit = 6) {
       if (!videos.length) { root.closest('.section').style.display = 'none'; return; }
       render(videos);
     })
-    .catch((e) => { console.error('[videos] fetch failed', e); root.closest('.section').style.display = 'none'; });
+    .catch(() => { root.closest('.section').style.display = 'none'; });
 })();
 
 // ---------- Article page renderer ----------
@@ -1968,6 +2012,8 @@ function homeFocusCards(all, shownIds, limit = 6) {
   const tldrHtml = renderArticleTldr(a);
   const entitiesHtml = renderArticleEntities(visibleEntities);
   const tagsHtml = renderArticleTags(articleTags(a, visibleEntities.map((e) => e.name)));
+  const sourceUrl = safeArticleUrl(a.source || '');
+  const sourceHost = sourceUrl ? safeSourceHost(a.source || '') : '';
   const relatedPool = fullArticles.length
     ? fullArticles
     : (archive.length ? archive : primary);
@@ -2012,7 +2058,7 @@ function homeFocusCards(all, shownIds, limit = 6) {
         ${editorialHtml}
       </header>
       <div class="article__cover ${imageKindClass(a)}">
-        <img src="${fullCover(a)}" alt="${escapeHtml(a.title)}" width="1440" height="810" loading="eager"/>
+        ${articleImageHtml(fullCover(a), {alt: a && a.title, width: 1440, height: 810, loading: "eager"})}
         ${imageCaptionHtml(a)}
       </div>
       <div class="article__body">
@@ -2029,7 +2075,7 @@ function homeFocusCards(all, shownIds, limit = 6) {
       ${entitiesHtml}
       ${shareHtml}
       ${tagsHtml}
-      ${a.source && !a.source.includes('fbrk.kz') ? `<div class="article__source">Источник: <a href="${a.source}" target="_blank" rel="noopener">${new URL(a.source).hostname}</a></div>` : ''}
+      ${sourceUrl && !String(a.source || '').includes('fbrk.kz') ? `<div class="article__source">Источник: <a href="${sourceUrl}" target="_blank" rel="noopener">${sourceHost}</a></div>` : ''}
 
       <div class="ad-block ad-block--article" data-ad-slot="article-bottom"></div>
       ${relatedHtml}
@@ -2069,6 +2115,17 @@ function safeArticleUrl(raw) {
   return '';
 }
 
+function safeSourceHost(rawSource) {
+  const source = String(rawSource || '').trim();
+  if (!source) return '';
+  try {
+    const url = new URL(source, location.origin);
+    return escapeHtml(url.hostname.replace(/^www\./i, ''));
+  } catch (_) {
+    return escapeHtml(source);
+  }
+}
+
 function sanitizeArticleInlineHtml(raw) {
   const template = document.createElement('template');
   template.innerHTML = String(raw || '');
@@ -2090,7 +2147,7 @@ function sanitizeArticleInlineHtml(raw) {
       const src = safeArticleUrl(node.getAttribute('src'));
       if (!src) return '';
       const alt = escapeHtml(node.getAttribute('alt') || '');
-      return `<img src="${escapeHtml(src)}" alt="${alt}" loading="lazy" decoding="async">`;
+      return articleImageHtml(src, { alt: node.getAttribute('alt') || '', loading: 'lazy', decoding: 'async' });
     }
     return children;
   }

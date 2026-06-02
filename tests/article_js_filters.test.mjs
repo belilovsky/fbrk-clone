@@ -208,6 +208,29 @@ test('image meta normalizes local upload paths on article routes', () => {
   );
 });
 
+test('image fallback keeps fallback url attribute intact after first error', () => {
+  let removedAttr = '';
+  const imageEl = {
+    tagName: 'IMG',
+    dataset: {},
+    src: '/broken.webp',
+    getAttribute(name) {
+      if (name === 'data-fbrk-fallback') return '/img/og-default.jpg';
+      return '';
+    },
+    removeAttribute(name) {
+      removedAttr = name;
+    },
+  };
+
+  context.window.__fbrkImageFallback(imageEl);
+
+  assert.equal(imageEl.src, '/img/og-default.jpg');
+  assert.equal(imageEl.dataset.fbrkFallbackApplied, '1');
+  assert.equal(imageEl.dataset.fbrkFallback, undefined);
+  assert.equal(removedAttr, 'onerror');
+});
+
 test('homepage focus cards keep investigations honest and fallback to latest when needed', () => {
   const shownIds = new Set(['featured']);
   const investigationFocus = context.homeFocusCards([
