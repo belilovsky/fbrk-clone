@@ -241,6 +241,45 @@ def html_to_editorjs(html_text: str | Tag) -> dict:
 
 # ─── article page parser ───────────────────────────────────────────────────────
 ARTICLE_RE = re.compile(r"^/(news|articles)/[^/]+/?$")
+GENERIC_SITE_IMAGE_RE = re.compile(r"/sites/default/files/fbrk\.jpg(?:$|\?)", re.I)
+
+
+def _is_generic_site_image(url: str) -> bool:
+    return bool(GENERIC_SITE_IMAGE_RE.search(str(url or "").strip()))
+
+
+def _extract_article_cover_image(soup: BeautifulSoup) -> str:
+    article = soup.find("article", class_=re.compile(r"node--type-"))
+    candidates: list[str] = []
+
+    if article:
+        field_item = article.find("div", class_=re.compile(r"field--name-field-image"))
+        if field_item:
+            for img in field_item.find_all("img"):
+                src = str(img.get("src") or "").strip()
+                if src:
+                    candidates.append(urljoin(BASE, src))
+        for img in article.find_all("img"):
+            src = str(img.get("src") or "").strip()
+            if src:
+                candidates.append(urljoin(BASE, src))
+
+    og = soup.find("meta", attrs={"property": "og:image"})
+    if og and og.get("content"):
+        candidates.append(str(og["content"]).strip())
+    tw = soup.find("meta", attrs={"name": "twitter:image"})
+    if tw and tw.get("content"):
+        candidates.append(str(tw["content"]).strip())
+
+    for url in candidates:
+        if not url or _is_generic_site_image(url):
+            continue
+        return url
+
+    for url in candidates:
+        if url:
+            return url
+    return ""
 
 
 def parse_article(url: str) -> Optional[dict]:
@@ -269,14 +308,7 @@ def parse_article(url: str) -> Optional[dict]:
         iso = datetime.now(timezone.utc).strftime("%Y-%m-%d")
 
     # ─ image
-    image = ""
-    img_tag = soup.find("img", attrs={"src": re.compile(r"/sites/default/files/")})
-    if img_tag and img_tag.get("src"):
-        image = urljoin(BASE, img_tag["src"])
-    if not image:
-        og = soup.find("meta", attrs={"property": "og:image"})
-        if og and og.get("content"):
-            image = og["content"]
+    image = _extract_article_cover_image(soup)
 
     # ─ body field
     body_div = soup.find("div", class_=re.compile(r"field--name-body"))

@@ -10,7 +10,7 @@ ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT / "admin"))
 
 from app.image_migration import MigratedImage, normalize_fbrk_source_image_url, rewrite_article_images
-from scripts.migrate_fbrk_images import fetch_candidate_rows, requestable_url
+from scripts.migrate_fbrk_images import fetch_candidate_rows, requestable_url, validate_downloaded_image
 
 
 def test_normalize_fbrk_source_image_url_strips_drupal_style_wrapper() -> None:
@@ -103,3 +103,16 @@ def test_fetch_candidate_rows_applies_slug_filter_to_entire_external_image_claus
     rows = fetch_candidate_rows(conn, "wanted", limit=0)
 
     assert [row["slug"] for row in rows] == ["wanted"]
+
+
+def test_validate_downloaded_image_prefers_detected_mime_when_source_suffix_lies() -> None:
+    raw = b"RIFF1234WEBPVP8 " + b"\x00" * 16
+
+    validation = validate_downloaded_image(
+        raw,
+        "https://fbrk.kz/sites/default/files/2025-10/example.jpeg",
+        "image/jpeg",
+    )
+
+    assert validation.ok is True
+    assert validation.detected_mime == "image/webp"

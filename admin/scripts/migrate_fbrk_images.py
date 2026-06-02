@@ -17,7 +17,7 @@ from urllib.request import Request, build_opener
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
 from app.admin_platform.audit import record_audit
-from app.admin_platform.uploads import ALLOWED_IMAGE_MIME, store_optimized_image, validate_image_upload
+from app.admin_platform.uploads import ALLOWED_IMAGE_MIME, detect_image_mime, store_optimized_image, validate_image_upload
 from app.config import settings
 from app.image_migration import (
     MigratedImage,
@@ -153,6 +153,20 @@ def guess_content_type(url: str, declared: str | None) -> str:
     return "image/jpeg"
 
 
+def validate_downloaded_image(raw: bytes, url: str, declared: str | None):
+    guessed = guess_content_type(url, declared)
+    validation = validate_image_upload(raw, content_type=guessed)
+    if validation.ok:
+        return validation
+
+    detected = detect_image_mime(raw)
+    if detected and detected in ALLOWED_IMAGE_MIME and detected != guessed:
+        retry = validate_image_upload(raw, content_type=detected)
+        if retry.ok:
+            return retry
+    return validation
+
+
 def requestable_url(url: str) -> str:
     parts = urlsplit(url)
     path = quote(parts.path or "", safe="/%:@+~,.-")
@@ -177,8 +191,8 @@ def migrate_source_image(
     request = Request(requestable_url(source_url), headers={"User-Agent": UA})
     with opener.open(request, timeout=45) as response:
         raw = response.read()
-        declared = guess_content_type(source_url, response.headers.get("content-type"))
-    validation = validate_image_upload(raw, content_type=declared)
+        declared = response.headers.get("content-type")
+    validation = validate_downloaded_image(raw, source_url, declared)
     if not validation.ok:
         raise RuntimeError(validation.error)
 
