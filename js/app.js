@@ -1443,79 +1443,6 @@ function liveBadgeHtml(a) {
   return '<span class="live-badge" aria-label="Свежая публикация сегодня по времени Алматы"><span class="live-badge__dot" aria-hidden="true"></span>СЕГОДНЯ</span>';
 }
 
-function renderHomeShortcuts(all) {
-  const root = document.querySelector('[data-home-shortcuts]');
-  if (!root) return;
-
-  const site = currentSiteMeta();
-  const telegramUrl = site.telegram || 'https://t.me/fund_kz_bot';
-
-  const shortcuts = [
-    {
-      title: 'Расследования',
-      href: '/archive.html?cat=investigation',
-      meta: '',
-      desc: 'Длинные сюжеты редакции.',
-    },
-    {
-      title: 'Резонанс',
-      href: '/resonance.html',
-      meta: '',
-      desc: 'Важные материалы редакции.',
-    },
-    {
-      title: 'Темы',
-      href: '/topics.html',
-      meta: '',
-      desc: 'Коррупция, бюджет, суды.',
-    },
-    {
-      title: 'Регионы',
-      href: '/regions.html',
-      meta: '',
-      desc: 'Материалы по городам и областям.',
-    },
-    {
-      title: 'Серии',
-      href: '/series.html',
-      meta: '',
-      desc: 'Сюжеты в развитии.',
-    },
-    {
-      title: 'Архив',
-      href: '/archive.html',
-      meta: '',
-      desc: 'Все публикации.',
-    },
-    {
-      title: 'Редполитика',
-      href: '/editorial-policy.html',
-      meta: '',
-      desc: 'Как работает редакция.',
-    },
-    {
-      title: 'Анонимно',
-      href: telegramUrl,
-      meta: '',
-      desc: 'Безопасный контакт с редакцией.',
-      external: true,
-      accent: true,
-    },
-  ];
-
-  root.innerHTML = shortcuts.map((item) => `
-    <a
-      class="quick-link${item.accent ? ' quick-link--accent' : ''}"
-      href="${item.href}"
-      ${item.external ? 'target="_blank" rel="noopener"' : ''}
-    >
-      ${item.meta ? `<span class="quick-link__meta">${escapeHtml(item.meta)}</span>` : ''}
-      <span class="quick-link__title">${escapeHtml(item.title)}</span>
-      <span class="quick-link__desc">${escapeHtml(item.desc)}</span>
-    </a>
-  `).join('');
-}
-
 function homeFocusCards(all, shownIds, limit = 6) {
   const hidden = shownIds instanceof Set ? shownIds : new Set(shownIds || []);
   const investigations = all
@@ -1587,13 +1514,13 @@ function homeFocusCards(all, shownIds, limit = 6) {
       ${articleImageHtml(fullCover(featured), {alt: featured && featured.title, width: 1200, height: 800, loading: "eager"})}
     </a>
     <div class="lead__body">
-      <div class="lead__eyebrow">Независимое расследовательское издание Казахстана</div>
-      <div class="kicker">${featured.categoryLabel}</div>
       <h1 class="lead__title">
         <a href="${articleHref(featured)}">${escapeHtml(featured.title)}</a>
       </h1>
       <p class="lead__dek">${escapeHtml(articleHeroDek(featured, []))}</p>
       <div class="lead__meta">
+        <span class="lead__meta-label">${escapeHtml(featured.categoryLabel || 'Материал')}</span>
+        <span class="lead__meta__dot" aria-hidden="true"></span>
         <span>${fmtDateLong(featured.dateIso) || featured.date}</span>
       </div>
       <div class="lead__actions">
@@ -1602,24 +1529,17 @@ function homeFocusCards(all, shownIds, limit = 6) {
       </div>
     </div>
   `;
-  renderHomeShortcuts(all);
 
   // Investigations grid — keep this block editorially honest:
   // only investigation-tagged materials should appear here.
   const invRoot = document.querySelector('[data-investigations]');
   if (invRoot) {
     const invSection = document.querySelector('#investigations');
-    const focusEyebrow = document.querySelector('[data-home-focus-eyebrow]');
     const focusTitle = document.querySelector('[data-home-focus-title]');
-    const focusDescription = document.querySelector('[data-home-focus-description]');
     const focusLink = document.querySelector('[data-home-focus-link]');
     const focus = homeFocusCards(all, shownIds, 6);
     if (focus.mode !== 'investigation') {
-      if (focusEyebrow) focusEyebrow.textContent = 'Текущий фокус';
       if (focusTitle) focusTitle.textContent = 'Главное сейчас';
-      if (focusDescription) {
-        focusDescription.textContent = 'Ключевые свежие материалы дня.';
-      }
       if (focusLink) {
         focusLink.setAttribute('href', '/archive.html');
         focusLink.textContent = 'Весь архив →';
@@ -1628,11 +1548,7 @@ function homeFocusCards(all, shownIds, limit = 6) {
       invRoot.innerHTML = focus.items.map((a) => renderHomeStoryCard(a)).join('');
       focus.items.forEach((a) => shownIds.add(a.id));
     } else {
-      if (focusEyebrow) focusEyebrow.textContent = 'Редакционный фокус';
       if (focusTitle) focusTitle.textContent = 'Расследования';
-      if (focusDescription) {
-        focusDescription.textContent = 'Материалы с документами и длинным контекстом.';
-      }
       if (focusLink) {
         focusLink.setAttribute('href', '/archive.html?cat=investigation');
         focusLink.textContent = 'Все расследования →';

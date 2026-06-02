@@ -216,6 +216,18 @@ def test_home_shell_exposes_editorial_homepage_sections() -> None:
     assert 'data-home-block-title="regions"' in html
 
 
+def test_home_shell_uses_single_level_section_headings() -> None:
+    html = (ROOT / "index.html").read_text(encoding="utf-8")
+    js = (ROOT / "js" / "app.js").read_text(encoding="utf-8")
+
+    assert 'section--quick-links' not in html
+    assert 'data-home-shortcuts' not in html
+    assert 'section__eyebrow' not in html
+    assert 'section__description' not in html
+    assert 'lead__eyebrow' not in js
+    assert 'renderHomeShortcuts(' not in js
+
+
 def test_archive_and_search_shells_expose_polish_hooks() -> None:
     archive_html = (ROOT / "archive.html").read_text(encoding="utf-8")
     search_html = (ROOT / "search.html").read_text(encoding="utf-8")

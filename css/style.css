@@ -279,10 +279,6 @@ input {
   font-weight: 600;
   letter-spacing: 0;
 }
-.section__description {
-  color: var(--color-text-muted);
-  max-width: 64ch;
-}
 .section__link {
   font-size: var(--text-sm);
   font-weight: 500;
@@ -596,13 +592,6 @@ input {
   gap: var(--space-5);
   align-self: center;
 }
-.lead__eyebrow {
-  font-size: var(--text-xs);
-  font-weight: 700;
-  letter-spacing: 0.06em;
-  text-transform: uppercase;
-  color: var(--color-text-muted);
-}
 .lead__title {
   font-family: var(--font-display);
   font-size: clamp(1.5rem, 1.1rem + 1.1vw, 1.875rem);
@@ -630,6 +619,10 @@ input {
   letter-spacing: 0;
   font-weight: 500;
 }
+.lead__meta-label {
+  color: var(--color-primary);
+  font-weight: 600;
+}
 .lead__meta__dot::before {
   content: '·';
   margin-inline: var(--space-2);
@@ -651,55 +644,6 @@ input {
   max-width: 56ch;
 }
 
-/* ---------- Homepage shortcuts ---------- */
-.section--quick-links {
-  padding-top: 0;
-}
-.quick-links {
-  display: grid;
-  grid-template-columns: repeat(4, minmax(0, 1fr));
-  gap: var(--space-4);
-}
-.quick-link {
-  display: grid;
-  gap: var(--space-2);
-  min-height: 168px;
-  padding: var(--space-5);
-  border: 1px solid var(--color-divider);
-  border-radius: var(--radius-md);
-  background: var(--color-surface);
-  box-shadow: var(--shadow-sm);
-}
-.quick-link:hover {
-  border-color: color-mix(in oklab, var(--color-primary) 24%, var(--color-divider));
-  box-shadow: var(--shadow-md);
-  transform: translateY(-1px);
-}
-.quick-link--accent {
-  background: color-mix(in oklab, var(--color-primary) 10%, var(--color-surface));
-  border-color: color-mix(in oklab, var(--color-primary) 18%, var(--color-divider));
-}
-.quick-link__meta {
-  font-size: var(--text-xs);
-  font-weight: 700;
-  letter-spacing: 0.06em;
-  text-transform: uppercase;
-  color: var(--color-text-muted);
-}
-.quick-link__title {
-  font-family: var(--font-display);
-  font-size: var(--text-lg);
-  font-weight: 600;
-  line-height: 1.25;
-  color: var(--color-text);
-}
-.quick-link__desc {
-  font-size: var(--text-sm);
-  line-height: 1.5;
-  color: var(--color-text-muted);
-  max-width: 30ch;
-}
-
 /* ---------- Card grid (investigations) ---------- */
 .card-grid {
   display: grid;
@@ -707,9 +651,6 @@ input {
   gap: var(--space-8) var(--space-6);
 }
 @media (max-width: 960px) {
-  .quick-links {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-  }
   .card-grid {
     grid-template-columns: repeat(2, 1fr);
   }
@@ -885,19 +826,11 @@ input {
   color: #ffffff;
   border: 1px solid var(--color-border);
 }
-[data-theme='dark'] .quick-link--accent {
-  background: color-mix(in oklab, var(--color-primary) 12%, var(--color-surface));
-  border-color: color-mix(in oklab, var(--color-primary) 18%, var(--color-border));
-}
 @media (prefers-color-scheme: dark) {
   :root:not([data-theme]) .widget--brand {
     background: #05071f;
     color: #ffffff;
     border: 1px solid var(--color-border);
-  }
-  :root:not([data-theme]) .quick-link--accent {
-    background: color-mix(in oklab, var(--color-primary) 12%, var(--color-surface));
-    border-color: color-mix(in oklab, var(--color-primary) 18%, var(--color-border));
   }
 }
 .widget--brand .widget__label {
@@ -1269,9 +1202,6 @@ input {
   max-width: var(--content-narrow);
   margin-bottom: var(--space-16);
 }
-.about__eyebrow {
-  margin-bottom: var(--space-4);
-}
 .about__title {
   font-family: var(--font-display);
   font-size: var(--text-3xl);
@@ -1636,9 +1566,6 @@ input {
   .lead__body {
     gap: var(--space-3);
   }
-  .lead__eyebrow {
-    font-size: 0.6875rem;
-  }
   .lead__title {
     font-size: clamp(1.35rem, 4vw + 0.4rem, 1.7rem);
     line-height: 1.2;
@@ -1672,25 +1599,6 @@ input {
   }
   .section__title {
     font-size: 1.125rem;
-  }
-  .quick-links {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-    gap: var(--space-2);
-  }
-  .quick-link {
-    min-height: 0;
-    gap: var(--space-1);
-    padding: var(--space-3);
-  }
-  .quick-link__meta {
-    font-size: 0.6875rem;
-  }
-  .quick-link__title {
-    font-size: 0.9375rem;
-  }
-  .quick-link__desc {
-    font-size: 0.8125rem;
-    line-height: 1.4;
   }
 
   /* Cards — fuller media on mobile (extra row gap so dek doesn't kiss next card) */
@@ -1858,14 +1766,14 @@ input {
   border-width: 0;
 }
 
-/* ---------- Video showcase ---------- */
-.section__eyebrow {
-  font-size: 0.72rem;
-  letter-spacing: 0.08em;
-  text-transform: uppercase;
-  color: var(--color-primary);
-  font-weight: 600;
-  margin-bottom: 0.25rem;
+/* ---------- Compact heading cleanup ---------- */
+.about__eyebrow,
+.kicker.about__eyebrow,
+.archive__head .kicker,
+.archive__description,
+.content-page__eyebrow,
+.kicker.content-page__eyebrow {
+  display: none;
 }
 
 .video-grid {
@@ -2198,13 +2106,6 @@ input {
   letter-spacing: 0;
   margin: 0;
 }
-.archive__description {
-  margin: 0;
-  color: var(--color-text-muted);
-  font-size: var(--text-base);
-  line-height: 1.6;
-  max-width: 62ch;
-}
 .archive__count {
   margin: 0;
   color: var(--color-text-muted);
@@ -2508,9 +2409,6 @@ input {
 .content-page__head {
   max-width: var(--content-narrow);
   margin-bottom: var(--space-10);
-}
-.content-page__eyebrow {
-  margin-bottom: var(--space-4);
 }
 .content-page__title {
   font-size: var(--text-3xl);
