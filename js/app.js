@@ -1577,6 +1577,7 @@ function homeFocusCards(all, shownIds, limit = 6) {
       <li class="latest__item">
         <a class="${thumbCls} ${imageKindClass(a)}" href="${articleHref(a)}" aria-label="${escapeHtml(a.title)}">
           ${thumbInner}
+          <span class="card__date-badge">${fmtDateShort(a.dateIso) || a.date}</span>
           ${importanceBadgeHtml(a)}
         </a>
         <div>

@@ -710,6 +710,9 @@ input {
   font-size: 10px;
   line-height: 1.15;
 }
+.latest__thumb .card__date-badge {
+  display: none;
+}
 .card__title,
 .card a .card__title,
 .card a:visited .card__title {
@@ -756,13 +759,13 @@ input {
 .latest__list {
   display: flex;
   flex-direction: column;
-  gap: var(--space-4);
+  gap: var(--space-3);
 }
 .latest__item {
   display: grid;
   grid-template-columns: 200px 1fr;
-  gap: var(--space-6);
-  padding-block: var(--space-8);
+  gap: var(--space-5);
+  padding-block: var(--space-5);
   align-items: start;
 }
 .latest__item:first-child {
@@ -771,13 +774,13 @@ input {
 @media (max-width: 760px) {
   .latest__item {
     grid-template-columns: 120px 1fr;
-    gap: var(--space-4);
-    padding-block: var(--space-6);
+    gap: var(--space-3);
+    padding-block: var(--space-3);
   }
 }
 @media (max-width: 420px) {
   .latest__item {
-    grid-template-columns: 96px 1fr;
+    grid-template-columns: 104px 1fr;
   }
 }
 .latest__thumb {
@@ -798,7 +801,7 @@ input {
   font-weight: 600;
   line-height: 1.35;
   color: var(--color-text);
-  margin-block: var(--space-2) var(--space-2);
+  margin-block: 0 var(--space-1);
 }
 .latest__title a:hover {
   color: var(--color-primary);
@@ -1521,17 +1524,25 @@ input {
   }
 
   .section__header {
-    flex-wrap: wrap;
-    align-items: flex-start;
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto;
+    align-items: baseline;
     gap: var(--space-2) var(--space-4);
   }
   .section__header > * {
     min-width: 0;
   }
+  .section__header--stacked {
+    align-items: baseline;
+  }
+  .section__copy {
+    max-width: none;
+  }
   .section__link {
-    flex-basis: 100%;
-    display: flex;
+    display: inline-flex;
     justify-content: flex-end;
+    align-self: baseline;
+    white-space: nowrap;
   }
 
   /* Topstrip: hide date, keep essentials */
@@ -1655,7 +1666,8 @@ input {
     margin-bottom: var(--space-5);
   }
   .section__title {
-    font-size: 1.125rem;
+    font-size: 1.0625rem;
+    line-height: 1.15;
   }
 
   /* Cards — fuller media on mobile (extra row gap so dek doesn't kiss next card) */
@@ -1675,12 +1687,18 @@ input {
   .latest__item {
     grid-template-columns: 120px 1fr;
     gap: var(--space-3);
-    padding-block: var(--space-4);
+    padding-block: var(--space-2);
   }
   .latest__title {
     font-size: 0.9375rem;
     line-height: 1.3;
-    margin-block: var(--space-1) var(--space-2);
+    margin-block: 0;
+  }
+  .latest__thumb .card__date-badge {
+    display: inline-flex;
+  }
+  .latest__meta {
+    display: none;
   }
 
   /* Sidebar — unstick on mobile */
