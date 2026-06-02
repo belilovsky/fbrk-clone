@@ -1206,11 +1206,27 @@ function fullCover(a) {
   return image;
 }
 
+function normalizeImageUrl(rawUrl) {
+  const url = String(rawUrl || '').trim();
+  if (!url) return '';
+  if (
+    url.startsWith('/') ||
+    url.startsWith('http://') ||
+    url.startsWith('https://') ||
+    url.startsWith('//') ||
+    url.startsWith('data:')
+  ) {
+    return url;
+  }
+  if (url.startsWith('img/')) return `/${url}`;
+  return url;
+}
+
 function imageMeta(a) {
   const image = a && a.image;
   const meta = image && typeof image === 'object' ? image : {};
   const rawUrl = typeof image === 'string' ? image : (meta.url || meta.src || '');
-  const url = String(rawUrl || '');
+  const url = normalizeImageUrl(rawUrl);
   let kind = String(a?.imageKind || meta.kind || '').toLowerCase();
   if (!kind) {
     if (/chatgpt|dall|midjourney|ai[-_%20]?image/i.test(url)) kind = 'ai';

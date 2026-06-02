@@ -197,6 +197,17 @@ test('article renderer keeps summary, mentions, and share below the body', () =>
   assert.ok(shareIdx > entitiesIdx);
 });
 
+test('image meta normalizes local upload paths on article routes', () => {
+  assert.equal(
+    context.imageMeta({ image: 'img/uploads/thumb/example.webp' }).url,
+    '/img/uploads/thumb/example.webp',
+  );
+  assert.equal(
+    context.imageMeta({ image: '/img/uploads/thumb/example.webp' }).url,
+    '/img/uploads/thumb/example.webp',
+  );
+});
+
 test('homepage focus cards keep investigations honest and fallback to latest when needed', () => {
   const shownIds = new Set(['featured']);
   const investigationFocus = context.homeFocusCards([

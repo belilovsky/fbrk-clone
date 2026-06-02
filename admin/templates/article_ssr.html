@@ -79,9 +79,9 @@ __╱╲╲╲╲╲╲╲╲╲╲╲╲╲╲╲__╱╲╲╲╲╲╲╲╲�
     <link rel="icon" type="image/png" sizes="192x192" href="/img/brand/favicon-192.png" />
     <link rel="apple-touch-icon" href="/img/brand/apple-touch-icon.png" />
     <link rel="icon" type="image/svg+xml" href="/img/brand/logo.svg" />
-    <link rel="stylesheet" href="/fonts/avds/avds-fonts.css?v=20260601191835" />
-    <link rel="stylesheet" href="/css/av-ds/tokens.css?v=20260601191835" />
-    <link rel="stylesheet" href="/css/style.css?v=20260601191835" />
+    <link rel="stylesheet" href="/fonts/avds/avds-fonts.css?v=20260602070319" />
+    <link rel="stylesheet" href="/css/av-ds/tokens.css?v=20260602070319" />
+    <link rel="stylesheet" href="/css/style.css?v=20260602070319" />
     <link rel="alternate" type="application/rss+xml" title="{{ org_name }} — RSS" href="/feed.xml" />
 
     <!-- Schema.org NewsArticle -->
@@ -247,7 +247,8 @@ __╱╲╲╲╲╲╲╲╲╲╲╲╲╲╲╲__╱╲╲╲╲╲╲╲╲�
             <article class="card{% if not ra.image %} card--no-image{% endif %}">
               <a href="/a/{{ ra.slug|urlencode }}">
                 <div class="card__media">
-                  {% if ra.image %}<img src="{{ ra.image }}" alt="{{ ra.title|e }}" width="640" height="360" loading="lazy" decoding="async"/>{% endif %}
+                  {% set related_image = ra.image if not ra.image or ra.image.startswith('/') or '://' in ra.image else '/' ~ ra.image %}
+                  {% if ra.image %}<img src="{{ related_image }}" alt="{{ ra.title|e }}" width="640" height="360" loading="lazy" decoding="async"/>{% endif %}
                   <span class="card__date-badge">{{ ra.date_label }}</span>
                 </div>
                 <h3 class="card__title">{{ ra.title|e }}</h3>
@@ -332,7 +333,7 @@ __╱╲╲╲╲╲╲╲╲╲╲╲╲╲╲╲__╱╲╲╲╲╲╲╲╲�
       </div>
     </footer>
 
-    <script src="/js/app.js?v=20260601191835"></script>
+    <script src="/js/app.js?v=20260602070319"></script>
 
     <!-- Organization + WebSite JSON-LD (global) -->
     <script type="application/ld+json">

@@ -222,6 +222,13 @@ def test_ssr_article_keeps_summary_and_share_below_body() -> None:
     assert body_idx < tldr_idx < mentions_idx < share_idx
 
 
+def test_ssr_article_related_images_are_root_relative() -> None:
+    html = (ROOT / "admin" / "templates" / "article_ssr.html").read_text(encoding="utf-8")
+
+    assert 'src="{{ related_image }}"' in html
+    assert 'src="{{ ra.image }}"' not in html
+
+
 def test_public_shell_sync_script_has_no_drift() -> None:
     subprocess.run(
         ["python3", "admin/scripts/sync_public_shell.py", "--check"],
