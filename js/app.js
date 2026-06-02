@@ -220,7 +220,7 @@ const EDITORIAL_LABELS = [
 const RESONANCE_META = {
   slug: 'resonance',
   title: 'Резонанс',
-  description: 'Материалы с повышенной редакционной значимостью: важные расследования, громкие дела и заметные последствия.',
+  description: 'Важные материалы редакции.',
   url: '/resonance.html',
 };
 
@@ -235,21 +235,21 @@ const EDITORIAL_HUB_PAGE_DEFAULTS = {
   regions: {
     eyebrow: 'География',
     title: 'Регионы',
-    description: 'Региональные хабы ФБРК: города и области, через которые удобнее смотреть расследования, новости и локальные сюжеты.',
+    description: 'Материалы по городам и областям.',
     seo_title: 'Регионы',
     seo_description: 'Региональные хабы ФБРК: Астана, Алматы, Шымкент и ключевые области Казахстана.',
   },
   series: {
     eyebrow: 'Редакционный формат',
     title: 'Серии',
-    description: 'Повторяющиеся циклы ФБРК, в которых материалы складываются в длинную линию, а не теряются по одному в архиве.',
+    description: 'Редакционные сюжеты в развитии.',
     seo_title: 'Серии',
     seo_description: 'Редакционные серии ФБРК: длительные расследовательские и дата-циклы, собранные в понятные линии.',
   },
   resonance: {
     eyebrow: 'Подборка',
     title: 'Резонанс',
-    description: 'Материалы с повышенной редакционной значимостью: важные расследования, громкие дела и заметные последствия.',
+    description: 'Важные материалы редакции.',
     seo_title: 'Резонанс',
     seo_description: 'Подборка материалов ФБРК с повышенной редакционной значимостью.',
   },
@@ -259,14 +259,14 @@ const HOMEPAGE_BLOCK_DEFAULTS = {
   resonance: {
     eyebrow: 'Выбор редакции',
     title: 'Резонанс',
-    description: 'Материалы с повышенной редакционной значимостью, которые стоит открыть в первую очередь.',
+    description: 'Что открыть в первую очередь.',
     link_label: 'Вся подборка',
     url: '/resonance.html',
   },
   regions: {
     eyebrow: 'География',
     title: 'По регионам',
-    description: 'Быстрый вход в архив по ключевым городам и областям, где ФБРК ведёт длинные линии и локальные сюжеты.',
+    description: 'Материалы по городам и областям.',
     link_label: 'Все регионы',
     url: '/regions.html',
   },
@@ -1447,13 +1447,6 @@ function renderHomeShortcuts(all) {
   const root = document.querySelector('[data-home-shortcuts]');
   if (!root) return;
 
-  const formatter = new Intl.NumberFormat('ru-KZ');
-  const totalCount = Array.isArray(all) ? all.length : 0;
-  const investigationCount = all.filter((article) => article.category === 'investigation').length;
-  const resonanceCount = all.filter((article) => isResonanceArticle(article)).length;
-  const topicItems = editorialCatalogValue('topics');
-  const regionItems = editorialCatalogValue('regions');
-  const seriesItems = editorialCatalogValue('series');
   const site = currentSiteMeta();
   const telegramUrl = site.telegram || 'https://t.me/fund_kz_bot';
 
@@ -1461,56 +1454,50 @@ function renderHomeShortcuts(all) {
     {
       title: 'Расследования',
       href: '/archive.html?cat=investigation',
-      meta: investigationCount > 0 ? `${formatter.format(investigationCount)} материалов` : 'Редакционный раздел',
-      desc: investigationCount > 0
-        ? 'Главные расследовательские публикации и длинные линии.'
-        : 'Переход в расследовательский срез архива и длинные редакционные сюжеты.',
+      meta: '',
+      desc: 'Длинные сюжеты редакции.',
     },
     {
       title: 'Резонанс',
       href: '/resonance.html',
-      meta: `${formatter.format(resonanceCount)} важных материалов`,
-      desc: 'Самые значимые сюжеты, которые редакция выделяет отдельно.',
+      meta: '',
+      desc: 'Важные материалы редакции.',
     },
     {
       title: 'Темы',
       href: '/topics.html',
-      meta: `${formatter.format(Array.isArray(topicItems) ? topicItems.length : 0)} направлений`,
-      desc: 'Коррупция, земля, активы, госзакупки, суды и экология.',
+      meta: '',
+      desc: 'Коррупция, бюджет, суды.',
     },
     {
       title: 'Регионы',
       href: '/regions.html',
-      meta: `${formatter.format(Array.isArray(regionItems) ? regionItems.length : 0)} регионов`,
-      desc: 'Локальные сюжеты и быстрый вход в материалы по городам и областям.',
+      meta: '',
+      desc: 'Материалы по городам и областям.',
     },
     {
       title: 'Серии',
       href: '/series.html',
-      meta: Array.isArray(seriesItems) && seriesItems.length
-        ? `${formatter.format(seriesItems.length)} редакционных линий`
-        : 'Навигационный хаб',
-      desc: Array.isArray(seriesItems) && seriesItems.length
-        ? 'Сюжеты, за которыми удобно следить в развитии.'
-        : 'Страница для длинных сюжетов и серий, которые редакция собирает по линиям.',
+      meta: '',
+      desc: 'Сюжеты в развитии.',
     },
     {
       title: 'Архив',
       href: '/archive.html',
-      meta: `${formatter.format(totalCount)} публикаций`,
-      desc: 'Полная база материалов с фильтрами и поиском.',
+      meta: '',
+      desc: 'Все публикации.',
     },
     {
       title: 'Редполитика',
       href: '/editorial-policy.html',
-      meta: 'Как мы работаем',
-      desc: 'Проверка фактов, источники, право на ответ и стандарты редакции.',
+      meta: '',
+      desc: 'Как работает редакция.',
     },
     {
       title: 'Анонимно',
       href: telegramUrl,
-      meta: 'Безопасный канал',
-      desc: 'Передать сигнал редакции через Telegram-бот.',
+      meta: '',
+      desc: 'Безопасный контакт с редакцией.',
       external: true,
       accent: true,
     },
@@ -1522,7 +1509,7 @@ function renderHomeShortcuts(all) {
       href="${item.href}"
       ${item.external ? 'target="_blank" rel="noopener"' : ''}
     >
-      <span class="quick-link__meta">${escapeHtml(item.meta)}</span>
+      ${item.meta ? `<span class="quick-link__meta">${escapeHtml(item.meta)}</span>` : ''}
       <span class="quick-link__title">${escapeHtml(item.title)}</span>
       <span class="quick-link__desc">${escapeHtml(item.desc)}</span>
     </a>
@@ -1613,7 +1600,6 @@ function homeFocusCards(all, shownIds, limit = 6) {
         <a class="btn btn--primary lead__cta" href="${articleHref(featured)}">Читать материал</a>
         <a class="btn btn--secondary lead__cta" href="${telegramUrl}" target="_blank" rel="noopener">Сообщить анонимно</a>
       </div>
-      <p class="lead__trust">Расследования, регионы, редакционные серии и безопасный канал для источников.</p>
     </div>
   `;
   renderHomeShortcuts(all);
@@ -1632,7 +1618,7 @@ function homeFocusCards(all, shownIds, limit = 6) {
       if (focusEyebrow) focusEyebrow.textContent = 'Текущий фокус';
       if (focusTitle) focusTitle.textContent = 'Главное сейчас';
       if (focusDescription) {
-        focusDescription.textContent = 'Ключевые свежие материалы, которые формируют повестку прямо сейчас, пока отдельная расследовательская линия пополняется.';
+        focusDescription.textContent = 'Ключевые свежие материалы дня.';
       }
       if (focusLink) {
         focusLink.setAttribute('href', '/archive.html');
@@ -1645,7 +1631,7 @@ function homeFocusCards(all, shownIds, limit = 6) {
       if (focusEyebrow) focusEyebrow.textContent = 'Редакционный фокус';
       if (focusTitle) focusTitle.textContent = 'Расследования';
       if (focusDescription) {
-        focusDescription.textContent = 'Материалы с документами, фигурантами, деньгами и длинными сюжетами, за которыми стоит следить отдельно от новостной ленты.';
+        focusDescription.textContent = 'Материалы с документами и длинным контекстом.';
       }
       if (focusLink) {
         focusLink.setAttribute('href', '/archive.html?cat=investigation');
