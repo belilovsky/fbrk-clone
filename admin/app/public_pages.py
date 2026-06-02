@@ -310,7 +310,7 @@ def site_profile(values: Mapping[str, str]) -> dict[str, str]:
     ).strip()
     mission = _value(values, "about_coverage_body")
     footer_about = (
-        f"{_value(values, 'about_title')} — независимое сетевое издание. "
+        "Независимое сетевое издание. "
         f"Свидетельство СМИ № {registration}."
     ).strip()
     return {
